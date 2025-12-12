@@ -1,0 +1,848 @@
+openapi: 3.0.3
+info:
+  title: CycleJournal API
+  description: |
+    CycleJournal APIは、AIコーチング機能を提供するRESTful APIです。
+    Cycleモデル（土・水・根・幹・枝・葉・実・空）に基づいた内省支援を行います。
+  version: 1.0.0
+  contact:
+    name: CycleJournal Team
+
+servers:
+  - url: https://8sgr31xa31.execute-api.ap-northeast-1.amazonaws.com/dev
+    description: Development server
+  - url: https://api.cyclejournal.app
+    description: Production server (planned)
+
+tags:
+  - name: System
+    description: システム関連
+  - name: Auth
+    description: 認証関連
+  - name: Coach
+    description: コーチング関連
+  - name: Sessions
+    description: 会話セッション関連
+  - name: Tasks
+    description: タスク関連
+  - name: Users
+    description: ユーザー関連
+
+paths:
+  /health:
+    get:
+      tags:
+        - System
+      summary: ヘルスチェック
+      description: サービスの稼働状況を確認します
+      operationId: getHealth
+      responses:
+        '200':
+          description: 正常稼働
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /auth/verify:
+    post:
+      tags:
+        - Auth
+      summary: Apple IDトークン検証
+      description: Apple Identity Tokenを検証し、ユーザー情報を返却します
+      operationId: verifyToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyTokenRequest'
+      responses:
+        '200':
+          description: 検証成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyTokenResponse'
+        '400':
+          description: リクエストエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: トークン無効
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /coach:
+    post:
+      tags:
+        - Coach
+      summary: コーチとの会話
+      description: ユーザーのメッセージに対してAIコーチが応答します
+      operationId: chat
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoachRequest'
+      responses:
+        '200':
+          description: 応答成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoachResponse'
+        '400':
+          description: リクエストエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: 認証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /sessions:
+    get:
+      tags:
+        - Sessions
+      summary: セッション一覧取得
+      description: ユーザーの会話セッション一覧を取得します
+      operationId: listSessions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: 取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionListResponse'
+        '401':
+          description: 認証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Sessions
+      summary: 新規セッション作成
+      description: 新しい会話セッションを作成します
+      operationId: createSession
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionRequest'
+      responses:
+        '201':
+          description: 作成成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        '400':
+          description: リクエストエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: 認証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /sessions/{session_id}:
+    get:
+      tags:
+        - Sessions
+      summary: セッション詳細取得
+      description: 特定のセッションの詳細とメッセージ履歴を取得します
+      operationId: getSession
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDetailResponse'
+        '401':
+          description: 認証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: セッションが存在しない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /tasks:
+    get:
+      tags:
+        - Tasks
+      summary: タスク一覧取得
+      description: ユーザーのタスク一覧を取得します
+      operationId: listTasks
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, completed]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: 取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskListResponse'
+        '401':
+          description: 認証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Tasks
+      summary: タスク作成
+      description: 新しいタスクを作成します
+      operationId: createTask
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskRequest'
+      responses:
+        '201':
+          description: 作成成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '400':
+          description: リクエストエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: 認証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /tasks/{task_id}:
+    put:
+      tags:
+        - Tasks
+      summary: タスク更新
+      description: タスクを更新します
+      operationId: updateTask
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '400':
+          description: リクエストエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: 認証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: タスクが存在しない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Tasks
+      summary: タスク削除
+      description: タスクを削除します
+      operationId: deleteTask
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: 削除成功
+        '401':
+          description: 認証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: タスクが存在しない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /tasks/{task_id}/reflection:
+    post:
+      tags:
+        - Tasks
+      summary: タスクふりかえり登録
+      description: タスクのふりかえりを登録します
+      operationId: createReflection
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReflectionRequest'
+      responses:
+        '201':
+          description: 登録成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReflectionResponse'
+        '400':
+          description: リクエストエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: 認証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: タスクが存在しない
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/me:
+    get:
+      tags:
+        - Users
+      summary: 自分のユーザー情報取得
+      description: 認証済みユーザー自身の情報を取得します
+      operationId: getMe
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: 認証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Apple Identity Token
+
+  schemas:
+    # Common
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              example: ValidationError
+            message:
+              type: string
+              example: The request body is invalid.
+            details:
+              type: array
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                  message:
+                    type: string
+
+    CycleElement:
+      type: string
+      enum: [soil, water, root, trunk, branch, leaf, fruit, sky]
+      description: |
+        Cycle要素:
+        - soil: 土（記憶・環境）
+        - water: 水（会話の流れ）
+        - root: 根（価値観・信念）
+        - trunk: 幹（意志・姿勢）
+        - branch: 枝（思考の広がり）
+        - leaf: 葉（日常の行動）
+        - fruit: 実（成果・気づき）
+        - sky: 空（直感・新しい視点）
+
+    # Health
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: healthy
+        stage:
+          type: string
+          example: dev
+        timestamp:
+          type: string
+          format: date-time
+
+    # Auth
+    VerifyTokenRequest:
+      type: object
+      required:
+        - identity_token
+      properties:
+        identity_token:
+          type: string
+          description: Apple Identity Token (JWT)
+
+    VerifyTokenResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            user_id:
+              type: string
+              format: uuid
+            apple_user_id:
+              type: string
+            email:
+              type: string
+              format: email
+            is_new_user:
+              type: boolean
+            created_at:
+              type: string
+              format: date-time
+
+    # Coach
+    CoachRequest:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          minLength: 1
+          description: ユーザーのメッセージ
+        session_id:
+          type: string
+          format: uuid
+          description: 継続する会話のセッションID
+        diary_content:
+          type: string
+          description: 日記の内容（日記を元にセッション開始時のみ。日記はローカル保存のため内容を直接送信）
+        context:
+          type: object
+          properties:
+            cycle_element:
+              $ref: '#/components/schemas/CycleElement'
+
+    CoachResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            message:
+              type: string
+              description: コーチの応答メッセージ
+            session_id:
+              type: string
+              format: uuid
+            metadata:
+              type: object
+              properties:
+                stage:
+                  type: string
+                model:
+                  type: string
+                cycle_element:
+                  $ref: '#/components/schemas/CycleElement'
+                detected_emotion:
+                  type: string
+                response_type:
+                  type: string
+
+    # Sessions
+    Session:
+      type: object
+      properties:
+        session_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        cycle_element:
+          $ref: '#/components/schemas/CycleElement'
+        message_count:
+          type: integer
+        last_message_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
+    SessionListResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            sessions:
+              type: array
+              items:
+                $ref: '#/components/schemas/Session'
+            total:
+              type: integer
+            limit:
+              type: integer
+            offset:
+              type: integer
+
+    CreateSessionRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        diary_content:
+          type: string
+          description: 日記の内容（日記を元にセッション開始時のみ）
+        cycle_element:
+          $ref: '#/components/schemas/CycleElement'
+
+    SessionResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/Session'
+
+    Message:
+      type: object
+      properties:
+        message_id:
+          type: string
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+        metadata:
+          type: object
+        created_at:
+          type: string
+          format: date-time
+
+    SessionDetailResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            session_id:
+              type: string
+              format: uuid
+            title:
+              type: string
+            cycle_element:
+              $ref: '#/components/schemas/CycleElement'
+            has_diary_context:
+              type: boolean
+              description: 日記を元に開始されたセッションかどうか
+            messages:
+              type: array
+              items:
+                $ref: '#/components/schemas/Message'
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+
+    # Tasks
+    Task:
+      type: object
+      properties:
+        task_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [pending, completed]
+        session_id:
+          type: string
+          format: uuid
+        cycle_element:
+          $ref: '#/components/schemas/CycleElement'
+        due_date:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    TaskListResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            tasks:
+              type: array
+              items:
+                $ref: '#/components/schemas/Task'
+            total:
+              type: integer
+            limit:
+              type: integer
+            offset:
+              type: integer
+
+    CreateTaskRequest:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        session_id:
+          type: string
+          format: uuid
+        cycle_element:
+          $ref: '#/components/schemas/CycleElement'
+        due_date:
+          type: string
+          format: date-time
+
+    UpdateTaskRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [pending, completed]
+        due_date:
+          type: string
+          format: date-time
+
+    TaskResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/Task'
+
+    # Reflection
+    CreateReflectionRequest:
+      type: object
+      required:
+        - what_i_did
+        - what_i_noticed
+      properties:
+        what_i_did:
+          type: string
+          description: やったこと
+        what_i_noticed:
+          type: string
+          description: 気づいたこと
+        what_i_want_to_try:
+          type: string
+          description: 次にやりたいこと
+        overall_feeling:
+          type: string
+          description: 全体の感想
+
+    Reflection:
+      type: object
+      properties:
+        reflection_id:
+          type: string
+          format: uuid
+        task_id:
+          type: string
+          format: uuid
+        what_i_did:
+          type: string
+        what_i_noticed:
+          type: string
+        what_i_want_to_try:
+          type: string
+        overall_feeling:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    ReflectionResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/Reflection'
+
+    # Users
+    UserResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            user_id:
+              type: string
+              format: uuid
+            apple_user_id:
+              type: string
+            email:
+              type: string
+              format: email
+            display_name:
+              type: string
+            settings:
+              type: object
+              properties:
+                notification_enabled:
+                  type: boolean
+                reminder_time:
+                  type: string
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time

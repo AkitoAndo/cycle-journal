@@ -1,0 +1,1060 @@
+{
+ "Resources": {
+  "JwtLayerDD28C2C5": {
+   "Type": "AWS::Lambda::LayerVersion",
+   "Properties": {
+    "CompatibleRuntimes": [
+     "python3.12"
+    ],
+    "Content": {
+     "S3Bucket": "cdk-hnb659fds-assets-812942648455-us-east-1",
+     "S3Key": "a0f727b729c4f5016206f078905e94a07f2eec6765e9d974f9dcd807b9d39d0a.zip"
+    },
+    "Description": "PyJWT and cryptography for Apple Sign In",
+    "LayerName": "cyclejournal-dev-jwt-layer"
+   },
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/JwtLayer/Resource",
+    "aws:asset:path": "asset.a0f727b729c4f5016206f078905e94a07f2eec6765e9d974f9dcd807b9d39d0a",
+    "aws:asset:is-bundled": false,
+    "aws:asset:property": "Content"
+   }
+  },
+  "HealthFunctionServiceRole04552894": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/HealthFunction/ServiceRole/Resource"
+   }
+  },
+  "HealthFunction19D7724A": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-812942648455-us-east-1",
+     "S3Key": "12c488d83ccfc7a4151c6d4e40d9003c0d0ccfd877206bceb206875c97a7319d.zip"
+    },
+    "Environment": {
+     "Variables": {
+      "STAGE": "dev"
+     }
+    },
+    "FunctionName": "cyclejournal-dev-health",
+    "Handler": "health.handler",
+    "MemorySize": 128,
+    "Role": {
+     "Fn::GetAtt": [
+      "HealthFunctionServiceRole04552894",
+      "Arn"
+     ]
+    },
+    "Runtime": "python3.12",
+    "Timeout": 10
+   },
+   "DependsOn": [
+    "HealthFunctionServiceRole04552894"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/HealthFunction/Resource",
+    "aws:asset:path": "asset.12c488d83ccfc7a4151c6d4e40d9003c0d0ccfd877206bceb206875c97a7319d",
+    "aws:asset:is-bundled": false,
+    "aws:asset:property": "Code"
+   }
+  },
+  "CoachFunctionServiceRoleE60DE755": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/CoachFunction/ServiceRole/Resource"
+   }
+  },
+  "CoachFunctionServiceRoleDefaultPolicyDDC8BDD3": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "bedrock:InvokeModel",
+        "bedrock:InvokeModelWithResponseStream"
+       ],
+       "Effect": "Allow",
+       "Resource": "arn:aws:bedrock:ap-northeast-1::foundation-model/anthropic.claude-3-haiku-20240307-v1:0"
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "CoachFunctionServiceRoleDefaultPolicyDDC8BDD3",
+    "Roles": [
+     {
+      "Ref": "CoachFunctionServiceRoleE60DE755"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/CoachFunction/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "CoachFunction788DA660": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-812942648455-us-east-1",
+     "S3Key": "12c488d83ccfc7a4151c6d4e40d9003c0d0ccfd877206bceb206875c97a7319d.zip"
+    },
+    "Environment": {
+     "Variables": {
+      "STAGE": "dev",
+      "BEDROCK_MODEL_ID": "anthropic.claude-3-haiku-20240307-v1:0"
+     }
+    },
+    "FunctionName": "cyclejournal-dev-coach",
+    "Handler": "coach.handler",
+    "MemorySize": 512,
+    "Role": {
+     "Fn::GetAtt": [
+      "CoachFunctionServiceRoleE60DE755",
+      "Arn"
+     ]
+    },
+    "Runtime": "python3.12",
+    "Timeout": 60
+   },
+   "DependsOn": [
+    "CoachFunctionServiceRoleDefaultPolicyDDC8BDD3",
+    "CoachFunctionServiceRoleE60DE755"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/CoachFunction/Resource",
+    "aws:asset:path": "asset.12c488d83ccfc7a4151c6d4e40d9003c0d0ccfd877206bceb206875c97a7319d",
+    "aws:asset:is-bundled": false,
+    "aws:asset:property": "Code"
+   }
+  },
+  "AuthFunctionServiceRole87A7A68C": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/AuthFunction/ServiceRole/Resource"
+   }
+  },
+  "AuthFunctionA1CD5E0F": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-812942648455-us-east-1",
+     "S3Key": "12c488d83ccfc7a4151c6d4e40d9003c0d0ccfd877206bceb206875c97a7319d.zip"
+    },
+    "Environment": {
+     "Variables": {
+      "STAGE": "dev",
+      "APPLE_BUNDLE_ID": "akito-ando.CycleJournal"
+     }
+    },
+    "FunctionName": "cyclejournal-dev-auth",
+    "Handler": "auth.handler",
+    "Layers": [
+     {
+      "Ref": "JwtLayerDD28C2C5"
+     }
+    ],
+    "MemorySize": 256,
+    "Role": {
+     "Fn::GetAtt": [
+      "AuthFunctionServiceRole87A7A68C",
+      "Arn"
+     ]
+    },
+    "Runtime": "python3.12",
+    "Timeout": 30
+   },
+   "DependsOn": [
+    "AuthFunctionServiceRole87A7A68C"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/AuthFunction/Resource",
+    "aws:asset:path": "asset.12c488d83ccfc7a4151c6d4e40d9003c0d0ccfd877206bceb206875c97a7319d",
+    "aws:asset:is-bundled": false,
+    "aws:asset:property": "Code"
+   }
+  },
+  "AuthorizerFunctionServiceRole5B2A061B": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/AuthorizerFunction/ServiceRole/Resource"
+   }
+  },
+  "AuthorizerFunctionB4DBAA43": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-812942648455-us-east-1",
+     "S3Key": "12c488d83ccfc7a4151c6d4e40d9003c0d0ccfd877206bceb206875c97a7319d.zip"
+    },
+    "Environment": {
+     "Variables": {
+      "STAGE": "dev",
+      "APPLE_BUNDLE_ID": "akito-ando.CycleJournal"
+     }
+    },
+    "FunctionName": "cyclejournal-dev-authorizer",
+    "Handler": "authorizer.handler",
+    "Layers": [
+     {
+      "Ref": "JwtLayerDD28C2C5"
+     }
+    ],
+    "MemorySize": 256,
+    "Role": {
+     "Fn::GetAtt": [
+      "AuthorizerFunctionServiceRole5B2A061B",
+      "Arn"
+     ]
+    },
+    "Runtime": "python3.12",
+    "Timeout": 10
+   },
+   "DependsOn": [
+    "AuthorizerFunctionServiceRole5B2A061B"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/AuthorizerFunction/Resource",
+    "aws:asset:path": "asset.12c488d83ccfc7a4151c6d4e40d9003c0d0ccfd877206bceb206875c97a7319d",
+    "aws:asset:is-bundled": false,
+    "aws:asset:property": "Code"
+   }
+  },
+  "CycleJournalApi9EDF84E3": {
+   "Type": "AWS::ApiGateway::RestApi",
+   "Properties": {
+    "Description": "CycleJournal API",
+    "Name": "cyclejournal-dev-api"
+   },
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/CycleJournalApi/Resource"
+   }
+  },
+  "CycleJournalApiDeploymentBCB02FAE8f219c15107dba46ac8e0df07bbbf96c": {
+   "Type": "AWS::ApiGateway::Deployment",
+   "Properties": {
+    "Description": "CycleJournal API",
+    "RestApiId": {
+     "Ref": "CycleJournalApi9EDF84E3"
+    }
+   },
+   "DependsOn": [
+    "CycleJournalApiauthOPTIONSA90F6E83",
+    "CycleJournalApiauth9CD20DAD",
+    "CycleJournalApiauthverifyOPTIONSC705C1FB",
+    "CycleJournalApiauthverifyPOSTF86A7A84",
+    "CycleJournalApiauthverify6F643A71",
+    "CycleJournalApicoachOPTIONS2164A530",
+    "CycleJournalApicoachPOSTE43AC6ED",
+    "CycleJournalApicoach0D7540B6",
+    "CycleJournalApihealthGET0DD9B8C2",
+    "CycleJournalApihealthOPTIONSC91733C0",
+    "CycleJournalApihealth2F3700BB",
+    "CycleJournalApiOPTIONSFDF2AE01"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/CycleJournalApi/Deployment/Resource",
+    "aws:cdk:do-not-refactor": true
+   }
+  },
+  "CycleJournalApiDeploymentStagedev442ACC7D": {
+   "Type": "AWS::ApiGateway::Stage",
+   "Properties": {
+    "DeploymentId": {
+     "Ref": "CycleJournalApiDeploymentBCB02FAE8f219c15107dba46ac8e0df07bbbf96c"
+    },
+    "MethodSettings": [
+     {
+      "DataTraceEnabled": false,
+      "HttpMethod": "*",
+      "ResourcePath": "/*",
+      "ThrottlingBurstLimit": 200,
+      "ThrottlingRateLimit": 100
+     }
+    ],
+    "RestApiId": {
+     "Ref": "CycleJournalApi9EDF84E3"
+    },
+    "StageName": "dev"
+   },
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/CycleJournalApi/DeploymentStage.dev/Resource"
+   }
+  },
+  "CycleJournalApiOPTIONSFDF2AE01": {
+   "Type": "AWS::ApiGateway::Method",
+   "Properties": {
+    "ApiKeyRequired": false,
+    "AuthorizationType": "NONE",
+    "HttpMethod": "OPTIONS",
+    "Integration": {
+     "IntegrationResponses": [
+      {
+       "ResponseParameters": {
+        "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Authorization'",
+        "method.response.header.Access-Control-Allow-Origin": "'*'",
+        "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+       },
+       "StatusCode": "204"
+      }
+     ],
+     "RequestTemplates": {
+      "application/json": "{ statusCode: 200 }"
+     },
+     "Type": "MOCK"
+    },
+    "MethodResponses": [
+     {
+      "ResponseParameters": {
+       "method.response.header.Access-Control-Allow-Headers": true,
+       "method.response.header.Access-Control-Allow-Origin": true,
+       "method.response.header.Access-Control-Allow-Methods": true
+      },
+      "StatusCode": "204"
+     }
+    ],
+    "ResourceId": {
+     "Fn::GetAtt": [
+      "CycleJournalApi9EDF84E3",
+      "RootResourceId"
+     ]
+    },
+    "RestApiId": {
+     "Ref": "CycleJournalApi9EDF84E3"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/CycleJournalApi/Default/OPTIONS/Resource"
+   }
+  },
+  "CycleJournalApihealth2F3700BB": {
+   "Type": "AWS::ApiGateway::Resource",
+   "Properties": {
+    "ParentId": {
+     "Fn::GetAtt": [
+      "CycleJournalApi9EDF84E3",
+      "RootResourceId"
+     ]
+    },
+    "PathPart": "health",
+    "RestApiId": {
+     "Ref": "CycleJournalApi9EDF84E3"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/CycleJournalApi/Default/health/Resource"
+   }
+  },
+  "CycleJournalApihealthOPTIONSC91733C0": {
+   "Type": "AWS::ApiGateway::Method",
+   "Properties": {
+    "ApiKeyRequired": false,
+    "AuthorizationType": "NONE",
+    "HttpMethod": "OPTIONS",
+    "Integration": {
+     "IntegrationResponses": [
+      {
+       "ResponseParameters": {
+        "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Authorization'",
+        "method.response.header.Access-Control-Allow-Origin": "'*'",
+        "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+       },
+       "StatusCode": "204"
+      }
+     ],
+     "RequestTemplates": {
+      "application/json": "{ statusCode: 200 }"
+     },
+     "Type": "MOCK"
+    },
+    "MethodResponses": [
+     {
+      "ResponseParameters": {
+       "method.response.header.Access-Control-Allow-Headers": true,
+       "method.response.header.Access-Control-Allow-Origin": true,
+       "method.response.header.Access-Control-Allow-Methods": true
+      },
+      "StatusCode": "204"
+     }
+    ],
+    "ResourceId": {
+     "Ref": "CycleJournalApihealth2F3700BB"
+    },
+    "RestApiId": {
+     "Ref": "CycleJournalApi9EDF84E3"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/CycleJournalApi/Default/health/OPTIONS/Resource"
+   }
+  },
+  "CycleJournalApihealthGETApiPermissionCycleJournaldevCycleJournalApiC7833FEFGEThealth7E1612E1": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "HealthFunction19D7724A",
+      "Arn"
+     ]
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:aws:execute-api:us-east-1:812942648455:",
+       {
+        "Ref": "CycleJournalApi9EDF84E3"
+       },
+       "/",
+       {
+        "Ref": "CycleJournalApiDeploymentStagedev442ACC7D"
+       },
+       "/GET/health"
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/CycleJournalApi/Default/health/GET/ApiPermission.CycleJournaldevCycleJournalApiC7833FEF.GET..health"
+   }
+  },
+  "CycleJournalApihealthGETApiPermissionTestCycleJournaldevCycleJournalApiC7833FEFGEThealthE4638C82": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "HealthFunction19D7724A",
+      "Arn"
+     ]
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:aws:execute-api:us-east-1:812942648455:",
+       {
+        "Ref": "CycleJournalApi9EDF84E3"
+       },
+       "/test-invoke-stage/GET/health"
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/CycleJournalApi/Default/health/GET/ApiPermission.Test.CycleJournaldevCycleJournalApiC7833FEF.GET..health"
+   }
+  },
+  "CycleJournalApihealthGET0DD9B8C2": {
+   "Type": "AWS::ApiGateway::Method",
+   "Properties": {
+    "AuthorizationType": "NONE",
+    "HttpMethod": "GET",
+    "Integration": {
+     "IntegrationHttpMethod": "POST",
+     "Type": "AWS_PROXY",
+     "Uri": {
+      "Fn::Join": [
+       "",
+       [
+        "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/",
+        {
+         "Fn::GetAtt": [
+          "HealthFunction19D7724A",
+          "Arn"
+         ]
+        },
+        "/invocations"
+       ]
+      ]
+     }
+    },
+    "ResourceId": {
+     "Ref": "CycleJournalApihealth2F3700BB"
+    },
+    "RestApiId": {
+     "Ref": "CycleJournalApi9EDF84E3"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/CycleJournalApi/Default/health/GET/Resource"
+   }
+  },
+  "CycleJournalApiauth9CD20DAD": {
+   "Type": "AWS::ApiGateway::Resource",
+   "Properties": {
+    "ParentId": {
+     "Fn::GetAtt": [
+      "CycleJournalApi9EDF84E3",
+      "RootResourceId"
+     ]
+    },
+    "PathPart": "auth",
+    "RestApiId": {
+     "Ref": "CycleJournalApi9EDF84E3"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/CycleJournalApi/Default/auth/Resource"
+   }
+  },
+  "CycleJournalApiauthOPTIONSA90F6E83": {
+   "Type": "AWS::ApiGateway::Method",
+   "Properties": {
+    "ApiKeyRequired": false,
+    "AuthorizationType": "NONE",
+    "HttpMethod": "OPTIONS",
+    "Integration": {
+     "IntegrationResponses": [
+      {
+       "ResponseParameters": {
+        "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Authorization'",
+        "method.response.header.Access-Control-Allow-Origin": "'*'",
+        "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+       },
+       "StatusCode": "204"
+      }
+     ],
+     "RequestTemplates": {
+      "application/json": "{ statusCode: 200 }"
+     },
+     "Type": "MOCK"
+    },
+    "MethodResponses": [
+     {
+      "ResponseParameters": {
+       "method.response.header.Access-Control-Allow-Headers": true,
+       "method.response.header.Access-Control-Allow-Origin": true,
+       "method.response.header.Access-Control-Allow-Methods": true
+      },
+      "StatusCode": "204"
+     }
+    ],
+    "ResourceId": {
+     "Ref": "CycleJournalApiauth9CD20DAD"
+    },
+    "RestApiId": {
+     "Ref": "CycleJournalApi9EDF84E3"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/CycleJournalApi/Default/auth/OPTIONS/Resource"
+   }
+  },
+  "CycleJournalApiauthverify6F643A71": {
+   "Type": "AWS::ApiGateway::Resource",
+   "Properties": {
+    "ParentId": {
+     "Ref": "CycleJournalApiauth9CD20DAD"
+    },
+    "PathPart": "verify",
+    "RestApiId": {
+     "Ref": "CycleJournalApi9EDF84E3"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/CycleJournalApi/Default/auth/verify/Resource"
+   }
+  },
+  "CycleJournalApiauthverifyOPTIONSC705C1FB": {
+   "Type": "AWS::ApiGateway::Method",
+   "Properties": {
+    "ApiKeyRequired": false,
+    "AuthorizationType": "NONE",
+    "HttpMethod": "OPTIONS",
+    "Integration": {
+     "IntegrationResponses": [
+      {
+       "ResponseParameters": {
+        "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Authorization'",
+        "method.response.header.Access-Control-Allow-Origin": "'*'",
+        "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+       },
+       "StatusCode": "204"
+      }
+     ],
+     "RequestTemplates": {
+      "application/json": "{ statusCode: 200 }"
+     },
+     "Type": "MOCK"
+    },
+    "MethodResponses": [
+     {
+      "ResponseParameters": {
+       "method.response.header.Access-Control-Allow-Headers": true,
+       "method.response.header.Access-Control-Allow-Origin": true,
+       "method.response.header.Access-Control-Allow-Methods": true
+      },
+      "StatusCode": "204"
+     }
+    ],
+    "ResourceId": {
+     "Ref": "CycleJournalApiauthverify6F643A71"
+    },
+    "RestApiId": {
+     "Ref": "CycleJournalApi9EDF84E3"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/CycleJournalApi/Default/auth/verify/OPTIONS/Resource"
+   }
+  },
+  "CycleJournalApiauthverifyPOSTApiPermissionCycleJournaldevCycleJournalApiC7833FEFPOSTauthverify43855C49": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "AuthFunctionA1CD5E0F",
+      "Arn"
+     ]
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:aws:execute-api:us-east-1:812942648455:",
+       {
+        "Ref": "CycleJournalApi9EDF84E3"
+       },
+       "/",
+       {
+        "Ref": "CycleJournalApiDeploymentStagedev442ACC7D"
+       },
+       "/POST/auth/verify"
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/CycleJournalApi/Default/auth/verify/POST/ApiPermission.CycleJournaldevCycleJournalApiC7833FEF.POST..auth.verify"
+   }
+  },
+  "CycleJournalApiauthverifyPOSTApiPermissionTestCycleJournaldevCycleJournalApiC7833FEFPOSTauthverifyAD05B363": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "AuthFunctionA1CD5E0F",
+      "Arn"
+     ]
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:aws:execute-api:us-east-1:812942648455:",
+       {
+        "Ref": "CycleJournalApi9EDF84E3"
+       },
+       "/test-invoke-stage/POST/auth/verify"
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/CycleJournalApi/Default/auth/verify/POST/ApiPermission.Test.CycleJournaldevCycleJournalApiC7833FEF.POST..auth.verify"
+   }
+  },
+  "CycleJournalApiauthverifyPOSTF86A7A84": {
+   "Type": "AWS::ApiGateway::Method",
+   "Properties": {
+    "AuthorizationType": "NONE",
+    "HttpMethod": "POST",
+    "Integration": {
+     "IntegrationHttpMethod": "POST",
+     "Type": "AWS_PROXY",
+     "Uri": {
+      "Fn::Join": [
+       "",
+       [
+        "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/",
+        {
+         "Fn::GetAtt": [
+          "AuthFunctionA1CD5E0F",
+          "Arn"
+         ]
+        },
+        "/invocations"
+       ]
+      ]
+     }
+    },
+    "ResourceId": {
+     "Ref": "CycleJournalApiauthverify6F643A71"
+    },
+    "RestApiId": {
+     "Ref": "CycleJournalApi9EDF84E3"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/CycleJournalApi/Default/auth/verify/POST/Resource"
+   }
+  },
+  "CycleJournalApicoach0D7540B6": {
+   "Type": "AWS::ApiGateway::Resource",
+   "Properties": {
+    "ParentId": {
+     "Fn::GetAtt": [
+      "CycleJournalApi9EDF84E3",
+      "RootResourceId"
+     ]
+    },
+    "PathPart": "coach",
+    "RestApiId": {
+     "Ref": "CycleJournalApi9EDF84E3"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/CycleJournalApi/Default/coach/Resource"
+   }
+  },
+  "CycleJournalApicoachOPTIONS2164A530": {
+   "Type": "AWS::ApiGateway::Method",
+   "Properties": {
+    "ApiKeyRequired": false,
+    "AuthorizationType": "NONE",
+    "HttpMethod": "OPTIONS",
+    "Integration": {
+     "IntegrationResponses": [
+      {
+       "ResponseParameters": {
+        "method.response.header.Access-Control-Allow-Headers": "'Content-Type,Authorization'",
+        "method.response.header.Access-Control-Allow-Origin": "'*'",
+        "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+       },
+       "StatusCode": "204"
+      }
+     ],
+     "RequestTemplates": {
+      "application/json": "{ statusCode: 200 }"
+     },
+     "Type": "MOCK"
+    },
+    "MethodResponses": [
+     {
+      "ResponseParameters": {
+       "method.response.header.Access-Control-Allow-Headers": true,
+       "method.response.header.Access-Control-Allow-Origin": true,
+       "method.response.header.Access-Control-Allow-Methods": true
+      },
+      "StatusCode": "204"
+     }
+    ],
+    "ResourceId": {
+     "Ref": "CycleJournalApicoach0D7540B6"
+    },
+    "RestApiId": {
+     "Ref": "CycleJournalApi9EDF84E3"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/CycleJournalApi/Default/coach/OPTIONS/Resource"
+   }
+  },
+  "CycleJournalApicoachPOSTApiPermissionCycleJournaldevCycleJournalApiC7833FEFPOSTcoachC7C6384B": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "CoachFunction788DA660",
+      "Arn"
+     ]
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:aws:execute-api:us-east-1:812942648455:",
+       {
+        "Ref": "CycleJournalApi9EDF84E3"
+       },
+       "/",
+       {
+        "Ref": "CycleJournalApiDeploymentStagedev442ACC7D"
+       },
+       "/POST/coach"
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/CycleJournalApi/Default/coach/POST/ApiPermission.CycleJournaldevCycleJournalApiC7833FEF.POST..coach"
+   }
+  },
+  "CycleJournalApicoachPOSTApiPermissionTestCycleJournaldevCycleJournalApiC7833FEFPOSTcoach4E95A192": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "CoachFunction788DA660",
+      "Arn"
+     ]
+    },
+    "Principal": "apigateway.amazonaws.com",
+    "SourceArn": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:aws:execute-api:us-east-1:812942648455:",
+       {
+        "Ref": "CycleJournalApi9EDF84E3"
+       },
+       "/test-invoke-stage/POST/coach"
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/CycleJournalApi/Default/coach/POST/ApiPermission.Test.CycleJournaldevCycleJournalApiC7833FEF.POST..coach"
+   }
+  },
+  "CycleJournalApicoachPOSTE43AC6ED": {
+   "Type": "AWS::ApiGateway::Method",
+   "Properties": {
+    "AuthorizationType": "NONE",
+    "HttpMethod": "POST",
+    "Integration": {
+     "IntegrationHttpMethod": "POST",
+     "Type": "AWS_PROXY",
+     "Uri": {
+      "Fn::Join": [
+       "",
+       [
+        "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/",
+        {
+         "Fn::GetAtt": [
+          "CoachFunction788DA660",
+          "Arn"
+         ]
+        },
+        "/invocations"
+       ]
+      ]
+     }
+    },
+    "ResourceId": {
+     "Ref": "CycleJournalApicoach0D7540B6"
+    },
+    "RestApiId": {
+     "Ref": "CycleJournalApi9EDF84E3"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/CycleJournalApi/Default/coach/POST/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/1WOQWvDMAyFf0vvjkYT2L3d2GljIYVdi+poqZrEDpFMCCH/fdjNoD29T35PT84hL3LY73CSzNZt1vEFlpOibQ1Ocl467C81wvKJM40/NAp7Z95+3dP8EZzVzXjkksaeJUZWI8UZRUgFDlGMFHAMtiU9opBh7GGpfEdxLWnpO7Zzakm0Ghy4QaUJZ1gqEj0MnNIbvtPQ+bknp/H1YTopNqn3DhWJD6OldPeL9OrraG70727NidfVpD/HfXbNU+Y76BB0NeWsV+9eCtjn8Lq7CXM2BqfcE1R3/QONSBP/agEAAA=="
+   },
+   "Metadata": {
+    "aws:cdk:path": "CycleJournal-dev/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "CycleJournalApiEndpoint68E1C8CD": {
+   "Value": {
+    "Fn::Join": [
+     "",
+     [
+      "https://",
+      {
+       "Ref": "CycleJournalApi9EDF84E3"
+      },
+      ".execute-api.us-east-1.",
+      {
+       "Ref": "AWS::URLSuffix"
+      },
+      "/",
+      {
+       "Ref": "CycleJournalApiDeploymentStagedev442ACC7D"
+      },
+      "/"
+     ]
+    ]
+   }
+  },
+  "ApiUrl": {
+   "Description": "API Gateway URL",
+   "Value": {
+    "Fn::Join": [
+     "",
+     [
+      "https://",
+      {
+       "Ref": "CycleJournalApi9EDF84E3"
+      },
+      ".execute-api.us-east-1.",
+      {
+       "Ref": "AWS::URLSuffix"
+      },
+      "/",
+      {
+       "Ref": "CycleJournalApiDeploymentStagedev442ACC7D"
+      },
+      "/"
+     ]
+    ]
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,51 @@
+{
+  "version": "48.0.0",
+  "files": {
+    "a0f727b729c4f5016206f078905e94a07f2eec6765e9d974f9dcd807b9d39d0a": {
+      "displayName": "JwtLayer/Code",
+      "source": {
+        "path": "asset.a0f727b729c4f5016206f078905e94a07f2eec6765e9d974f9dcd807b9d39d0a",
+        "packaging": "zip"
+      },
+      "destinations": {
+        "812942648455-us-east-1-ee99a320": {
+          "bucketName": "cdk-hnb659fds-assets-812942648455-us-east-1",
+          "objectKey": "a0f727b729c4f5016206f078905e94a07f2eec6765e9d974f9dcd807b9d39d0a.zip",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::812942648455:role/cdk-hnb659fds-file-publishing-role-812942648455-us-east-1"
+        }
+      }
+    },
+    "12c488d83ccfc7a4151c6d4e40d9003c0d0ccfd877206bceb206875c97a7319d": {
+      "displayName": "HealthFunction/Code",
+      "source": {
+        "path": "asset.12c488d83ccfc7a4151c6d4e40d9003c0d0ccfd877206bceb206875c97a7319d",
+        "packaging": "zip"
+      },
+      "destinations": {
+        "812942648455-us-east-1-e55b742d": {
+          "bucketName": "cdk-hnb659fds-assets-812942648455-us-east-1",
+          "objectKey": "12c488d83ccfc7a4151c6d4e40d9003c0d0ccfd877206bceb206875c97a7319d.zip",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::812942648455:role/cdk-hnb659fds-file-publishing-role-812942648455-us-east-1"
+        }
+      }
+    },
+    "e4ad39984c7190c5fffc2e4eb18ca2288c747c923147a85c7ea678cacbd92e45": {
+      "displayName": "CycleJournal-dev Template",
+      "source": {
+        "path": "CycleJournal-dev.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "812942648455-us-east-1-4a2cf616": {
+          "bucketName": "cdk-hnb659fds-assets-812942648455-us-east-1",
+          "objectKey": "e4ad39984c7190c5fffc2e4eb18ca2288c747c923147a85c7ea678cacbd92e45.json",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::812942648455:role/cdk-hnb659fds-file-publishing-role-812942648455-us-east-1"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}
