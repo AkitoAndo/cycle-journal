@@ -404,58 +404,61 @@ struct SearchView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                // 検索入力部分をコンパクトに
-                VStack(spacing: 12) {
-                    HStack {
-                        TextField("キーワードを入力", text: $searchText)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                        
+                // 検索入力部分
+                VStack(alignment: .leading, spacing: 16) {
+                    // 検索フィールド
+                    HStack(spacing: 12) {
+                        HStack {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundColor(.secondary)
+                            TextField("キーワードを入力", text: $searchText)
+                        }
+                        .padding(10)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(10)
+
                         Button("検索") {
                             diaryStore.searchText = searchText
                             showResults = true
                         }
+                        .fontWeight(.medium)
                     }
-                    .padding(.horizontal)
-                    .padding(.top)
-                    
-                    // タグ選択をコンパクトに
+
+                    // タグ選択（折り返しレイアウト）
                     if !diaryStore.allTags.isEmpty && !showResults {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("タグで絞り込み")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+
+                            FlowLayout(spacing: 8) {
                                 ForEach(diaryStore.allTags, id: \.self) { tag in
                                     Button(action: {
                                         diaryStore.toggleTag(tag)
                                         showResults = true
                                     }) {
-                                        HStack(spacing: 4) {
-                                            Text(tag)
-                                                .font(.system(size: 14, weight: .medium))
-                                            if diaryStore.selectedTags.contains(tag) {
-                                                Image(systemName: "checkmark.circle.fill")
-                                                    .font(.system(size: 12))
-                                            }
-                                        }
-                                        .foregroundColor(diaryStore.selectedTags.contains(tag) ? .white : .blue)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 8)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 16)
-                                                .fill(diaryStore.selectedTags.contains(tag) ? Color.blue : Color.blue.opacity(0.1))
-                                        )
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 16)
-                                                .stroke(Color.blue, lineWidth: diaryStore.selectedTags.contains(tag) ? 0 : 2)
-                                        )
+                                        Text(tag)
+                                            .font(.system(size: 14, weight: .medium))
+                                            .foregroundColor(diaryStore.selectedTags.contains(tag) ? .white : .blue)
+                                            .padding(.horizontal, 14)
+                                            .padding(.vertical, 8)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 18)
+                                                    .fill(diaryStore.selectedTags.contains(tag) ? Color.blue : Color.clear)
+                                            )
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 18)
+                                                    .stroke(Color.blue, lineWidth: 1.5)
+                                            )
                                     }
                                     .buttonStyle(PlainButtonStyle())
                                 }
                             }
-                            .padding(.horizontal)
                         }
-                        .frame(height: 40)
                     }
                 }
-                
+                .padding()
+
                 // 検索結果表示
                 if showResults && (!diaryStore.searchText.isEmpty || !diaryStore.selectedTags.isEmpty) {
                     // 検索条件の表示
@@ -646,6 +649,54 @@ struct TagSelectionSheetView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Flow Layout (折り返しレイアウト)
+
+struct FlowLayout: Layout {
+    var spacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let result = flowLayout(proposal: proposal, subviews: subviews)
+        return result.size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let result = flowLayout(proposal: proposal, subviews: subviews)
+        for (index, position) in result.positions.enumerated() {
+            subviews[index].place(
+                at: CGPoint(x: bounds.minX + position.x, y: bounds.minY + position.y),
+                proposal: ProposedViewSize(result.sizes[index])
+            )
+        }
+    }
+
+    private func flowLayout(proposal: ProposedViewSize, subviews: Subviews) -> (size: CGSize, positions: [CGPoint], sizes: [CGSize]) {
+        let containerWidth = proposal.width ?? .infinity
+        var positions: [CGPoint] = []
+        var sizes: [CGSize] = []
+        var currentX: CGFloat = 0
+        var currentY: CGFloat = 0
+        var lineHeight: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            sizes.append(size)
+
+            if currentX + size.width > containerWidth && currentX > 0 {
+                currentX = 0
+                currentY += lineHeight + spacing
+                lineHeight = 0
+            }
+
+            positions.append(CGPoint(x: currentX, y: currentY))
+            lineHeight = max(lineHeight, size.height)
+            currentX += size.width + spacing
+        }
+
+        let totalHeight = currentY + lineHeight
+        return (CGSize(width: containerWidth, height: totalHeight), positions, sizes)
     }
 }
 
