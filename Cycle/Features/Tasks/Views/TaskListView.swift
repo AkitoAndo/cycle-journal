@@ -7,168 +7,114 @@
 
 import SwiftUI
 
+/// タスク管理のメインビュー
+/// グループ別のタスク表示、追加、編集、削除、並び替えを提供
 struct TaskListView: View {
+    // MARK: - Properties
+
     @StateObject private var vm = TaskViewModel()
     @State private var showNewTask = false
     @State private var editingTask: TaskItem?
-    @State private var showDrawer = false
+    @State private var previewingTask: TaskItem?
+    @State private var isReorderMode = false
+    @State private var showArchive = false
+    @State private var showDeleted = false
+
+    // MARK: - Body
 
     var body: some View {
-        ZStack(alignment: .leading) {
-            mainContent
+        content
+            .navigationBarHidden(true)
+            .environment(\.editMode, .constant(isReorderMode ? .active : .inactive))
+            .sheet(isPresented: $showNewTask) {
+                TaskNewEntryView(vm: vm)
+            }
+            .sheet(item: $editingTask) { task in
+                TaskEditView(vm: vm, task: task)
+            }
+            .sheet(item: $previewingTask) { task in
+                TaskPreviewView(task: task)
+            }
+            .sheet(isPresented: $showArchive) {
+                TaskArchiveView(vm: vm)
+            }
+            .sheet(isPresented: $showDeleted) {
+                TaskDeletedView(vm: vm)
+            }
+    }
 
-            // ドロワーメニュー
-            TaskGroupDrawer(vm: vm, isPresented: $showDrawer)
+    // MARK: - Content
+
+    private var content: some View {
+        ZStack(alignment: .bottomTrailing) {
+            mainContent
+            floatingActionButton
         }
     }
 
     private var mainContent: some View {
-        ZStack(alignment: .bottomTrailing) {
-            VStack(spacing: 0) {
-                // Tasks list
-                if vm.tasks.isEmpty {
-                    emptyStateView
-                } else {
-                    List {
-                        if !vm.incompleteTasks.isEmpty {
-                            Section {
-                                ForEach(vm.incompleteTasks) { task in
-                                    taskRow(task)
-                                }
-                            } header: {
-                                Text("未完了")
-                                    .font(.system(size: DesignSystem.FontSize.caption))
-                                    .foregroundStyle(DesignSystem.Colors.textSecondary)
-                            }
-                        }
-
-                        if !vm.completedTasks.isEmpty {
-                            Section {
-                                ForEach(vm.completedTasks) { task in
-                                    taskRow(task)
-                                }
-                            } header: {
-                                Text("完了")
-                                    .font(.system(size: DesignSystem.FontSize.caption))
-                                    .foregroundStyle(DesignSystem.Colors.textSecondary)
-                            }
-                        }
-                    }
-                    .listStyle(.plain)
-                    .scrollContentBackground(.hidden)
-                    .background(DesignSystem.Colors.background)
-                }
-            }
-            .background(DesignSystem.Colors.background)
-
-            // 新規作成ボタン（オーバーレイ）
-            FloatingActionButton(icon: "plus") {
-                showNewTask = true
-            }
-            .padding(.trailing, DesignSystem.Spacing.xl + 2)
-            .padding(.bottom, DesignSystem.Spacing.xl - 2)
+        VStack(spacing: DesignSystem.Spacing.sm) {
+            header
+            taskListOrEmptyState
         }
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button(action: {
-                    withAnimation {
-                        showDrawer.toggle()
-                    }
-                }) {
-                    Image(systemName: "line.3.horizontal")
-                        .font(.system(size: DesignSystem.FontSize.title3))
-                        .foregroundStyle(DesignSystem.Colors.textSecondary)
-                }
-            }
-        }
-        .sheet(isPresented: $showNewTask) {
-            TaskNewEntryView(vm: vm)
-        }
-        .sheet(item: $editingTask) { task in
-            TaskEditView(vm: vm, task: task)
-        }
+        .background(DesignSystem.Colors.background)
     }
 
-    private var emptyStateView: some View {
-        VStack(spacing: DesignSystem.Spacing.lg) {
-            Spacer()
+    // MARK: - Components
 
-            Image(systemName: "checklist")
-                .font(.system(size: 48))
-                .foregroundStyle(DesignSystem.Colors.textTertiary)
-
-            VStack(spacing: DesignSystem.Spacing.sm) {
-                Text("タスクがまだありません")
-                    .font(.system(size: DesignSystem.FontSize.headline))
-                    .foregroundStyle(DesignSystem.Colors.textPrimary)
-
-                Text("+ボタンから新しいタスクを追加できます")
-                    .font(.system(size: DesignSystem.FontSize.body))
-                    .foregroundStyle(DesignSystem.Colors.textSecondary)
-                    .multilineTextAlignment(.center)
+    private var header: some View {
+        TaskHeader(
+            isReorderMode: isReorderMode,
+            onToggleReorderMode: {
+                withAnimation {
+                    isReorderMode.toggle()
+                }
+            },
+            onShowArchive: {
+                showArchive = true
+            },
+            onShowDeleted: {
+                showDeleted = true
             }
-
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        )
     }
 
-    private func taskRow(_ task: TaskItem) -> some View {
-        HStack(spacing: DesignSystem.Spacing.md) {
-            Button(action: {
-                vm.toggleCompletion(task)
-            }) {
-                Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: DesignSystem.FontSize.title3))
-                    .foregroundStyle(task.isCompleted ? DesignSystem.Colors.accent : DesignSystem.Colors.textTertiary)
-            }
-
-            Text(task.title)
-                .font(.system(size: DesignSystem.FontSize.body))
-                .foregroundStyle(task.isCompleted ? DesignSystem.Colors.textSecondary : DesignSystem.Colors.textPrimary)
-
-            Spacer()
-        }
-        .padding(DesignSystem.Spacing.lg)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(DesignSystem.Colors.surface)
-        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous)
-                .stroke(DesignSystem.Colors.grey.opacity(0.6), lineWidth: 0.5)
-        )
-        .shadow(
-            color: DesignSystem.Colors.brownDark.opacity(0.08),
-            radius: 4,
-            x: 0,
-            y: 2
-        )
-        .listRowInsets(
-            EdgeInsets(
-                top: DesignSystem.Spacing.xs,
-                leading: DesignSystem.Spacing.lg,
-                bottom: DesignSystem.Spacing.xs,
-                trailing: DesignSystem.Spacing.lg
+    @ViewBuilder
+    private var taskListOrEmptyState: some View {
+        if vm.tasks.isEmpty {
+            TaskEmptyState()
+        } else {
+            TaskList(
+                incompleteTasks: vm.incompleteTasks,
+                completedTasks: vm.completedTasks,
+                isReorderMode: isReorderMode,
+                onMove: { source, destination in
+                    vm.moveIncompleteTasks(from: source, to: destination)
+                },
+                onToggleCompletion: { task in
+                    vm.toggleCompletion(task)
+                },
+                onEdit: { task in
+                    editingTask = task
+                },
+                onDelete: { task in
+                    vm.deleteTask(task)
+                },
+                onPreview: { task in
+                    previewingTask = task
+                },
+                onArchive: { task in
+                    vm.archiveTask(task)
+                }
             )
-        )
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
-        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            Button(role: .destructive) {
-                vm.deleteTask(task)
-            } label: {
-                Label("削除", systemImage: "trash")
-                    .labelStyle(.iconOnly)
-            }
-
-            Button {
-                editingTask = task
-            } label: {
-                Label("編集", systemImage: "pencil")
-                    .labelStyle(.iconOnly)
-            }
-            .tint(DesignSystem.Colors.accent)
         }
     }
 
+    private var floatingActionButton: some View {
+        FloatingActionButton(icon: "plus") {
+            showNewTask = true
+        }
+        .padding(.trailing, DesignSystem.Spacing.xl + 2)
+        .padding(.bottom, DesignSystem.Spacing.xl - 2)
+    }
 }

@@ -23,6 +23,7 @@ struct DatePickerSheet: View {
                 )
                 .datePickerStyle(.graphical)
                 .tint(DesignSystem.Colors.accent)
+                .colorScheme(.light)
                 .padding()
 
                 Spacer()
@@ -44,6 +45,7 @@ struct DatePickerSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+        .presentationBackground(DesignSystem.Colors.background)
         .onAppear {
             selectedDate = vm.selectedDate
         }

@@ -58,7 +58,7 @@ struct JournalEntryForm: View {
             TextEditor(text: $text)
                 .focused($isTextFocused)
                 .scrollContentBackground(.hidden)
-                .frame(minHeight: textEditorMinHeight)
+                .frame(height: textEditorMinHeight)
                 .padding(DesignSystem.Spacing.md)
                 .background(DesignSystem.Colors.surface)
                 .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md))

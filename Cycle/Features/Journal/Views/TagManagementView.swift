@@ -12,6 +12,9 @@ struct TagManagementView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var newTagText: String = ""
     @FocusState private var isInputFocused: Bool
+    @State private var editingTag: String? = nil
+    @State private var editingTagText: String = ""
+    @State private var isReorderMode = false
 
     var body: some View {
         NavigationStack {
@@ -56,45 +59,88 @@ struct TagManagementView: View {
                 if vm.allTags.isEmpty {
                     emptyStateView
                 } else {
-                    ScrollView {
-                        VStack(spacing: DesignSystem.Spacing.sm) {
-                            ForEach(vm.allTags, id: \.self) { tag in
-                                HStack {
-                                    Text(tag)
-                                        .font(.system(size: DesignSystem.FontSize.body))
-                                        .foregroundStyle(DesignSystem.Colors.textPrimary)
-
-                                    Spacer()
-
-                                    Button(action: {
-                                        deleteTag(tag)
-                                    }) {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .font(.system(size: DesignSystem.FontSize.title3))
-                                            .foregroundStyle(DesignSystem.Colors.textTertiary)
-                                    }
+                    List {
+                        ForEach(vm.allTags, id: \.self) { tag in
+                            HStack {
+                                Text(tag)
+                                    .font(.system(size: DesignSystem.FontSize.body))
+                                    .foregroundStyle(DesignSystem.Colors.textPrimary)
+                                Spacer()
+                            }
+                            .padding(DesignSystem.Spacing.lg)
+                            .background(DesignSystem.Colors.surface)
+                            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous))
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets(
+                                top: DesignSystem.Spacing.xs,
+                                leading: DesignSystem.Spacing.lg,
+                                bottom: DesignSystem.Spacing.xs,
+                                trailing: DesignSystem.Spacing.lg
+                            ))
+                            .moveDisabled(!isReorderMode)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button(role: .destructive) {
+                                    vm.removeTag(tag)
+                                } label: {
+                                    Label("削除", systemImage: "trash")
+                                        .labelStyle(.iconOnly)
                                 }
-                                .padding(DesignSystem.Spacing.lg)
-                                .background(DesignSystem.Colors.surface)
-                                .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous))
+
+                                Button {
+                                    editingTag = tag
+                                    editingTagText = tag
+                                } label: {
+                                    Label("編集", systemImage: "pencil")
+                                        .labelStyle(.iconOnly)
+                                }
+                                .tint(DesignSystem.Colors.accent)
                             }
                         }
-                        .padding(.horizontal, DesignSystem.Spacing.lg)
-                        .padding(.vertical, DesignSystem.Spacing.md)
+                        .onMove { source, destination in
+                            vm.moveTags(from: source, to: destination)
+                        }
                     }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .background(DesignSystem.Colors.background)
+                    .environment(\.editMode, .constant(isReorderMode ? .active : .inactive))
                 }
             }
             .background(DesignSystem.Colors.background)
             .navigationTitle("タグ管理")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("完了") {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("閉じる") {
                         dismiss()
                     }
                 }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(isReorderMode ? "完了" : "並び替え") {
+                        withAnimation {
+                            isReorderMode.toggle()
+                        }
+                    }
+                }
+            }
+            .alert("タグを編集", isPresented: Binding(
+                get: { editingTag != nil },
+                set: { if !$0 { editingTag = nil } }
+            )) {
+                TextField("タグ名", text: $editingTagText)
+                Button("保存") {
+                    if let old = editingTag {
+                        vm.renameTag(old, to: editingTagText)
+                    }
+                    editingTag = nil
+                }
+                Button("キャンセル", role: .cancel) {
+                    editingTag = nil
+                }
             }
         }
+        .presentationBackground(DesignSystem.Colors.background)
     }
 
     private var emptyStateView: some View {

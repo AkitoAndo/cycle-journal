@@ -43,6 +43,7 @@ struct JournalNewEntryView: View {
                 isTextFieldFocused = true
             }
         }
+        .presentationBackground(DesignSystem.Colors.background)
     }
 
     private func saveEntry() {

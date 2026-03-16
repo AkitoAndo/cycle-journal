@@ -20,13 +20,15 @@ struct TagSelector: View {
                     .font(.system(size: DesignSystem.FontSize.headline, weight: .semibold))
                     .foregroundStyle(DesignSystem.Colors.textPrimary)
 
-                FlowLayout(spacing: DesignSystem.Spacing.sm) {
-                    ForEach(availableTags, id: \.self) { tag in
-                        TagButton(
-                            tag: tag,
-                            isSelected: selectedTags.contains(tag)
-                        ) {
-                            toggleTag(tag)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: DesignSystem.Spacing.sm) {
+                        ForEach(availableTags, id: \.self) { tag in
+                            TagButton(
+                                tag: tag,
+                                isSelected: selectedTags.contains(tag)
+                            ) {
+                                toggleTag(tag)
+                            }
                         }
                     }
                 }
@@ -35,12 +37,10 @@ struct TagSelector: View {
     }
 
     private func toggleTag(_ tag: String) {
-        withAnimation(DesignSystem.Timing.fastEasing) {
-            if selectedTags.contains(tag) {
-                selectedTags.removeAll { $0 == tag }
-            } else {
-                selectedTags.append(tag)
-            }
+        if selectedTags.contains(tag) {
+            selectedTags.removeAll { $0 == tag }
+        } else {
+            selectedTags.append(tag)
         }
 
         // 触覚フィードバック

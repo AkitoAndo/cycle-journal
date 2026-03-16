@@ -7,6 +7,7 @@
 
 import Foundation
 import Combine
+import SwiftUI
 
 /// ジャーナル機能のビジネスロジックとステート管理を担当
 ///
@@ -41,6 +42,9 @@ final class JournalViewModel: ObservableObject {
     /// 検索モードかどうか
     @Published var isSearching: Bool = false
 
+    /// 検索画面のタブ選択（0: 検索, 1: 全て）
+    @Published var searchViewTab: Int = 0
+
     // MARK: - Initialization
 
     init() {
@@ -52,13 +56,13 @@ final class JournalViewModel: ObservableObject {
 
     /// 選択された日付のエントリ（新しい順）
     var todays: [JournalEntry] {
-        entries.filter { Calendar.current.isDate($0.date, inSameDayAs: selectedDate) }
+        entries.filter { Calendar.current.isDate($0.date, inSameDayAs: selectedDate) && $0.deletedAt == nil }
                .sorted { $0.date > $1.date }
     }
 
     /// 検索条件に一致するエントリ（新しい順）
     var searchResults: [JournalEntry] {
-        var results = entries
+        var results = entries.filter { $0.deletedAt == nil }
 
         if !searchText.isEmpty {
             results = results.filter { entry in
@@ -77,60 +81,113 @@ final class JournalViewModel: ObservableObject {
         return results.sorted { $0.date > $1.date }
     }
 
+    /// 全てのエントリ（新しい順）
+    var allEntries: [JournalEntry] {
+        entries.filter { $0.deletedAt == nil }
+               .sorted { $0.date > $1.date }
+    }
+
+    /// 最近削除したエントリ（削除日時の降順）
+    var deletedEntries: [JournalEntry] {
+        entries.filter { $0.deletedAt != nil }
+               .sorted { $0.deletedAt! > $1.deletedAt! }
+    }
+
     /// 利用可能な全てのタグ（作成済み + エントリで使用中）
     var allTags: [String] {
         let entryTags = entries.flatMap { $0.tags }
-        let combined = Set(availableTags + entryTags)
-        return Array(combined).sorted()
+        let entryTagsSet = Set(entryTags)
+
+        // availableTagsの順序を維持し、その後にエントリのみで使用されているタグを追加
+        var result = availableTags
+        for tag in entryTagsSet {
+            if !result.contains(tag) {
+                result.append(tag)
+            }
+        }
+        return result
     }
 
     // MARK: - Entry Management
 
     /// 新しいエントリを追加
     func addEntry(text: String, tags: [String] = []) {
-        let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedText.isEmpty else { return }
+        guard let trimmedText = trimText(text), !trimmedText.isEmpty else { return }
         entries.append(.init(text: trimmedText, tags: tags))
-        persist()
-    }
-
-    /// エントリを削除
-    func deleteEntry(_ entry: JournalEntry) {
-        entries.removeAll { $0.id == entry.id }
         persist()
     }
 
     /// エントリを更新
     func updateEntry(_ entry: JournalEntry, newText: String, newTags: [String]) {
-        if let index = entries.firstIndex(where: { $0.id == entry.id }) {
-            entries[index].text = newText
-            entries[index].tags = newTags
-            persist()
-        }
+        guard let index = findEntryIndex(entry) else { return }
+        entries[index].text = newText
+        entries[index].tags = newTags
+        persist()
+    }
+
+    /// エントリを削除（論理削除）
+    func deleteEntry(_ entry: JournalEntry) {
+        guard let index = findEntryIndex(entry) else { return }
+        entries[index].deletedAt = Date()
+        persist()
+    }
+
+    /// エントリを復元
+    func restoreEntry(_ entry: JournalEntry) {
+        guard let index = findEntryIndex(entry) else { return }
+        entries[index].deletedAt = nil
+        persist()
+    }
+
+    /// エントリを完全に削除（物理削除）
+    func permanentlyDeleteEntry(_ entry: JournalEntry) {
+        entries.removeAll { $0.id == entry.id }
+        persist()
     }
 
     // MARK: - Tag Management
 
     /// タグを追加
     func addTag(_ tag: String) {
-        let trimmed = tag.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard let trimmed = trimText(tag), !trimmed.isEmpty else { return }
         guard !allTags.contains(trimmed) else { return }
 
         availableTags.append(trimmed)
         saveAvailableTags()
     }
 
-    /// タグを削除（全てのエントリからも削除される）
+    /// タグを削除
+    /// - Note: 全てのエントリからも削除されます
     func removeTag(_ tag: String) {
         availableTags.removeAll { $0 == tag }
+        removeTagFromAllEntries(tag)
+        saveAvailableTags()
+    }
 
-        // 全てのエントリからも削除
-        for entry in entries where entry.tags.contains(tag) {
-            let newTags = entry.tags.filter { $0 != tag }
-            updateEntry(entry, newText: entry.text, newTags: newTags)
+    /// タグの並び替え
+    func moveTags(from source: IndexSet, to destination: Int) {
+        availableTags.move(fromOffsets: source, toOffset: destination)
+        for i in entries.indices {
+            entries[i].tags = entrySortedTags(entries[i].tags)
         }
+        persist()
+        saveAvailableTags()
+    }
 
+    /// タグ名を変更
+    /// - Note: 全てのエントリ内の同タグも更新されます
+    func renameTag(_ oldTag: String, to newTag: String) {
+        guard let trimmed = trimText(newTag), !trimmed.isEmpty else { return }
+        guard !allTags.contains(trimmed) else { return }
+        if let index = availableTags.firstIndex(of: oldTag) {
+            availableTags[index] = trimmed
+        }
+        for i in entries.indices {
+            if let tagIndex = entries[i].tags.firstIndex(of: oldTag) {
+                entries[i].tags[tagIndex] = trimmed
+            }
+        }
+        persist()
         saveAvailableTags()
     }
 
@@ -190,7 +247,43 @@ final class JournalViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Private Helpers
+    // MARK: - Private Helpers - Tag Sorting
+
+    /// availableTagsの順序に従ってタグを並び替え
+    private func entrySortedTags(_ tags: [String]) -> [String] {
+        tags.sorted { a, b in
+            let ia = availableTags.firstIndex(of: a) ?? Int.max
+            let ib = availableTags.firstIndex(of: b) ?? Int.max
+            return ia < ib
+        }
+    }
+
+    // MARK: - Private Helpers - Finding
+
+    /// エントリのインデックスを検索
+    private func findEntryIndex(_ entry: JournalEntry) -> Int? {
+        entries.firstIndex(where: { $0.id == entry.id })
+    }
+
+    // MARK: - Private Helpers - Updating
+
+    /// 全てのエントリから指定したタグを削除
+    private func removeTagFromAllEntries(_ tag: String) {
+        for entry in entries where entry.tags.contains(tag) {
+            let newTags = entry.tags.filter { $0 != tag }
+            updateEntry(entry, newText: entry.text, newTags: newTags)
+        }
+    }
+
+    // MARK: - Private Helpers - Validation
+
+    /// テキストをトリム
+    private func trimText(_ text: String) -> String? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    // MARK: - Private Helpers - Persistence
 
     /// エントリをストレージに保存
     private func persist() {

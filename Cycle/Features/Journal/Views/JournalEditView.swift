@@ -49,6 +49,7 @@ struct JournalEditView: View {
                 }
             }
         }
+        .presentationBackground(DesignSystem.Colors.background)
     }
 
     private func saveChanges() {

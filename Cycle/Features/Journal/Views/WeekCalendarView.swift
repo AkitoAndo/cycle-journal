@@ -41,7 +41,6 @@ struct WeekCalendarView: View {
     /// 個別の日付セル
     private func dayCell(for date: Date) -> some View {
         let isSelected = Calendar.current.isDate(date, inSameDayAs: vm.selectedDate)
-        let hasEntries = vm.hasEntries(on: date)
 
         return VStack(spacing: DesignSystem.Spacing.sm) {
             // 曜日
@@ -68,18 +67,11 @@ struct WeekCalendarView: View {
                         .fill(isSelected ? DesignSystem.Colors.accent : Color.clear)
                 )
                 .animation(DesignSystem.Timing.easing, value: isSelected)
-
-            // エントリ存在インジケーター
-            Circle()
-                .fill(hasEntries ? DesignSystem.Colors.accent : Color.clear)
-                .frame(width: 4, height: 4)
         }
         .frame(maxWidth: .infinity)
         .contentShape(Rectangle())
         .onTapGesture {
-            withAnimation(DesignSystem.Timing.easing) {
-                vm.selectedDate = date
-            }
+            vm.selectedDate = date
         }
     }
 }

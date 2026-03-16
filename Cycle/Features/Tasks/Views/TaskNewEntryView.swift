@@ -13,19 +13,39 @@ struct TaskNewEntryView: View {
 
     @State private var inputTitle: String = ""
     @State private var inputDescription: String = ""
+    @State private var inputIntent: String = ""
+    @State private var inputAchievementVision: String = ""
+    @State private var inputNotes: String = ""
+    @State private var inputFact: String = ""
+    @State private var inputInsight: String = ""
+    @State private var inputNextAction: String = ""
+    @State private var selectedSection: TaskSectionTabs.Section = .basic
     @FocusState private var isTitleFocused: Bool
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: DesignSystem.Spacing.xl) {
-                    // タイトル入力セクション
-                    titleSection
+            VStack(spacing: 0) {
+                // セクションタブ
+                TaskSectionTabs(
+                    selectedSection: selectedSection,
+                    onSelectSection: { section in
+                        selectedSection = section
+                    }
+                )
 
-                    // 詳細入力セクション
-                    descriptionSection
+                // コンテンツエリア
+                ScrollView {
+                    Group {
+                        if selectedSection == .basic {
+                            basicSectionContent
+                        } else if selectedSection == .detail {
+                            detailSectionContent
+                        } else {
+                            postActionSectionContent
+                        }
+                    }
+                    .padding(.top, DesignSystem.Spacing.xl)
                 }
-                .padding(.top, DesignSystem.Spacing.xl)
             }
             .background(DesignSystem.Colors.background)
             .navigationTitle("新しいタスク")
@@ -47,6 +67,7 @@ struct TaskNewEntryView: View {
                 isTitleFocused = true
             }
         }
+        .presentationBackground(DesignSystem.Colors.background)
     }
 
     private var titleSection: some View {
@@ -74,7 +95,7 @@ struct TaskNewEntryView: View {
 
     private var descriptionSection: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
-            Text("詳細（任意）")
+            Text("詳細")
                 .font(.system(size: DesignSystem.FontSize.headline, weight: .semibold))
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
 
@@ -95,13 +116,53 @@ struct TaskNewEntryView: View {
         .padding(.horizontal, DesignSystem.Spacing.lg)
     }
 
+    // MARK: - Section Contents
+
+    private var basicSectionContent: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xl) {
+            titleSection
+            descriptionSection
+        }
+    }
+
+    private var detailSectionContent: some View {
+        TaskExtendedFieldsSection(
+            intent: $inputIntent,
+            achievementVision: $inputAchievementVision,
+            notes: $inputNotes
+        )
+    }
+
+    private var postActionSectionContent: some View {
+        TaskPostActionFieldsSection(
+            fact: $inputFact,
+            insight: $inputInsight,
+            nextAction: $inputNextAction
+        )
+    }
+
     private func saveTask() {
         let trimmedTitle = inputTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedTitle.isEmpty else { return }
 
         let trimmedDescription = inputDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedIntent = inputIntent.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedVision = inputAchievementVision.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedNotes = inputNotes.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedFact = inputFact.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedInsight = inputInsight.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedNextAction = inputNextAction.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        vm.addTask(title: trimmedTitle, description: trimmedDescription)
+        vm.addTask(
+            title: trimmedTitle,
+            description: trimmedDescription,
+            intent: trimmedIntent,
+            achievementVision: trimmedVision,
+            notes: trimmedNotes,
+            fact: trimmedFact,
+            insight: trimmedInsight,
+            nextAction: trimmedNextAction
+        )
 
         // 保存後のフィードバック
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)

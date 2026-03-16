@@ -25,4 +25,7 @@ struct JournalEntry: Identifiable, Codable, Hashable {
 
     /// 関連付けられたタグ
     var tags: [String] = []
+
+    /// 削除日時（論理削除用）
+    var deletedAt: Date?
 }

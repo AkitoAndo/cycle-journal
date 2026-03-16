@@ -9,10 +9,10 @@ import Foundation
 
 /// タスクアイテムのデータモデル
 ///
-/// 1つのタスクを表現するモデル
-/// - タイトル、詳細説明
-/// - グループ
-/// - 完了状態と日時
+/// 1つのタスクを表現するモデル。
+/// タイトル、詳細説明、完了状態、グループ所属などの情報を保持します。
+///
+/// - Note: JSONファイルに永続化されます
 struct TaskItem: Identifiable, Codable, Hashable {
     /// 一意識別子
     var id = UUID()
@@ -23,9 +23,6 @@ struct TaskItem: Identifiable, Codable, Hashable {
     /// タスクの詳細説明
     var description: String = ""
 
-    /// 所属するグループのID（nilの場合は「未分類」）
-    var groupId: UUID?
-
     /// 完了状態
     var isCompleted: Bool = false
 
@@ -34,4 +31,28 @@ struct TaskItem: Identifiable, Codable, Hashable {
 
     /// 完了日時
     var completedAt: Date?
+
+    /// 削除日時（論理削除用）
+    var deletedAt: Date?
+
+    /// 並び順（小さい値が上位）
+    var sortOrder: Int = 0
+
+    /// 意図
+    var intent: String = ""
+
+    /// 完了イメージ
+    var achievementVision: String = ""
+
+    /// 注意点
+    var notes: String = ""
+
+    /// 事実
+    var fact: String = ""
+
+    /// 気づき
+    var insight: String = ""
+
+    /// 次の一手
+    var nextAction: String = ""
 }

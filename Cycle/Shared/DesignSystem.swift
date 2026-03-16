@@ -8,8 +8,15 @@
 import SwiftUI
 
 /// アプリ全体で使用するデザイントークン
+///
+/// カラー、スペーシング、フォントサイズ、タイミングなどの
+/// デザインシステムの定数を一元管理します。
+///
+/// - Note: 全てのUI要素はここで定義された値を使用することで、
+///         一貫性のあるデザインを実現します。
 enum DesignSystem {
 
+    /// スペーシング（余白・間隔）の定数
     enum Spacing {
         static let xs: CGFloat = 4
         static let sm: CGFloat = 8
@@ -33,7 +40,7 @@ enum DesignSystem {
     enum ComponentSize {
         static let inputHeight: CGFloat = 50
         static let buttonHeight: CGFloat = 44
-        static let weekStripHeight: CGFloat = 80
+        static let weekStripHeight: CGFloat = 68
         static let iconSize: CGFloat = 24
         static let dateCircle: CGFloat = 40
     }
