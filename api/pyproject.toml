@@ -1,24 +1,26 @@
 [project]
 name = "cyclejournal-api"
 version = "0.1.0"
-description = "CycleJournal Backend API"
+description = "CycleJournal Backend API - GCP Cloud Run + Firestore"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "pydantic-settings>=2.5.0",
+    "google-cloud-firestore>=2.19.0",
+    "anthropic[vertex]>=0.42.0",
+    "pyjwt[crypto]>=2.9.0",
+    "httpx>=0.27.0",
+]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
     "pytest-cov>=4.1.0",
-    "ruff>=0.1.0",
+    "httpx>=0.27.0",
+    "ruff>=0.8.0",
     "mypy>=1.8.0",
-]
-cdk = [
-    "aws-cdk-lib>=2.100.0",
-    "constructs>=10.0.0",
-]
-lambda = [
-    "boto3>=1.34.0",
-    "aws-lambda-powertools>=2.30.0",
 ]
 
 [tool.ruff]
@@ -34,3 +36,4 @@ strict = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
