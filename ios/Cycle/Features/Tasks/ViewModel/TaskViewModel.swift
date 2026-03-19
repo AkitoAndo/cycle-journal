@@ -20,6 +20,14 @@ final class TaskViewModel: ObservableObject {
     /// 全てのアーカイブ
     @Published private(set) var archives: [TaskArchive] = []
 
+    /// 同期中フラグ
+    @Published var isSyncing: Bool = false
+
+    /// 同期エラー
+    @Published var syncError: String?
+
+    private let taskService = TaskService()
+
     // MARK: - Initialization
 
     init() {
@@ -80,6 +88,28 @@ final class TaskViewModel: ObservableObject {
 
         tasks.append(newTask)
         persist()
+
+        // サーバーに同期
+        let taskIndex = tasks.count - 1
+        Task {
+            await syncCreateTask(localIndex: taskIndex)
+        }
+    }
+
+    /// サーバーにタスクを作成
+    private func syncCreateTask(localIndex: Int) async {
+        guard localIndex < tasks.count else { return }
+        let task = tasks[localIndex]
+        do {
+            let serverTask = try await taskService.createTask(
+                title: task.title,
+                description: task.description.isEmpty ? nil : task.description
+            )
+            tasks[localIndex].serverId = serverTask.taskId
+            persist()
+        } catch {
+            syncError = error.localizedDescription
+        }
     }
 
     /// タスクの完了状態を切り替え
@@ -89,6 +119,12 @@ final class TaskViewModel: ObservableObject {
         tasks[index].isCompleted.toggle()
         tasks[index].completedAt = tasks[index].isCompleted ? Date() : nil
         persist()
+
+        // サーバーに同期
+        let updatedTask = tasks[index]
+        Task {
+            await syncUpdateTask(updatedTask, status: updatedTask.isCompleted ? "completed" : "active")
+        }
     }
 
     /// タスクを更新
@@ -116,6 +152,12 @@ final class TaskViewModel: ObservableObject {
             tasks[index].insight = newInsight
             tasks[index].nextAction = newNextAction
             persist()
+
+            // サーバーに同期
+            let updatedTask = tasks[index]
+            Task {
+                await syncUpdateTask(updatedTask, title: trimmedTitle, description: newDescription)
+            }
         } else {
             // アーカイブ内のタスクとして更新
             updateArchivedTask(
@@ -137,6 +179,11 @@ final class TaskViewModel: ObservableObject {
         guard let index = findTaskIndex(task) else { return }
         tasks[index].deletedAt = Date()
         persist()
+
+        // サーバーから削除
+        Task {
+            await syncDeleteTask(task)
+        }
     }
 
     /// タスクを復元
@@ -214,6 +261,62 @@ final class TaskViewModel: ObservableObject {
     /// タスクを永続化
     private func persist() {
         TaskStore.saveAll(tasks)
+    }
+
+    // MARK: - Server Sync
+
+    /// サーバーからタスク一覧を取得してローカルとマージ
+    func fetchServerTasks() async {
+        isSyncing = true
+        syncError = nil
+
+        do {
+            let serverList = try await taskService.getTasks(limit: 100)
+            let localServerIds = Set(tasks.compactMap { $0.serverId })
+
+            // サーバーにしかないタスクをローカルに追加
+            for serverTask in serverList.tasks {
+                if !localServerIds.contains(serverTask.taskId) {
+                    var newTask = TaskItem(title: serverTask.title)
+                    newTask.serverId = serverTask.taskId
+                    newTask.description = serverTask.description ?? ""
+                    newTask.isCompleted = serverTask.status == "completed"
+                    newTask.completedAt = serverTask.completedAt
+                    newTask.createdAt = serverTask.createdAt
+                    tasks.append(newTask)
+                }
+            }
+            persist()
+            isSyncing = false
+        } catch {
+            syncError = error.localizedDescription
+            isSyncing = false
+        }
+    }
+
+    /// サーバーのタスクを更新
+    private func syncUpdateTask(_ task: TaskItem, title: String? = nil, description: String? = nil, status: String? = nil) async {
+        guard let serverId = task.serverId else { return }
+        do {
+            _ = try await taskService.updateTask(
+                taskId: serverId,
+                title: title,
+                description: description,
+                status: status
+            )
+        } catch {
+            syncError = error.localizedDescription
+        }
+    }
+
+    /// サーバーからタスクを削除
+    private func syncDeleteTask(_ task: TaskItem) async {
+        guard let serverId = task.serverId else { return }
+        do {
+            try await taskService.deleteTask(taskId: serverId)
+        } catch {
+            syncError = error.localizedDescription
+        }
     }
 
     // MARK: - Archive Management

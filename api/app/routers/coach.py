@@ -10,6 +10,7 @@ from app.config import settings
 from app.dependencies import get_current_user, get_firestore
 from app.models.coach import CoachData, CoachMetadata, CoachRequest
 from app.services import coach_service
+from app.services.coach_graph import run_coach_flow
 from app.services.firestore_client import sessions_ref
 
 router = APIRouter(tags=["Coach"])
@@ -63,12 +64,25 @@ async def chat(
         for doc in history_docs
     ]
 
-    # Vertex AI Claude呼び出し
-    response_text = await coach_service.chat(
-        user_message=body.message,
-        history=history,
-        diary_content=body.diary_content,
-    )
+    # コーチ応答を取得（LangGraph or シンプル呼び出し）
+    detected_emotion = None
+    response_cycle_element = None
+
+    if settings.use_langgraph:
+        flow_result = await run_coach_flow(
+            user_message=body.message,
+            history=history,
+            diary_content=body.diary_content,
+        )
+        response_text = flow_result["response"]
+        detected_emotion = flow_result.get("detected_emotion")
+        response_cycle_element = flow_result.get("cycle_element")
+    else:
+        response_text = await coach_service.chat(
+            user_message=body.message,
+            history=history,
+            diary_content=body.diary_content,
+        )
 
     # ユーザーメッセージを保存
     user_msg_id = str(uuid.uuid4())
@@ -99,6 +113,12 @@ async def chat(
         "updated_at": assistant_now,
     })
 
+    # Cycle要素: LangGraphの判定結果 > リクエストの指定
+    final_cycle_element = (
+        response_cycle_element
+        or (body.context.cycle_element if body.context else None)
+    )
+
     return {
         "data": CoachData(
             message=response_text,
@@ -106,7 +126,8 @@ async def chat(
             metadata=CoachMetadata(
                 stage=settings.environment,
                 model=settings.claude_model,
-                cycle_element=body.context.cycle_element if body.context else None,
+                cycle_element=final_cycle_element,
+                detected_emotion=detected_emotion,
             ),
         )
     }

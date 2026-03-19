@@ -2,21 +2,11 @@
 
 | 項目 | 内容 |
 |------|------|
-| ステータス | :memo: Refinement |
-| 優先度 | P2 |
-| 依存 | B-01（Terraform基本構成） |
+| ステータス | 削除 |
+| 優先度 | - |
 
-## ユーザーストーリー
+## 削除理由
 
-> 開発者として、APIを一般的なWeb攻撃やDDoSから保護したい。
+MVP段階では不要。Cloud Run自体に基本的なDDoS耐性があり、FastAPI認証ミドルウェアで未認証リクエストは弾ける。ユーザーが増えてから検討する。
 
-## 受け入れ条件
-
-- [ ] Cloud ArmorポリシーがCloud Runに適用
-- [ ] OWASP Top 10ルール有効
-- [ ] IPベースのレートリミット（1000 req/5min/IP）
-
-## 技術メモ
-
-### Terraformモジュール
-- `terraform/modules/api/` - Cloud Armor policy
+See: [アーキテクチャ概要](/architecture/overview) の「Cloud Armorは入れない理由」

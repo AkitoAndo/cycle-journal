@@ -2,7 +2,7 @@
 
 | 項目 | 内容 |
 |------|------|
-| ステータス | :memo: Refinement |
+| ステータス | :white_check_mark: Done |
 | 優先度 | P0 |
 | 依存 | B-01（Terraform基本構成） |
 
@@ -12,10 +12,11 @@
 
 ## 受け入れ条件
 
-- [ ] Firestoreが有効化される
-- [ ] Cloud Runから直接アクセス可能
-- [ ] Secret Managerに必要なシークレットが保存
-- [ ] コレクション構造（users/sessions/messages/tasks/reflections）が定義
+- [x] Firestoreが有効化される
+- [x] Cloud Runから直接アクセス可能
+- [x] Secret Managerに必要なシークレットが保存
+- [x] コレクション構造（users/sessions/messages/tasks/reflections）が定義
+- [x] 複合インデックス2つ作成済（sessions: user_id+created_at, tasks: user_id+status+created_at）
 
 ## 検討事項
 
@@ -25,8 +26,9 @@
 
 ## 技術メモ
 
-### Terraformモジュール
-- `terraform/modules/database/` - Firestore + Secret Manager
+### Terraform
+- `infra/firestore.tf` - Firestoreデータベース + インデックス
+- `infra/secret_manager.tf` - Secret Manager
 
 ### コレクション構造
 ```

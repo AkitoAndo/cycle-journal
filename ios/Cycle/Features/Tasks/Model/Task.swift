@@ -17,6 +17,9 @@ struct TaskItem: Identifiable, Codable, Hashable {
     /// 一意識別子
     var id = UUID()
 
+    /// サーバー側のID（同期済みの場合に設定）
+    var serverId: String?
+
     /// タスクのタイトル
     var title: String
 

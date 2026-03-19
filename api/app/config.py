@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     claude_max_tokens: int = 500
     claude_temperature: float = 0.7
 
+    # LangGraphフローを有効にする（感情分析・Cycle要素判定・安全フィルター）
+    use_langgraph: bool = False
+
     model_config = {"env_prefix": "", "case_sensitive": False}
 
 

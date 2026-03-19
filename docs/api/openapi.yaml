@@ -9,8 +9,8 @@ info:
     name: CycleJournal Team
 
 servers:
-  - url: https://cycle-api-dev-xxxxx.a.run.app
-    description: Development server (Cloud Run, TBD)
+  - url: https://cycle-api-dev-1031235624127.asia-northeast1.run.app
+    description: Development server (Cloud Run)
   - url: https://api.cyclejournal.app
     description: Production server (planned)
 

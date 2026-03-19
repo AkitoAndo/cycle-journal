@@ -34,18 +34,18 @@
 
 | 技術 | 備考 |
 |------|------|
-| Cloud Run (Python 3.12) | コンテナベース、スケールtoゼロ |
+| Cloud Run (Python 3.12 + FastAPI) | コンテナベース、スケールtoゼロ |
 | Firestore | NoSQL ドキュメントDB、スケールtoゼロ |
 | Terraform | IaC |
 | Claude (Vertex AI) | コスト効率重視のLLM |
-| LangChain + LangGraph | LLMオーケストレーション |
+| LangGraph | LLMオーケストレーション（感情分析・Cycle要素判定・安全フィルター） |
 
 ### セキュリティ
 
 | 技術 | 備考 |
 |------|------|
 | Sign in with Apple | iOSネイティブ認証 |
-| Cloud Run ミドルウェア | Apple JWT検証 |
+| FastAPI ミドルウェア | Apple JWT検証 |
 | Secret Manager | Apple認証設定などのシークレット |
 
 ## なぜこの構成か
@@ -64,23 +64,49 @@
 
 ## インフラ詳細
 
-### Terraformモジュール構成
+### Terraform構成
 
 ```
-terraform/
-├── main.tf
-├── variables.tf
-├── modules/
-│   ├── api/          # Cloud Run
-│   ├── database/     # Firestore, Secret Manager
-│   └── monitoring/   # Cloud Logging, Cloud Monitoring
+infra/
+├── main.tf              # プロバイダ設定、API有効化
+├── variables.tf         # 変数定義
+├── terraform.tfvars     # 変数値
+├── outputs.tf           # 出力定義
+├── cloud_run.tf         # Cloud Runサービス
+├── firestore.tf         # Firestore DB + インデックス
+├── artifact_registry.tf # Docker イメージレジストリ
+├── iam.tf               # サービスアカウント + IAM
+└── secret_manager.tf    # シークレット管理
+```
+
+### API構成（FastAPI）
+
+```
+api/
+├── Dockerfile           # Python 3.12-slim + uv + uvicorn
+├── pyproject.toml       # FastAPI, google-cloud-firestore, anthropic[vertex], pyjwt等
+├── app/
+│   ├── main.py          # FastAPI app, CORS, ルーター登録
+│   ├── config.py        # pydantic-settings（環境変数）
+│   ├── dependencies.py  # get_current_user, get_db
+│   ├── exceptions.py    # AppError系 + ハンドラ
+│   ├── models/          # Pydantic schemas
+│   ├── routers/         # health, auth, coach, sessions, tasks, users
+│   ├── services/
+│   │   ├── apple_auth.py       # Apple JWKS取得・キャッシュ・JWT検証
+│   │   ├── coach_service.py    # SYSTEM_PROMPT + Vertex AI Claude
+│   │   ├── coach_graph.py      # LangGraphフロー（感情分析・Cycle要素・安全フィルター）
+│   │   └── firestore_client.py # Firestore AsyncClient
+│   └── middleware/
+│       └── auth_middleware.py   # Bearerトークン抽出 + JWT検証
+└── tests/
 ```
 
 ### Cloud Runサービス
 
-| サービス名 | 用途 | メモリ | タイムアウト |
-|-----------|------|--------|-------------|
-| `cycle-api` | API (認証 + コーチング + ヘルスチェック) | 512MB | 300秒 |
+| サービス名 | 用途 | メモリ | CPU |
+|-----------|------|--------|-----|
+| `cycle-api-{env}` | FastAPI (認証 + コーチング + CRUD) | 512Mi | 1 |
 
 ### Firestoreコレクション構造
 
@@ -93,11 +119,21 @@ users/{userId}
 └── (profile data)
 ```
 
+### Cloud Run 環境変数
+
+| 変数 | 説明 | デフォルト |
+|------|------|-----------|
+| `ENVIRONMENT` | 環境名 (dev / prod) | dev |
+| `GCP_PROJECT_ID` | GCPプロジェクトID | cycle-journal |
+| `GCP_REGION` | GCPリージョン | asia-northeast1 |
+| `APPLE_BUNDLE_ID` | iOSアプリのBundle ID | com.cycle.journal |
+| `USE_LANGGRAPH` | LangGraphフロー有効化 | false |
+
 ### 環境別設定
 
 | 項目 | dev | prod |
 |------|-----|------|
-| Cloud Run | min 0, max 1 | min 0, max 10 |
+| Cloud Run | min 0, max 2 | min 0, max 10 |
 | Firestore | (default) DB | (default) DB |
 | ログ保持 | 30日 | 90日 |
 

@@ -14,3 +14,9 @@ variable "environment" {
   type        = string
   default     = "dev"
 }
+
+variable "use_langgraph" {
+  description = "Enable LangGraph coaching flow (emotion analysis, cycle detection, safety filter)"
+  type        = bool
+  default     = false
+}

@@ -2,7 +2,7 @@
 
 | 項目 | 内容 |
 |------|------|
-| ステータス | :memo: Refinement |
+| ステータス | :white_check_mark: Done |
 | 優先度 | P0 |
 | 依存 | C-05（Backend API接続） |
 
@@ -12,49 +12,64 @@
 
 ## 受け入れ条件
 
-- [ ] ユーザーの入力から感情が検出される
-- [ ] 検出された感情に応じて質問が生成される
-- [ ] Cycleモデルの要素（根/枝/葉など）が会話に反映される
-- [ ] 安全フィルターノードが危機シグナルを検出する
+- [x] ユーザーの入力から感情が検出される
+- [x] 検出された感情に応じて質問が生成される
+- [x] Cycleモデルの要素（根/枝/葉など）が会話に反映される
+- [x] 安全フィルターノードが応答の安全性を検証する
 
-## LangGraphフロー設計
+## 実装内容
+
+### LangGraphフロー（4ノード）
+
+`api/app/services/coach_graph.py` に実装:
 
 ```
 User Input
     │
     ▼
-┌──────────────┐
-│ Safety Filter │ ── 危機検出 → 危機対応テンプレート
-└──────┬───────┘
-       │ OK
-       ▼
-┌──────────────┐
-│ Emotion      │
-│ Analyzer     │
-└──────┬───────┘
+┌──────────────────┐
+│ analyze_emotion  │  ← ユーザーメッセージから感情を1単語で検出
+└──────┬───────────┘    （喜び、不安、怒り、悲しみ、迷い、期待、疲れ、安心）
        │
        ▼
-┌──────────────┐
-│ State        │
-│ Detector     │
-└──────┬───────┘
+┌──────────────────┐
+│ determine_cycle  │  ← Cycle要素（8種）のどれに該当するか判定
+└──────┬───────────┘    （Soil, Water, Root, Trunk, Branch, Leaf, Fruit, Sky）
        │
        ▼
-┌──────────────┐
-│ Question     │
-│ Generator    │
-└──────┬───────┘
+┌──────────────────┐
+│ generate_response│  ← 分析結果を含む拡張プロンプトで応答生成
+└──────┬───────────┘    （SYSTEM_PROMPT + 感情 + Cycle要素）
+       │
+       ▼
+┌──────────────────┐
+│ safety_filter    │  ← 応答の安全性チェック（unsafe時はフォールバック）
+└──────┬───────────┘
        │
        ▼
   Coach Response
 ```
 
-## 検討事項
+### 状態管理
 
-- ノードの実行順序は固定か、条件分岐するか
-- 各ノードで別々のプロンプトを使うか、1つのプロンプトにまとめるか
-- レイテンシ（ノードが増えるとVertex AI呼び出し回数が増える）
+`CoachState` dataclass で以下を保持:
+- `user_message`, `diary_content`, `history`（入力）
+- `detected_emotion`, `cycle_element`（分析結果）
+- `response`, `is_safe`（出力）
 
-## 技術メモ
+### フラグ切り替え
 
-<!-- リファインメント時にここを埋めていく -->
+- 環境変数 `USE_LANGGRAPH=true/false` で有効化（`config.py` の `use_langgraph`）
+- `false`（デフォルト）: 従来のシンプルな `coach_service.chat()` を使用
+- `true`: LangGraphフローを使用（Claude呼び出し4回/リクエスト）
+- Terraform の `var.use_langgraph` で Cloud Run 環境変数を管理
+
+### 依存関係
+
+- `langgraph>=0.2.0`, `langchain-core>=0.3.0` を `pyproject.toml` に追加
+
+### 検討事項（残タスク）
+
+- レイテンシ最適化（4回のClaude呼び出しを並列化 or 統合）
+- 条件分岐の追加（感情の種類に応じてフローを変える）
+- 感情検出の精度評価

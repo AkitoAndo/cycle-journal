@@ -2,7 +2,7 @@
 
 | 項目 | 内容 |
 |------|------|
-| ステータス | :memo: Refinement |
+| ステータス | :white_check_mark: Done |
 | 優先度 | P0 |
 | 依存 | A-02（認証ミドルウェア）, B-02（Firestore）, B-03（ベースプロンプト） |
 
@@ -12,25 +12,24 @@
 
 ## 受け入れ条件
 
-- [ ] iOS → POST `/coach` → Cloud Run → Vertex AI Claude → 応答返却
-- [ ] セッションIDで会話の継続ができる
-- [ ] メッセージがFirestoreに保存される
-- [ ] ベースプロンプト（大樹スタイル）が適用されている
-- [ ] 安全フィルターが動作している
+- [x] iOS → POST `/coach` → Cloud Run → Vertex AI Claude → 応答返却
+- [x] セッションIDで会話の継続ができる
+- [x] メッセージがFirestoreに保存される
+- [x] ベースプロンプト（大樹スタイル）が適用されている
+- [ ] 安全フィルターが動作している（B-04で対応予定）
 
-## 検討事項
-
-- ストリーミング応答は必要か（初期はなしでOK？）
-- タイムアウト時のUX（Cloud Runは最大300秒まで設定可能）
-- リトライ戦略
-
-## 技術メモ
-
-### iOS側
-- `CoachStore.sendMessage()` の `useAPI` フラグを切り替え
-- `CoachService.sendMessage()` → APIClient → POST `/coach`
+## 実装内容
 
 ### Backend側
-- `src/handlers/coach.py` にVertex AI呼び出しを実装
-- プロンプトは `src/prompts/base.py` から読み込み
-- レスポンスに `metadata`（detected_emotion, cycle_element）を含める
+- `api/app/routers/coach.py` — POST `/coach` エンドポイント（認証必須）
+- `api/app/services/coach_service.py` — Vertex AI Claude呼び出し（`anthropic[vertex]` SDK, ADC自動認証）
+- セッション自動作成・メッセージ履歴取得・Firestore永続化
+- SYSTEM_PROMPT（大樹メタファー + 7ルール）適用、temperature 0.7
+
+### iOS側
+- `CoachService.sendMessage()` — `requiresAuth: true` で実API接続
+- `APIClient.swift` — base URLをCloud Runに更新済
+
+### 検討事項（残タスク）
+- ストリーミング応答（初期はなしでOK）
+- 安全フィルター（B-04で対応）

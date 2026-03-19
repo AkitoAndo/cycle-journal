@@ -29,8 +29,8 @@
 | C-02 | [チャット画面（UI）](./coach/C-02-chat) | :white_check_mark: Done | - |
 | C-03 | [会話履歴一覧](./coach/C-03-history) | :white_check_mark: Done | - |
 | C-04 | [日記からコーチへ連携](./coach/C-04-diary-picker) | :white_check_mark: Done | - |
-| C-05 | [Backend API接続（Vertex AI）](./coach/C-05-api) | :memo: Refinement | P0 |
-| C-06 | [LangGraphフロー（感情分析・質問生成）](./coach/C-06-langgraph) | :memo: Refinement | P0 |
+| C-05 | [Backend API接続（Vertex AI）](./coach/C-05-api) | :white_check_mark: Done | - |
+| C-06 | [LangGraphフロー（感情分析・質問生成）](./coach/C-06-langgraph) | :white_check_mark: Done | - |
 | C-07 | [文脈管理（過去の会話参照）](./coach/C-07-context) | :memo: Refinement | P1 |
 
 ## Tasks
@@ -41,14 +41,14 @@
 | T-02 | [ふりかえり入力（fact/insight/nextAction）](./tasks/T-02-reflection) | :white_check_mark: Done | - |
 | T-03 | [並べ替え（ドラッグ）](./tasks/T-03-reorder) | :white_check_mark: Done | - |
 | T-04 | [アーカイブ（日別）](./tasks/T-04-archive) | :white_check_mark: Done | - |
-| T-05 | [タスクのサーバー同期](./tasks/T-05-sync) | :memo: Refinement | P1 |
+| T-05 | [タスクのサーバー同期](./tasks/T-05-sync) | :white_check_mark: Done | - |
 
 ## Auth
 
 | # | アイテム | ステータス | 優先度 |
 |---|---------|-----------|--------|
 | A-01 | [Sign in with Apple（UI）](./auth/A-01-signin-ui) | :white_check_mark: Done | - |
-| A-02 | [認証ミドルウェア（JWT検証）](./auth/A-02-authorizer) | :memo: Refinement | P0 |
+| A-02 | [認証ミドルウェア（JWT検証）](./auth/A-02-authorizer) | :white_check_mark: Done | - |
 | A-03 | [認証フロー完成（E2E）](./auth/A-03-auth-flow) | :memo: Refinement | P0 |
 
 ## Settings
@@ -63,10 +63,10 @@
 
 | # | アイテム | ステータス | 優先度 |
 |---|---------|-----------|--------|
-| B-01 | [Terraform基本構成（Cloud Run）](./backend/B-01-cdk-base) | :memo: Refinement | P0 |
-| B-02 | [Firestore セットアップ](./backend/B-02-aurora) | :memo: Refinement | P0 |
-| B-03 | [ベースプロンプト実装](./backend/B-03-base-prompt) | :memo: Refinement | P0 |
-| B-04 | [安全フィルター](./backend/B-04-safety) | :memo: Refinement | P0 |
+| B-01 | [Terraform基本構成（Cloud Run）](./backend/B-01-cdk-base) | :white_check_mark: Done | - |
+| B-02 | [Firestore セットアップ](./backend/B-02-aurora) | :white_check_mark: Done | - |
+| B-03 | [ベースプロンプト実装](./backend/B-03-base-prompt) | :white_check_mark: Done | - |
+| B-04 | [安全フィルター](./backend/B-04-safety) | :white_check_mark: Done | - |
 | ~~B-05~~ | ~~Cloud Armor設定~~ | 削除 | - |
 
 ## UX

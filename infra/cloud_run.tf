@@ -43,6 +43,11 @@ resource "google_cloud_run_v2_service" "api" {
         name  = "APPLE_BUNDLE_ID"
         value = "com.cycle.journal"
       }
+
+      env {
+        name  = "USE_LANGGRAPH"
+        value = var.use_langgraph ? "true" : "false"
+      }
     }
   }
 
