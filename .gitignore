@@ -1,13 +1,28 @@
-# Local signing config (each developer has their own)
+# VitePress
+docs/.vitepress/cache
+docs/.vitepress/dist
+docs/node_modules
+
+# Xcode
+*.xcuserstate
+xcuserdata/
+DerivedData/
+build/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+!default.pbxuser
+!default.mode1v3
+!default.mode2v3
+!default.perspectivev3
+
+# Local signing config
 Local.xcconfig
 
-# Xcode user data
-xcuserdata/
-*.xcuserstate
-
-# Build products
-build/
-DerivedData/
-
-# OS files
+# macOS
 .DS_Store
+
+# Environment
+.env
+.env.local
