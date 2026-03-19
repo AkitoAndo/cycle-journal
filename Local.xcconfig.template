@@ -1,0 +1,12 @@
+// Local signing configuration
+// Copy this file to Local.xcconfig and fill in your values
+//
+// To find your DEVELOPMENT_TEAM:
+//   1. Open Xcode → Settings → Accounts
+//   2. Select your Apple ID → View Details
+//   3. Your Team ID is shown there
+//
+// For free accounts, change PRODUCT_BUNDLE_IDENTIFIER to something unique
+
+DEVELOPMENT_TEAM = YOUR_TEAM_ID_HERE
+PRODUCT_BUNDLE_IDENTIFIER = com.yourname.Cycle
