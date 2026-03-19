@@ -24,7 +24,7 @@ class TaskService {
         let response: APIResponse<TaskListData> = try await apiClient.get(
             path: "/tasks",
             queryItems: queryItems,
-            requiresAuth: false // TODO: 認証実装後にtrueに変更
+            requiresAuth: true
         )
 
         return response.data
@@ -49,7 +49,7 @@ class TaskService {
         let response: APIResponse<TaskData> = try await apiClient.post(
             path: "/tasks",
             body: request,
-            requiresAuth: false // TODO: 認証実装後にtrueに変更
+            requiresAuth: true
         )
 
         return response.data
@@ -73,7 +73,7 @@ class TaskService {
         let response: APIResponse<TaskData> = try await apiClient.put(
             path: "/tasks/\(taskId)",
             body: request,
-            requiresAuth: false // TODO: 認証実装後にtrueに変更
+            requiresAuth: true
         )
 
         return response.data
@@ -83,7 +83,7 @@ class TaskService {
     func deleteTask(taskId: String) async throws {
         try await apiClient.delete(
             path: "/tasks/\(taskId)",
-            requiresAuth: false // TODO: 認証実装後にtrueに変更
+            requiresAuth: true
         )
     }
 
@@ -105,7 +105,7 @@ class TaskService {
         let response: APIResponse<ReflectionData> = try await apiClient.post(
             path: "/tasks/\(taskId)/reflection",
             body: request,
-            requiresAuth: false // TODO: 認証実装後にtrueに変更
+            requiresAuth: true
         )
 
         return response.data

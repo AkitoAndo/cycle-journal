@@ -554,7 +554,7 @@ struct APIEnvironmentTests {
     @Test func developmentBaseURL() {
         let env = APIEnvironment.development
         #expect(env.baseURL.hasPrefix("https://"))
-        #expect(env.baseURL.contains("execute-api"))
+        #expect(env.baseURL.contains("run.app"))
     }
 
     @Test func productionBaseURL() {

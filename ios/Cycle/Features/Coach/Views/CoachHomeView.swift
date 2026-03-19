@@ -150,8 +150,19 @@ struct CoachHomeView: View {
             ForEach(coachStore.recentSessions) { session in
                 SessionRowView(session: session)
                     .onTapGesture {
-                        coachStore.currentSession = session
-                        showingChat = true
+                        Task {
+                            // サーバーにメッセージがある場合は詳細を取得
+                            if session.messages.isEmpty, session.serverId != nil {
+                                if let fullSession = await coachStore.fetchSessionDetail(session) {
+                                    coachStore.currentSession = fullSession
+                                } else {
+                                    coachStore.currentSession = session
+                                }
+                            } else {
+                                coachStore.currentSession = session
+                            }
+                            showingChat = true
+                        }
                     }
             }
         }
@@ -332,6 +343,9 @@ struct SessionHistoryView: View {
                         dismiss()
                     }
                 }
+            }
+            .task {
+                await coachStore.fetchServerSessions()
             }
         }
     }

@@ -128,7 +128,7 @@ class CoachStore: ObservableObject {
                 // API呼び出し
                 let response = try await coachService.sendMessage(
                     message: content,
-                    sessionId: currentSession?.id.uuidString
+                    sessionId: currentSession?.serverId ?? currentSession?.id.uuidString
                 )
 
                 let metadata = MessageMetadata(
@@ -138,6 +138,14 @@ class CoachStore: ObservableObject {
                 )
 
                 await MainActor.run {
+                    // サーバーから返されたsessionIdを保持
+                    if let serverSessionId = response.sessionId,
+                       currentSession?.serverId == nil {
+                        currentSession?.serverId = serverSessionId
+                        if let current = currentSession {
+                            updateSession(current)
+                        }
+                    }
                     addCoachMessage(response.message, metadata: metadata)
                     isLoading = false
                 }
@@ -177,7 +185,7 @@ class CoachStore: ObservableObject {
 
                 let response = try await coachService.sendMessage(
                     message: initialUserMessage,
-                    sessionId: session.id.uuidString,
+                    sessionId: session.serverId ?? session.id.uuidString,
                     diaryContent: diaryContent
                 )
 
@@ -186,6 +194,15 @@ class CoachStore: ObservableObject {
                     emotionDetected: response.metadata?.detectedEmotion,
                     suggestedAction: nil
                 )
+
+                // サーバーから返されたsessionIdを保持
+                if let serverSessionId = response.sessionId,
+                   currentSession?.serverId == nil {
+                    currentSession?.serverId = serverSessionId
+                    if let current = currentSession {
+                        updateSession(current)
+                    }
+                }
 
                 addCoachMessage(response.message, metadata: metadata)
                 isLoading = false
@@ -221,6 +238,65 @@ class CoachStore: ObservableObject {
 
         let index = abs(input.hashValue) % responses.count
         return responses[index]
+    }
+
+    // MARK: - Server Sync
+
+    /// サーバーからセッション履歴を取得してマージ
+    func fetchServerSessions() async {
+        await MainActor.run {
+            isLoading = true
+        }
+
+        do {
+            let serverList = try await coachService.getSessions(limit: 50)
+
+            await MainActor.run {
+                // サーバーにしか存在しないセッションをローカルに追加
+                let localServerIds = Set(sessions.compactMap { $0.serverId })
+                let newSessions = serverList.sessions
+                    .filter { !localServerIds.contains($0.sessionId) }
+                    .map { CoachSession.from($0) }
+
+                if !newSessions.isEmpty {
+                    sessions.append(contentsOf: newSessions)
+                    sessions.sort { $0.updatedAt > $1.updatedAt }
+                    saveSessions()
+                }
+                isLoading = false
+            }
+        } catch {
+            await MainActor.run {
+                self.error = error.localizedDescription
+                isLoading = false
+            }
+        }
+    }
+
+    /// サーバーからセッション詳細（メッセージ付き）を取得
+    func fetchSessionDetail(_ session: CoachSession) async -> CoachSession? {
+        guard let serverId = session.serverId else { return nil }
+
+        do {
+            let detail = try await coachService.getSession(sessionId: serverId)
+            let fullSession = CoachSession.from(detail)
+
+            await MainActor.run {
+                // ローカルのセッションを更新
+                if let index = sessions.firstIndex(where: { $0.serverId == serverId }) {
+                    sessions[index].messages = fullSession.messages
+                    sessions[index].updatedAt = fullSession.updatedAt
+                    saveSessions()
+                }
+            }
+
+            return fullSession
+        } catch {
+            await MainActor.run {
+                self.error = error.localizedDescription
+            }
+            return nil
+        }
     }
 
     // MARK: - Computed Properties

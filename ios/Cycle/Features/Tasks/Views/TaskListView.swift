@@ -26,6 +26,9 @@ struct TaskListView: View {
         content
             .navigationBarHidden(true)
             .environment(\.editMode, .constant(isReorderMode ? .active : .inactive))
+            .task {
+                await vm.fetchServerTasks()
+            }
             .sheet(isPresented: $showNewTask) {
                 TaskNewEntryView(vm: vm)
             }

@@ -14,7 +14,7 @@ enum APIEnvironment {
     var baseURL: String {
         switch self {
         case .development:
-            return "https://gus928fsid.execute-api.us-east-1.amazonaws.com/dev"
+            return "https://cycle-api-dev-1031235624127.asia-northeast1.run.app"
         case .production:
             return "https://api.cyclejournal.app" // TODO: 本番URL
         }

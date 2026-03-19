@@ -16,7 +16,7 @@ struct AuthVerifyResponse: Decodable {
     let appleUserId: String
     let email: String?
     let isNewUser: Bool
-    let verified: Bool
+    let createdAt: Date
 }
 
 // MARK: - Auth Service

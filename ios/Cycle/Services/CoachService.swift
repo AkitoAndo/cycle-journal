@@ -27,7 +27,7 @@ class CoachService {
         let response: APIResponse<CoachResponseData> = try await apiClient.post(
             path: "/coach",
             body: request,
-            requiresAuth: false // TODO: トークン更新機能実装後にtrueに変更
+            requiresAuth: true
         )
 
         return response.data
@@ -45,7 +45,7 @@ class CoachService {
         let response: APIResponse<SessionListData> = try await apiClient.get(
             path: "/sessions",
             queryItems: queryItems,
-            requiresAuth: false // TODO: 認証実装後にtrueに変更
+            requiresAuth: true
         )
 
         return response.data
@@ -66,7 +66,7 @@ class CoachService {
         let response: APIResponse<SessionData> = try await apiClient.post(
             path: "/sessions",
             body: request,
-            requiresAuth: false // TODO: 認証実装後にtrueに変更
+            requiresAuth: true
         )
 
         return response.data
@@ -76,7 +76,7 @@ class CoachService {
     func getSession(sessionId: String) async throws -> SessionDetailData {
         let response: APIResponse<SessionDetailData> = try await apiClient.get(
             path: "/sessions/\(sessionId)",
-            requiresAuth: false // TODO: 認証実装後にtrueに変更
+            requiresAuth: true
         )
 
         return response.data
