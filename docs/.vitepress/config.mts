@@ -111,11 +111,10 @@ export default defineConfig({
             collapsed: true,
             items: [
               { text: 'B-01: Terraform基本構成', link: '/backlog/backend/B-01-cdk-base' },
-              { text: 'B-02: Cloud SQL', link: '/backlog/backend/B-02-aurora' },
+              { text: 'B-02: Firestore', link: '/backlog/backend/B-02-aurora' },
               { text: 'B-03: ベースプロンプト', link: '/backlog/backend/B-03-base-prompt' },
               { text: 'B-04: 安全フィルター', link: '/backlog/backend/B-04-safety' },
-              { text: 'B-05: Cloud Armor', link: '/backlog/backend/B-05-waf' },
-            ],
+                          ],
           },
           {
             text: 'UX',

@@ -64,10 +64,10 @@
 | # | アイテム | ステータス | 優先度 |
 |---|---------|-----------|--------|
 | B-01 | [Terraform基本構成（Cloud Run）](./backend/B-01-cdk-base) | :memo: Refinement | P0 |
-| B-02 | [Cloud SQL (PostgreSQL)](./backend/B-02-aurora) | :memo: Refinement | P0 |
+| B-02 | [Firestore セットアップ](./backend/B-02-aurora) | :memo: Refinement | P0 |
 | B-03 | [ベースプロンプト実装](./backend/B-03-base-prompt) | :memo: Refinement | P0 |
 | B-04 | [安全フィルター](./backend/B-04-safety) | :memo: Refinement | P0 |
-| B-05 | [Cloud Armor設定](./backend/B-05-waf) | :memo: Refinement | P2 |
+| ~~B-05~~ | ~~Cloud Armor設定~~ | 削除 | - |
 
 ## UX
 

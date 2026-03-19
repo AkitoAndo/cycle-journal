@@ -12,7 +12,7 @@
 
 ### Backend
 - GCPへ移行予定（旧AWSインフラは廃止）
-- Cloud Run + Cloud SQL + Vertex AI の構成を計画中
+- Cloud Run + Firestore + Vertex AI の構成を計画中
 - 未実装
 
 ## TO-BE
@@ -21,7 +21,7 @@
 - [ ] Coach ↔ Backend API接続（Vertex AI Claude）
 - [ ] 認証フロー完成（Cloud Run ミドルウェア + Apple JWT検証）
 - [ ] 基本プロンプト動作（ベースプロンプト + 会話テンプレート + 安全フィルター）
-- [ ] セッション・メッセージのDB保存（Cloud SQL）
+- [ ] セッション・メッセージのDB保存（Firestore）
 
 ### v1.1 - コーチング品質向上
 - [ ] LangGraphフロー実装（感情分析・質問生成・状態判定）

@@ -18,7 +18,7 @@ Cycleは「大きな一本の樹」をメタファーとしたコーチングア
 ## 技術スタック
 
 - **iOS**: Swift / SwiftUI / iOS 15+
-- **Backend**: Cloud Run (Python 3.12) / Cloud SQL (PostgreSQL)
+- **Backend**: Cloud Run (Python 3.12) / Firestore
 - **AI**: Claude (Vertex AI) / LangChain + LangGraph
 - **IaC**: Terraform
 - **認証**: Sign in with Apple + Cloud Run ミドルウェア
