@@ -23,6 +23,9 @@ Local.xcconfig
 # macOS
 .DS_Store
 
+# CDK
+cdk.out/
+
 # Environment
 .env
 .env.local
