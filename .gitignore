@@ -1,0 +1,13 @@
+# Local signing config (each developer has their own)
+Local.xcconfig
+
+# Xcode user data
+xcuserdata/
+*.xcuserstate
+
+# Build products
+build/
+DerivedData/
+
+# OS files
+.DS_Store
