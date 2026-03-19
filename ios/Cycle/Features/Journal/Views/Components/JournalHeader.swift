@@ -57,5 +57,6 @@ struct JournalHeader: View {
                 .font(.system(size: 26))
                 .foregroundStyle(DesignSystem.Colors.textSecondary)
         }
+        .accessibilityIdentifier("journal_menu")
     }
 }

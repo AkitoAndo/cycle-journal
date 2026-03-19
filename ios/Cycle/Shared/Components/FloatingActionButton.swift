@@ -37,6 +37,7 @@ struct FloatingActionButton: View {
                 )
         }
         .buttonStyle(ScaleButtonStyle())
+        .accessibilityIdentifier("fab_\(icon)")
     }
 }
 

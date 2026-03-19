@@ -40,6 +40,9 @@ struct CycleApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .task {
+                    TestDataProvider.setupIfNeeded()
+                }
         }
     }
 }

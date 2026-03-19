@@ -43,6 +43,7 @@ struct TaskHeader: View {
                     .font(.system(size: 26))
                     .foregroundStyle(DesignSystem.Colors.textSecondary)
             }
+            .accessibilityIdentifier("task_menu")
         }
         .padding(.horizontal, DesignSystem.Spacing.lg)
         .padding(.vertical, DesignSystem.Spacing.md)

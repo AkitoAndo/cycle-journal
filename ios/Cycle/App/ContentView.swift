@@ -100,6 +100,7 @@ struct TabBarButton: View {
             .foregroundStyle(isSelected ? DesignSystem.Colors.accent : DesignSystem.Colors.textSecondary)
             .frame(maxWidth: .infinity)
         }
+        .accessibilityIdentifier("tab_\(label)")
     }
 }
 
