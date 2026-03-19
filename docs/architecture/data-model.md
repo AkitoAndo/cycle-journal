@@ -62,9 +62,54 @@
 | fullName | String? | |
 | createdAt | Date | |
 
-## Backend（Cloud SQL PostgreSQL）
+## Backend（Firestore）
 
-API側のスキーマは `docs/api/openapi.yaml` のcomponents/schemasを参照。主要テーブル: users, sessions, messages, tasks, reflections。
+### コレクション構造
+
+```
+users/{userId}
+  ├── apple_user_id: string
+  ├── email: string
+  ├── display_name: string
+  ├── settings: map
+  ├── created_at: timestamp
+  │
+  ├── sessions/{sessionId}
+  │     ├── title: string
+  │     ├── cycle_element: string
+  │     ├── created_at: timestamp
+  │     │
+  │     └── messages/{messageId}
+  │           ├── role: string (user | assistant)
+  │           ├── content: string
+  │           ├── metadata: map
+  │           └── created_at: timestamp
+  │
+  └── tasks/{taskId}
+        ├── title: string
+        ├── description: string
+        ├── status: string (pending | completed)
+        ├── session_id: string
+        ├── cycle_element: string
+        ├── created_at: timestamp
+        │
+        └── reflections/{reflectionId}
+              ├── what_i_did: string
+              ├── what_i_noticed: string
+              ├── what_i_want_to_try: string
+              ├── overall_feeling: string
+              └── created_at: timestamp
+```
+
+API側のリクエスト/レスポンス形式は `docs/api/openapi.yaml` を参照。
+
+### なぜFirestoreか
+
+Cloud SQL（PostgreSQL）ではなくFirestoreを選んだ理由:
+- **コスト**: Cloud SQLは最小でも月$10の常時起動コスト。Firestoreは個人利用なら無料枠内
+- **スケールtoゼロ**: Cloud Runと合わせて完全にゼロコスト運用が可能
+- **データ構造**: users/sessions/messages の入れ子構造がドキュメントDBに自然に対応
+- **構成のシンプルさ**: VPC ConnectorやプライベートIP接続が不要
 
 ## ストレージ方式
 

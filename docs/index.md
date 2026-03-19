@@ -18,7 +18,7 @@ features:
   - title: プロダクト設計
     details: Cycleモデル（大樹メタファー）に基づくAIコーチの人格・会話・プロンプト設計
   - title: アーキテクチャ
-    details: Cloud Run + Cloud SQL + Vertex AI のサーバーレス構成
+    details: Cloud Run + Firestore + Vertex AI のサーバーレス構成
   - title: 開発ガイド
     details: 環境構築、コード規約、テスト方針
 ---
