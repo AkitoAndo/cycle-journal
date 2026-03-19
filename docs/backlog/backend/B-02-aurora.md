@@ -1,10 +1,10 @@
-# B-02: Aurora Serverless + VPC
+# B-02: Cloud SQL (PostgreSQL)
 
 | 項目 | 内容 |
 |------|------|
 | ステータス | :memo: Refinement |
 | 優先度 | P0 |
-| 依存 | B-01（CDK基本構成） |
+| 依存 | B-01（Terraform基本構成） |
 
 ## ユーザーストーリー
 
@@ -12,23 +12,23 @@
 
 ## 受け入れ条件
 
-- [ ] Aurora Serverless v2 (PostgreSQL 15) がデプロイされる
-- [ ] VPC + Private Subnetに配置
-- [ ] LambdaからVPC経由でアクセス可能
-- [ ] Secrets ManagerにDB接続情報が保存
+- [ ] Cloud SQL (PostgreSQL 15) がデプロイされる
+- [ ] プライベートIPで配置
+- [ ] Cloud RunからVPC Connector経由でアクセス可能
+- [ ] Secret ManagerにDB接続情報が保存
 - [ ] SQLAlchemyモデル + Alembicマイグレーションが動作
 
 ## 検討事項
 
 - テーブル設計（users, sessions, messages, tasks, reflections）
 - マイグレーション管理のワークフロー
-- dev環境のACU設定（コスト最小化）
+- dev環境のインスタンスサイズ（db-f1-micro でコスト最小化）
 
 ## 技術メモ
 
-### CDKスタック
-- `api/cdk/stacks/network_stack.py` - VPC
-- `api/cdk/stacks/db_stack.py` - Aurora + Secrets
+### Terraformモジュール
+- `terraform/modules/network/` - VPC + Serverless VPC Connector
+- `terraform/modules/database/` - Cloud SQL + Secret Manager
 
 ### テーブル候補
 - `users` (user_id, apple_user_id, email, display_name, settings, created_at)

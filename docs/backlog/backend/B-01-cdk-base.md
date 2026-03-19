@@ -1,17 +1,27 @@
-# B-01: CDK基本構成（API Gateway + Lambda）
+# B-01: Terraform基本構成（Cloud Run）
 
 | 項目 | 内容 |
 |------|------|
-| ステータス | :white_check_mark: Done |
-| 実装場所 | `api/cdk/` |
+| ステータス | :memo: Refinement |
+| 優先度 | P0 |
 
-## 機能概要
+## ユーザーストーリー
 
-- API Gateway (REST) + Lambda のCDKスタック
-- health / coach(モック) エンドポイント
-- dev環境にデプロイ済
+> 開発者として、APIをCloud Runにデプロイして、HTTPリクエストを受け付けられるようにしたい。
 
-## デプロイ済み環境
+## 受け入れ条件
 
-- URL: `https://8sgr31xa31.execute-api.ap-northeast-1.amazonaws.com/dev/`
-- Region: ap-northeast-1
+- [ ] Cloud Run サービスがデプロイされる
+- [ ] health エンドポイントが応答する
+- [ ] Terraformでインフラが管理される
+- [ ] dev/prod環境の切り替えが可能
+
+## 技術メモ
+
+### Terraformモジュール
+- `terraform/modules/api/` - Cloud Run + Cloud Armor
+- `terraform/modules/network/` - VPC, サブネット
+
+### なぜAWSから移行したか
+
+旧構成（AWS CDK + Lambda + API Gateway + Aurora Serverless）ではdev環境だけで月額約$76かかっていた。GCPではCloud Runのスケールtoゼロ + Cloud SQLの最小インスタンスで月額約$15に削減できる。

@@ -18,10 +18,10 @@ Cycleは「大きな一本の樹」をメタファーとしたコーチングア
 ## 技術スタック
 
 - **iOS**: Swift / SwiftUI / iOS 15+
-- **Backend**: AWS Lambda (Python 3.12) / API Gateway / Aurora Serverless v2
-- **AI**: Claude 3 Haiku (Amazon Bedrock) / LangChain + LangGraph
-- **IaC**: AWS CDK (Python)
-- **認証**: Sign in with Apple + Lambda Authorizer
+- **Backend**: Cloud Run (Python 3.12) / Cloud SQL (PostgreSQL)
+- **AI**: Claude (Vertex AI) / LangChain + LangGraph
+- **IaC**: Terraform
+- **認証**: Sign in with Apple + Cloud Run ミドルウェア
 
 ## ドキュメント構成
 

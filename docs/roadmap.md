@@ -11,18 +11,17 @@
 - データ保存: JSONファイル（DocumentsDirectory）+ UserDefaults。API同期なし
 
 ### Backend
-- CDKインフラ基本構成デプロイ済（API Gateway + Lambda）
-- health / coach(モック) の2エンドポイントのみ
-- Aurora, VPC, WAF, Lambda Authorizer, LangGraph: 未実装
-- デプロイ済URL: `https://8sgr31xa31.execute-api.ap-northeast-1.amazonaws.com/dev/`
+- GCPへ移行予定（旧AWSインフラは廃止）
+- Cloud Run + Cloud SQL + Vertex AI の構成を計画中
+- 未実装
 
 ## TO-BE
 
 ### v1.0 - MVP（1人で使える状態）
-- [ ] Coach ↔ Backend API接続（Bedrock Claude Haiku）
-- [ ] 認証フロー完成（Lambda Authorizer + Apple JWT検証）
+- [ ] Coach ↔ Backend API接続（Vertex AI Claude）
+- [ ] 認証フロー完成（Cloud Run ミドルウェア + Apple JWT検証）
 - [ ] 基本プロンプト動作（ベースプロンプト + 会話テンプレート + 安全フィルター）
-- [ ] セッション・メッセージのDB保存（Aurora）
+- [ ] セッション・メッセージのDB保存（Cloud SQL）
 
 ### v1.1 - コーチング品質向上
 - [ ] LangGraphフロー実装（感情分析・質問生成・状態判定）
