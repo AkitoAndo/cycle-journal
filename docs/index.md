@@ -3,24 +3,22 @@ layout: home
 hero:
   name: Cycle Journal
   text: AIコーチング ジャーナルアプリ
-  tagline: プロダクト設計・API・開発ドキュメント
+  tagline: 日記を書き、AIコーチとの対話で内省を深め、小さな行動につなげる
   actions:
     - theme: brand
       text: プロダクト設計
-      link: /product/prompts/A-01_ベースプロンプト
+      link: /product/coach-design
     - theme: alt
-      text: API ドキュメント
-      link: /api/00_API概要
+      text: アーキテクチャ
+      link: /architecture/overview
     - theme: alt
-      text: 開発ガイド
-      link: /development/DEVELOPMENT_GUIDE
+      text: Getting Started
+      link: /guides/getting-started
 features:
   - title: プロダクト設計
-    details: AIコーチの人格設計、会話テンプレート、感情分析、行動変容モデルなど
-  - title: API ドキュメント
-    details: 認証、エンドポイント一覧、OpenAPI仕様
+    details: Cycleモデル（大樹メタファー）に基づくAIコーチの人格・会話・プロンプト設計
+  - title: アーキテクチャ
+    details: AWS Lambda + Aurora Serverless + Bedrock のサーバーレス構成
   - title: 開発ガイド
-    details: 技術スタック、インフラ設計、テスト方針
-  - title: モバイルアプリ
-    details: ユーザーストーリー、実装済み機能、開発状況
+    details: 環境構築、コード規約、テスト方針
 ---
