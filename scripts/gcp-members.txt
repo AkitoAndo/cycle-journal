@@ -1,0 +1,7 @@
+# GCPプロジェクトに追加するチームメンバーのGmailアドレス
+# 1行に1アドレス、#で始まる行はコメント
+#
+# 例:
+# taro@gmail.com
+# hanako@gmail.com
+andoakitoai@gmail.com
