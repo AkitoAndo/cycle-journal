@@ -3,6 +3,7 @@
 //  CycleJournal
 //
 
+import Combine
 import Foundation
 
 class CoachStore: ObservableObject {

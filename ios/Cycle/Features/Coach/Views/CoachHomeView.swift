@@ -7,7 +7,7 @@ import SwiftUI
 
 struct CoachHomeView: View {
     @EnvironmentObject var coachStore: CoachStore
-    @EnvironmentObject var diaryStore: DiaryStore
+    @EnvironmentObject var journalViewModel: JournalViewModel
 
     @State private var showingChat = false
     @State private var showingHistory = false
@@ -52,12 +52,10 @@ struct CoachHomeView: View {
                     .environmentObject(coachStore)
             }
             .sheet(isPresented: $showingDiaryPicker) {
-                DiaryPickerView(onSelect: { diary in
-                    // 日記内容を保持してからシートを閉じる
-                    let diaryContent = diary.content
+                DiaryPickerView(onSelect: { entry in
+                    let diaryContent = entry.text
                     showingDiaryPicker = false
 
-                    // シートが閉じた後にチャットを開始
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                         Task {
                             await coachStore.startSessionWithDiary(diaryContent)
@@ -65,7 +63,7 @@ struct CoachHomeView: View {
                         showingChat = true
                     }
                 })
-                .environmentObject(diaryStore)
+                .environmentObject(journalViewModel)
             }
         }
     }
@@ -110,7 +108,6 @@ struct CoachHomeView: View {
 
     private var actionButtons: some View {
         VStack(spacing: 12) {
-            // 話しかけるボタン
             Button(action: startNewChat) {
                 HStack {
                     Image(systemName: "bubble.left")
@@ -124,7 +121,6 @@ struct CoachHomeView: View {
                 .cornerRadius(12)
             }
 
-            // 日記から話すボタン
             Button(action: { showingDiaryPicker = true }) {
                 HStack {
                     Image(systemName: "book")
@@ -226,10 +222,10 @@ struct SessionRowView: View {
 // MARK: - Diary Picker View
 
 struct DiaryPickerView: View {
-    @EnvironmentObject var diaryStore: DiaryStore
+    @EnvironmentObject var journalViewModel: JournalViewModel
     @Environment(\.dismiss) var dismiss
 
-    let onSelect: (DiaryEntry) -> Void
+    let onSelect: (JournalEntry) -> Void
 
     private let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -241,14 +237,14 @@ struct DiaryPickerView: View {
     var body: some View {
         NavigationStack {
             List {
-                ForEach(diaryStore.entries.prefix(20)) { entry in
+                ForEach(journalViewModel.allEntries.prefix(20)) { entry in
                     Button(action: { onSelect(entry) }) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(dateFormatter.string(from: entry.createdAt))
+                            Text(dateFormatter.string(from: entry.date))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
 
-                            Text(entry.content)
+                            Text(entry.text)
                                 .font(.body)
                                 .lineLimit(2)
                                 .foregroundColor(.primary)
@@ -351,5 +347,5 @@ struct SessionHistoryView: View {
 #Preview {
     CoachHomeView()
         .environmentObject(CoachStore())
-        .environmentObject(DiaryStore())
+        .environmentObject(JournalViewModel())
 }

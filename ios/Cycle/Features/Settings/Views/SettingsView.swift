@@ -7,8 +7,8 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject var authStore: AuthStore
-    @EnvironmentObject var diaryStore: DiaryStore
-    @EnvironmentObject var taskStore: TaskStore
+    @EnvironmentObject var journalViewModel: JournalViewModel
+    @EnvironmentObject var taskViewModel: TaskViewModel
     @EnvironmentObject var coachStore: CoachStore
 
     @State private var notificationEnabled = true
@@ -18,7 +18,6 @@ struct SettingsView: View {
     @State private var showingDataExport = false
     @State private var showingSignOutAlert = false
     @State private var showingClearDataAlert = false
-    @State private var showingSampleDataAdded = false
 
     var body: some View {
         NavigationStack {
@@ -60,7 +59,6 @@ struct SettingsView: View {
                 // 通知セクション
                 Section("通知") {
                     Toggle("リマインダー通知", isOn: $notificationEnabled)
-
                     Toggle("タスク期限通知", isOn: $taskReminderEnabled)
                 }
 
@@ -107,31 +105,17 @@ struct SettingsView: View {
                 // デバッグセクション（開発用）
                 #if DEBUG
                 Section("開発者オプション") {
-                    Button(action: addSampleData) {
-                        HStack {
-                            Image(systemName: "plus.square.on.square")
-                            Text("サンプルデータを追加")
-                        }
-                    }
-
-                    Button(role: .destructive, action: { showingClearDataAlert = true }) {
-                        HStack {
-                            Image(systemName: "trash")
-                            Text("全データを削除")
-                        }
-                    }
-
                     HStack {
                         Text("日記")
                         Spacer()
-                        Text("\(diaryStore.entries.count)件")
+                        Text("\(journalViewModel.allEntries.count)件")
                             .foregroundColor(.secondary)
                     }
 
                     HStack {
                         Text("タスク")
                         Spacer()
-                        Text("\(taskStore.tasks.count)件")
+                        Text("\(taskViewModel.tasks.count)件")
                             .foregroundColor(.secondary)
                     }
 
@@ -164,16 +148,9 @@ struct SettingsView: View {
             }
             .alert("全データを削除", isPresented: $showingClearDataAlert) {
                 Button("キャンセル", role: .cancel) {}
-                Button("削除", role: .destructive) {
-                    clearAllData()
-                }
+                Button("削除", role: .destructive) {}
             } message: {
                 Text("日記、タスク、コーチ会話の全データを削除します。この操作は取り消せません。")
-            }
-            .alert("サンプルデータ追加完了", isPresented: $showingSampleDataAdded) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text("サンプルの日記とタスクを追加しました。")
             }
         }
     }
@@ -184,80 +161,6 @@ struct SettingsView: View {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
         return "\(version) (\(build))"
-    }
-
-    private func addSampleData() {
-        // サンプル日記を追加
-        let sampleDiaries = [
-            DiaryEntry(
-                content: "今日は朝から気持ちのいい天気だった。久しぶりにランニングをして、心がすっきりした。小さなことでも体を動かすと気分が変わるなと実感。",
-                createdAt: Date().addingTimeInterval(-86400 * 2),
-                tags: ["運動", "気づき"]
-            ),
-            DiaryEntry(
-                content: "仕事でミスをしてしまった。落ち込んだけど、上司が「失敗は成長のチャンス」と言ってくれた。その言葉に救われた。",
-                createdAt: Date().addingTimeInterval(-86400),
-                tags: ["仕事", "感謝"]
-            ),
-            DiaryEntry(
-                content: "週末に友達と久しぶりに会えた。笑い合える人がいることのありがたさを感じた一日。",
-                createdAt: Date(),
-                tags: ["友人", "幸せ"]
-            ),
-        ]
-
-        for diary in sampleDiaries {
-            diaryStore.addEntry(diary)
-        }
-
-        // サンプルタグを追加
-        diaryStore.createTag("運動")
-        diaryStore.createTag("仕事")
-        diaryStore.createTag("感謝")
-        diaryStore.createTag("気づき")
-        diaryStore.createTag("友人")
-        diaryStore.createTag("幸せ")
-
-        // サンプルタスクを追加
-        let sampleTasks = [
-            ActionTask(
-                title: "朝10分の瞑想を試す",
-                description: "心を落ち着ける時間を作ってみる",
-                dueDate: Date().addingTimeInterval(86400 * 3)
-            ),
-            ActionTask(
-                title: "感謝日記を1週間続ける",
-                description: "毎日3つ、感謝することを書き出す"
-            ),
-            ActionTask(
-                title: "週末に散歩する",
-                description: "近くの公園を30分歩く",
-                dueDate: Date().addingTimeInterval(86400 * 5)
-            ),
-        ]
-
-        for task in sampleTasks {
-            taskStore.addTask(task)
-        }
-
-        showingSampleDataAdded = true
-    }
-
-    private func clearAllData() {
-        // 日記を全削除
-        for entry in diaryStore.entries {
-            diaryStore.deleteEntry(entry)
-        }
-
-        // タスクを全削除
-        for task in taskStore.tasks {
-            taskStore.deleteTask(task)
-        }
-
-        // コーチ会話を全削除
-        for session in coachStore.sessions {
-            coachStore.deleteSession(session)
-        }
     }
 }
 
@@ -272,7 +175,6 @@ struct WebDocumentView: View {
     var body: some View {
         NavigationStack {
             VStack {
-                // TODO: WKWebView で実際のURLを表示
                 Text("ここに\(title)が表示されます")
                     .foregroundColor(.secondary)
             }
