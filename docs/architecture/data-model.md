@@ -62,7 +62,7 @@
 | fullName | String? | |
 | createdAt | Date | |
 
-## Backend（Aurora PostgreSQL）
+## Backend（Cloud SQL PostgreSQL）
 
 API側のスキーマは `docs/api/openapi.yaml` のcomponents/schemasを参照。主要テーブル: users, sessions, messages, tasks, reflections。
 

@@ -1,10 +1,10 @@
-# B-05: WAF設定
+# B-05: Cloud Armor設定
 
 | 項目 | 内容 |
 |------|------|
 | ステータス | :memo: Refinement |
 | 優先度 | P2 |
-| 依存 | B-01（CDK基本構成） |
+| 依存 | B-01（Terraform基本構成） |
 
 ## ユーザーストーリー
 
@@ -12,12 +12,11 @@
 
 ## 受け入れ条件
 
-- [ ] AWS WAFがAPI Gatewayに適用
-- [ ] AWSManagedRulesCommonRuleSet 有効
-- [ ] AWSManagedRulesKnownBadInputsRuleSet 有効
+- [ ] Cloud ArmorポリシーがCloud Runに適用
+- [ ] OWASP Top 10ルール有効
 - [ ] IPベースのレートリミット（1000 req/5min/IP）
 
 ## 技術メモ
 
-### CDKスタック
-- `api/cdk/stacks/monitoring_stack.py`
+### Terraformモジュール
+- `terraform/modules/api/` - Cloud Armor policy

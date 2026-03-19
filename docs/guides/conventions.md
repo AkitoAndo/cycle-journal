@@ -80,8 +80,8 @@ strict = true
 
 ### Python
 
-- pytest + moto（AWSモック）
-- LLMテスト: ユニットはモックレスポンス、E2Eは実Bedrock API
+- pytest（標準モック）
+- LLMテスト: ユニットはモックレスポンス、E2Eは実Vertex AI API
 
 ### Swift
 

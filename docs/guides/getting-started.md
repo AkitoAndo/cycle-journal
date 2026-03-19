@@ -7,9 +7,9 @@
 | Xcode 15+ | iOS開発 |
 | Python 3.12 | Backend開発 |
 | uv | Pythonパッケージ管理 |
-| AWS CLI | AWSリソース操作 |
-| AWS SAM CLI | Lambdaローカル実行 |
-| Node.js | CDK用 |
+| gcloud CLI | GCPリソース操作 |
+| Docker | Cloud Runローカル実行 |
+| Terraform | IaC |
 
 ## iOS開発
 
@@ -37,8 +37,9 @@ cd api
 # 依存関係インストール
 uv sync
 
-# ローカル実行
-sam local start-api
+# ローカル実行（Docker）
+docker build -t cycle-api .
+docker run -p 8080:8080 cycle-api
 
 # テスト実行
 uv run pytest
@@ -49,22 +50,23 @@ uv run ruff format src/
 uv run mypy src/
 ```
 
-## CDKデプロイ
+## Terraformデプロイ
 
 ```bash
-cd api/cdk
+cd terraform
 
-# 依存関係
-npm install
-
-# 初回のみ
-cdk bootstrap aws://ACCOUNT_ID/ap-northeast-1
+# 初期化
+terraform init
 
 # dev環境デプロイ
-cdk deploy --all --context env=dev
+terraform workspace select dev
+terraform plan
+terraform apply
 
-# 特定スタックのみ
-cdk deploy CycleJournalApiStack --context env=dev
+# prod環境デプロイ
+terraform workspace select prod
+terraform plan
+terraform apply
 ```
 
 ## 環境変数
@@ -73,8 +75,9 @@ cdk deploy CycleJournalApiStack --context env=dev
 
 ```bash
 # .env.example
-AWS_REGION=ap-northeast-1
+GCP_PROJECT_ID=cycle-journal-dev
+GCP_REGION=asia-northeast1
 DATABASE_URL=postgresql://...
 ```
 
-本番環境は AWS Secrets Manager で管理。
+本番環境は GCP Secret Manager で管理。

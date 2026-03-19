@@ -93,7 +93,7 @@ export default defineConfig({
             collapsed: true,
             items: [
               { text: 'A-01: サインインUI', link: '/backlog/auth/A-01-signin-ui' },
-              { text: 'A-02: Authorizer', link: '/backlog/auth/A-02-authorizer' },
+              { text: 'A-02: 認証ミドルウェア', link: '/backlog/auth/A-02-authorizer' },
               { text: 'A-03: 認証フロー', link: '/backlog/auth/A-03-auth-flow' },
             ],
           },
@@ -110,11 +110,11 @@ export default defineConfig({
             text: 'Backend',
             collapsed: true,
             items: [
-              { text: 'B-01: CDK基本構成', link: '/backlog/backend/B-01-cdk-base' },
-              { text: 'B-02: Aurora + VPC', link: '/backlog/backend/B-02-aurora' },
+              { text: 'B-01: Terraform基本構成', link: '/backlog/backend/B-01-cdk-base' },
+              { text: 'B-02: Cloud SQL', link: '/backlog/backend/B-02-aurora' },
               { text: 'B-03: ベースプロンプト', link: '/backlog/backend/B-03-base-prompt' },
               { text: 'B-04: 安全フィルター', link: '/backlog/backend/B-04-safety' },
-              { text: 'B-05: WAF', link: '/backlog/backend/B-05-waf' },
+              { text: 'B-05: Cloud Armor', link: '/backlog/backend/B-05-waf' },
             ],
           },
           {
