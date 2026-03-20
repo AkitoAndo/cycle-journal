@@ -18,7 +18,7 @@ struct TaskHeader: View {
     var body: some View {
         HStack(alignment: .center) {
             Text("Today's Focus")
-                .font(.system(size: 28, weight: .bold))
+                .font(DesignSystem.Fonts.screenTitle)
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
 
             Spacer()
@@ -40,7 +40,7 @@ struct TaskHeader: View {
                 }
             } label: {
                 Image(systemName: "ellipsis.circle")
-                    .font(.system(size: 26))
+                    .font(DesignSystem.Fonts.headerIcon)
                     .foregroundStyle(DesignSystem.Colors.textSecondary)
             }
             .accessibilityIdentifier("task_menu")

@@ -18,6 +18,7 @@ struct SettingsView: View {
     @State private var showingDataExport = false
     @State private var showingSignOutAlert = false
     @State private var showingClearDataAlert = false
+    @State private var showingComponentCatalog = false
 
     var body: some View {
         NavigationStack {
@@ -26,21 +27,21 @@ struct SettingsView: View {
                 Section("アカウント") {
                     HStack {
                         Image(systemName: "person.circle.fill")
-                            .font(.title)
+                            .font(DesignSystem.Fonts.screenTitle)
                             .foregroundColor(.green)
 
                         VStack(alignment: .leading) {
                             if let user = authStore.currentUser {
                                 Text(user.fullName ?? user.email ?? "ユーザー")
-                                    .font(.headline)
+                                    .font(DesignSystem.Fonts.button)
                                 if let email = user.email {
                                     Text(email)
-                                        .font(.caption)
+                                        .font(DesignSystem.Fonts.caption)
                                         .foregroundColor(.secondary)
                                 }
                             } else {
                                 Text("ログイン済み")
-                                    .font(.headline)
+                                    .font(DesignSystem.Fonts.button)
                             }
                         }
 
@@ -105,6 +106,17 @@ struct SettingsView: View {
                 // デバッグセクション（開発用）
                 #if DEBUG
                 Section("開発者オプション") {
+                    Button(action: { showingComponentCatalog = true }) {
+                        HStack {
+                            Image(systemName: "paintpalette")
+                            Text("Component Catalog")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .foregroundColor(.primary)
+
                     HStack {
                         Text("日記")
                         Spacer()
@@ -145,6 +157,9 @@ struct SettingsView: View {
                 }
             } message: {
                 Text("本当にサインアウトしますか？\nローカルデータは保持されます。")
+            }
+            .sheet(isPresented: $showingComponentCatalog) {
+                ComponentCatalogView()
             }
             .alert("全データを削除", isPresented: $showingClearDataAlert) {
                 Button("キャンセル", role: .cancel) {}
@@ -205,16 +220,16 @@ struct DataExportView: View {
                 Spacer()
 
                 Image(systemName: "square.and.arrow.up")
-                    .font(.system(size: 60))
+                    .font(DesignSystem.Fonts.heroIcon)
                     .foregroundColor(.blue)
 
                 VStack(spacing: 8) {
                     Text("データエクスポート")
-                        .font(.title2)
+                        .font(DesignSystem.Fonts.title2)
                         .fontWeight(.bold)
 
                     Text("日記、会話履歴、タスクのデータを\nJSON形式でエクスポートします")
-                        .font(.body)
+                        .font(DesignSystem.Fonts.body)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                 }
@@ -224,7 +239,7 @@ struct DataExportView: View {
                 if exportComplete {
                     Label("エクスポート完了", systemImage: "checkmark.circle.fill")
                         .foregroundColor(.green)
-                        .font(.headline)
+                        .font(DesignSystem.Fonts.button)
                 } else {
                     Button(action: exportData) {
                         if isExporting {
@@ -234,7 +249,7 @@ struct DataExportView: View {
                             Text("エクスポートする")
                         }
                     }
-                    .font(.headline)
+                    .font(DesignSystem.Fonts.button)
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding()

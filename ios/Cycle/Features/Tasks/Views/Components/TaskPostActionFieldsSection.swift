@@ -40,7 +40,7 @@ struct TaskPostActionFieldsSection: View {
     private func fieldSection(title: String, text: Binding<String>, placeholder: String) -> some View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
             Text(title)
-                .font(.system(size: DesignSystem.FontSize.headline, weight: .semibold))
+                .font(DesignSystem.Fonts.headline)
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
 
             TextEditor(text: text)
@@ -54,13 +54,13 @@ struct TaskPostActionFieldsSection: View {
                         .stroke(DesignSystem.Colors.grey.opacity(0.6), lineWidth: 0.5)
                 )
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
-                .font(.system(size: DesignSystem.FontSize.body))
+                .font(DesignSystem.Fonts.body)
                 .tint(DesignSystem.Colors.accent)
                 .overlay(alignment: .topLeading) {
                     if text.wrappedValue.isEmpty {
                         Text(placeholder)
                             .foregroundStyle(DesignSystem.Colors.textTertiary)
-                            .font(.system(size: 16))
+                            .font(DesignSystem.Fonts.body)
                             .padding(EdgeInsets(top: 20, leading: 17, bottom: 0, trailing: 0))
                             .allowsHitTesting(false)
                     }

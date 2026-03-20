@@ -70,7 +70,7 @@ struct TaskRow: View {
 
     private var taskTitle: some View {
         Text(task.title)
-            .font(.system(size: DesignSystem.FontSize.body))
+            .font(DesignSystem.Fonts.body)
             .foregroundStyle(
                 task.isCompleted
                     ? DesignSystem.Colors.textSecondary

@@ -51,17 +51,8 @@ struct JournalDeletedView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: DesignSystem.Spacing.lg) {
-            Image(systemName: "trash")
-                .font(.system(size: 48))
-                .foregroundStyle(DesignSystem.Colors.textSecondary)
-
-            Text("最近削除した項目はありません")
-                .font(.system(size: DesignSystem.FontSize.body))
-                .foregroundStyle(DesignSystem.Colors.textSecondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(DesignSystem.Colors.background)
+        EmptyStateView(icon: "trash", title: "削除した日記はありません")
+            .background(DesignSystem.Colors.background)
     }
 
     private var deletedList: some View {
@@ -105,7 +96,7 @@ struct JournalDeletedRow: View {
     private var entryContent: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
             Text(entry.text)
-                .font(.system(size: DesignSystem.FontSize.body))
+                .font(DesignSystem.Fonts.body)
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
                 .lineSpacing(4)
                 .lineLimit(3)
@@ -127,7 +118,7 @@ struct JournalDeletedRow: View {
 
     private var dateText: some View {
         Text(entry.date.formatted(.dateTime.year().month().day().hour().minute()))
-            .font(.system(size: DesignSystem.FontSize.caption))
+            .font(DesignSystem.Fonts.caption)
             .foregroundStyle(DesignSystem.Colors.textSecondary)
     }
 

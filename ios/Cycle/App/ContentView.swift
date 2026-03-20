@@ -92,7 +92,7 @@ struct TabBarButton: View {
         Button(action: action) {
             VStack(spacing: 4) {
                 Image(systemName: icon)
-                    .font(.system(size: 20))
+                    .font(.system(size: DesignSystem.FontSize.title3))
 
                 Text(label)
                     .font(.system(size: 10))
@@ -110,7 +110,7 @@ private struct CoachView_Placeholder: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                Text("Coach MVP").font(.title3)
+                Text("Coach MVP").font(DesignSystem.Fonts.sectionTitle)
                 Text("ここにコーチ画面が入ります。")
                     .foregroundStyle(.secondary)
             }
@@ -124,7 +124,7 @@ private struct SettingsView_Placeholder: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                Text("Settings MVP").font(.title3)
+                Text("Settings MVP").font(DesignSystem.Fonts.sectionTitle)
                 Text("ここに設定画面が入ります。")
                     .foregroundStyle(.secondary)
             }

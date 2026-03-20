@@ -83,12 +83,12 @@ struct TaskEditView: View {
     private var titleSection: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
             Text("タイトル")
-                .font(.system(size: DesignSystem.FontSize.headline, weight: .semibold))
+                .font(DesignSystem.Fonts.headline)
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
 
             TextField("", text: $editTitle)
                 .textFieldStyle(.plain)
-                .font(.system(size: DesignSystem.FontSize.body))
+                .font(DesignSystem.Fonts.body)
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
                 .padding(DesignSystem.Spacing.lg)
                 .background(DesignSystem.Colors.surface)
@@ -105,7 +105,7 @@ struct TaskEditView: View {
     private var descriptionSection: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
             Text("詳細")
-                .font(.system(size: DesignSystem.FontSize.headline, weight: .semibold))
+                .font(DesignSystem.Fonts.headline)
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
 
             TextEditor(text: $editDescription)
@@ -119,7 +119,7 @@ struct TaskEditView: View {
                         .stroke(DesignSystem.Colors.grey.opacity(0.6), lineWidth: 0.5)
                 )
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
-                .font(.system(size: DesignSystem.FontSize.body))
+                .font(DesignSystem.Fonts.body)
                 .tint(DesignSystem.Colors.accent)
         }
         .padding(.horizontal, DesignSystem.Spacing.lg)

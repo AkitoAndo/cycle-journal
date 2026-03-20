@@ -176,7 +176,7 @@ struct MessageBubbleView: View {
             } else {
                 // コーチアバター
                 Image(systemName: "tree")
-                    .font(.system(size: 20))
+                    .font(.system(size: DesignSystem.FontSize.title3))
                     .foregroundColor(.green)
                     .frame(width: 32, height: 32)
                     .background(Color.green.opacity(0.2))
@@ -186,7 +186,7 @@ struct MessageBubbleView: View {
             VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 4) {
                 // メッセージバブル
                 Text(message.content)
-                    .font(.body)
+                    .font(DesignSystem.Fonts.body)
                     .foregroundColor(message.role == .user ? .white : .primary)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
@@ -197,7 +197,7 @@ struct MessageBubbleView: View {
 
                 // タイムスタンプ
                 Text(timeFormatter.string(from: message.createdAt))
-                    .font(.caption2)
+                    .font(DesignSystem.Fonts.caption2)
                     .foregroundColor(.secondary)
             }
 
@@ -217,7 +217,7 @@ struct TypingIndicatorView: View {
         HStack(alignment: .bottom, spacing: 8) {
             // コーチアバター
             Image(systemName: "tree")
-                .font(.system(size: 20))
+                .font(.system(size: DesignSystem.FontSize.title3))
                 .foregroundColor(.green)
                 .frame(width: 32, height: 32)
                 .background(Color.green.opacity(0.2))

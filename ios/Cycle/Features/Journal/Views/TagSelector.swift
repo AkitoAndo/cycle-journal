@@ -17,7 +17,7 @@ struct TagSelector: View {
         if !availableTags.isEmpty {
             VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
                 Text("タグ")
-                    .font(.system(size: DesignSystem.FontSize.headline, weight: .semibold))
+                    .font(DesignSystem.Fonts.headline)
                     .foregroundStyle(DesignSystem.Colors.textPrimary)
 
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -58,7 +58,7 @@ private struct TagButton: View {
     var body: some View {
         Button(action: action) {
             Text(tag)
-                .font(.system(size: DesignSystem.FontSize.caption))
+                .font(DesignSystem.Fonts.caption)
                 .padding(.horizontal, DesignSystem.Spacing.md)
                 .padding(.vertical, DesignSystem.Spacing.xs + 2)
                 .background(isSelected ? DesignSystem.Colors.accent : DesignSystem.Colors.greyLight)

@@ -85,7 +85,7 @@ struct TaskListView: View {
     @ViewBuilder
     private var taskListOrEmptyState: some View {
         if vm.tasks.isEmpty {
-            TaskEmptyState()
+            EmptyStateView(icon: "checkmark.circle", title: "タスクがまだありません", subtitle: "＋ボタンから新しいタスクを追加しましょう")
         } else {
             TaskList(
                 incompleteTasks: vm.incompleteTasks,

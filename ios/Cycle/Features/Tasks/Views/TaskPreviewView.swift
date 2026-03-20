@@ -69,11 +69,11 @@ struct TaskPreviewView: View {
     private var titleSection: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
             Text("タイトル")
-                .font(.system(size: DesignSystem.FontSize.headline, weight: .semibold))
+                .font(DesignSystem.Fonts.headline)
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
 
             Text(task.title)
-                .font(.system(size: DesignSystem.FontSize.body))
+                .font(DesignSystem.Fonts.body)
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
                 .padding(DesignSystem.Spacing.lg)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -94,11 +94,11 @@ struct TaskPreviewView: View {
     private func fieldSection(title: String, content: String) -> some View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
             Text(title)
-                .font(.system(size: DesignSystem.FontSize.headline, weight: .semibold))
+                .font(DesignSystem.Fonts.headline)
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
 
             Text(content)
-                .font(.system(size: DesignSystem.FontSize.body))
+                .font(DesignSystem.Fonts.body)
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
                 .padding(DesignSystem.Spacing.lg)
                 .frame(maxWidth: .infinity, alignment: .leading)

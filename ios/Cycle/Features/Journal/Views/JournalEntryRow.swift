@@ -18,14 +18,14 @@ struct JournalEntryRow: View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
             // エントリ本文
             Text(entry.text)
-                .font(.system(size: DesignSystem.FontSize.body))
+                .font(DesignSystem.Fonts.body)
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
                 .lineSpacing(4)
 
             // メタ情報（時刻とタグ）
             HStack(spacing: DesignSystem.Spacing.sm) {
                 Text(entry.date.timeHM)
-                    .font(.system(size: DesignSystem.FontSize.caption))
+                    .font(DesignSystem.Fonts.caption)
                     .foregroundStyle(DesignSystem.Colors.textSecondary)
 
                 if !entry.tags.isEmpty {

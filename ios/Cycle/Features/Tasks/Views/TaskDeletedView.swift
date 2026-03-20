@@ -55,17 +55,8 @@ struct TaskDeletedView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: DesignSystem.Spacing.lg) {
-            Image(systemName: "trash")
-                .font(.system(size: 48))
-                .foregroundStyle(DesignSystem.Colors.textSecondary)
-
-            Text("最近削除した項目はありません")
-                .font(.system(size: DesignSystem.FontSize.body))
-                .foregroundStyle(DesignSystem.Colors.textSecondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(DesignSystem.Colors.background)
+        EmptyStateView(icon: "trash", title: "削除した項目はありません")
+            .background(DesignSystem.Colors.background)
     }
 
     private var deletedList: some View {
@@ -131,7 +122,7 @@ struct TaskDeletedRow: View {
 
     private var taskTitle: some View {
         Text(task.title)
-            .font(.system(size: DesignSystem.FontSize.body))
+            .font(DesignSystem.Fonts.body)
             .foregroundStyle(DesignSystem.Colors.textPrimary)
     }
 

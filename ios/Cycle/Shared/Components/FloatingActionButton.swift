@@ -24,7 +24,7 @@ struct FloatingActionButton: View {
             action()
         }) {
             Image(systemName: icon)
-                .font(.system(size: DesignSystem.FontSize.title2, weight: .semibold))
+                .font(DesignSystem.Fonts.title2)
                 .foregroundStyle(DesignSystem.Colors.background)
                 .frame(width: 56, height: 56)
                 .background(DesignSystem.Colors.accent)
