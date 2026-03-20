@@ -9,6 +9,10 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var selectedTab = 0
+    @StateObject private var coachStore = CoachStore()
+    @StateObject private var journalViewModel = JournalViewModel()
+    @StateObject private var authStore = AuthStore()
+    @StateObject private var taskViewModel = TaskViewModel()
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -20,13 +24,13 @@ struct ContentView: View {
                         JournalListView()
                     }
                 case 1:
-                    CoachView_Placeholder()
+                    CoachHomeView()
                 case 2:
                     NavigationStack {
                         TaskListView()
                     }
                 case 3:
-                    SettingsView_Placeholder()
+                    SettingsView()
                 default:
                     NavigationStack {
                         JournalListView()
@@ -37,6 +41,15 @@ struct ContentView: View {
 
             // カスタムタブバー
             CustomTabBar(selectedTab: $selectedTab)
+        }
+        .environmentObject(coachStore)
+        .environmentObject(journalViewModel)
+        .environmentObject(authStore)
+        .environmentObject(taskViewModel)
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToCoachChat)) { _ in
+            selectedTab = 1
+            // CoachHomeView側でshowingChatをトリガー
+            coachStore.shouldOpenChat = true
         }
         .ignoresSafeArea(.keyboard)
     }

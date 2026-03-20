@@ -20,31 +20,48 @@ struct DiaryPickerView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                ForEach(journalViewModel.allEntries.prefix(20)) { entry in
-                    Button(action: { onSelect(entry) }) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(dateFormatter.string(from: entry.date))
-                                .font(DesignSystem.Fonts.caption)
-                                .foregroundColor(.secondary)
+            Group {
+                if journalViewModel.allEntries.isEmpty {
+                    EmptyStateView(
+                        icon: "book",
+                        title: "日記がありません",
+                        subtitle: "日記を書くと、ここから選んでコーチに話せます"
+                    )
+                } else {
+                    ScrollView {
+                        VStack(spacing: DesignSystem.Spacing.sm) {
+                            ForEach(journalViewModel.allEntries.prefix(20)) { entry in
+                                Button(action: { onSelect(entry) }) {
+                                    SurfaceCard {
+                                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                                            Text(dateFormatter.string(from: entry.date))
+                                                .font(DesignSystem.Fonts.caption)
+                                                .foregroundStyle(DesignSystem.Colors.textTertiary)
 
-                            Text(entry.text)
-                                .font(DesignSystem.Fonts.body)
-                                .lineLimit(2)
-                                .foregroundColor(.primary)
+                                            Text(entry.text)
+                                                .font(DesignSystem.Fonts.body)
+                                                .foregroundStyle(DesignSystem.Colors.textPrimary)
+                                                .lineLimit(2)
+                                                .multilineTextAlignment(.leading)
 
-                            if !entry.tags.isEmpty {
-                                HStack {
-                                    ForEach(entry.tags.prefix(3), id: \.self) { tag in
-                                        TagChip(text: tag)
+                                            if !entry.tags.isEmpty {
+                                                HStack(spacing: DesignSystem.Spacing.xs) {
+                                                    ForEach(entry.tags.prefix(3), id: \.self) { tag in
+                                                        TagChip(text: tag)
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
+                                .buttonStyle(.plain)
                             }
                         }
-                        .padding(.vertical, 4)
+                        .padding(DesignSystem.Spacing.lg)
                     }
                 }
             }
+            .background(DesignSystem.Colors.background)
             .navigationTitle("日記を選択")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -52,6 +69,7 @@ struct DiaryPickerView: View {
                     Button("キャンセル") {
                         dismiss()
                     }
+                    .foregroundStyle(DesignSystem.Colors.accent)
                 }
             }
         }
