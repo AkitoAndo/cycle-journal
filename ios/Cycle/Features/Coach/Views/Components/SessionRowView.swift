@@ -16,30 +16,29 @@ struct SessionRowView: View {
     }()
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(dateFormatter.string(from: session.createdAt))
-                    .font(DesignSystem.Fonts.subheadline)
-                    .foregroundColor(.secondary)
-
-                Text(session.summary ?? session.firstUserMessage ?? "会話")
-                    .font(DesignSystem.Fonts.body)
-                    .lineLimit(1)
-
-                if let emotion = session.emotionLabel {
-                    Text(emotion)
-                        .font(DesignSystem.Fonts.caption)
+        SurfaceCard {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(dateFormatter.string(from: session.createdAt))
+                        .font(DesignSystem.Fonts.subheadline)
                         .foregroundColor(.secondary)
+
+                    Text(session.summary ?? session.firstUserMessage ?? "会話")
+                        .font(DesignSystem.Fonts.body)
+                        .lineLimit(1)
+
+                    if let emotion = session.emotionLabel {
+                        Text(emotion)
+                            .font(DesignSystem.Fonts.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .foregroundColor(.secondary)
             }
-
-            Spacer()
-
-            Image(systemName: "chevron.right")
-                .foregroundColor(.secondary)
         }
-        .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
     }
 }

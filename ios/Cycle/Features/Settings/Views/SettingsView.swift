@@ -28,7 +28,7 @@ struct SettingsView: View {
                     HStack {
                         Image(systemName: "person.circle.fill")
                             .font(DesignSystem.Fonts.screenTitle)
-                            .foregroundColor(.green)
+                            .foregroundStyle(DesignSystem.Colors.accent)
 
                         VStack(alignment: .leading) {
                             if let user = authStore.currentUser {
@@ -141,6 +141,7 @@ struct SettingsView: View {
                 #endif
             }
             .navigationTitle("設定")
+            .modifier(GlassNavBarModifier())
             .sheet(isPresented: $showingPrivacyPolicy) {
                 WebDocumentView(title: "プライバシーポリシー", urlString: "https://example.com/privacy")
             }
@@ -221,7 +222,7 @@ struct DataExportView: View {
 
                 Image(systemName: "square.and.arrow.up")
                     .font(DesignSystem.Fonts.heroIcon)
-                    .foregroundColor(.blue)
+                    .foregroundStyle(DesignSystem.Colors.accent)
 
                 VStack(spacing: 8) {
                     Text("データエクスポート")
@@ -238,7 +239,7 @@ struct DataExportView: View {
 
                 if exportComplete {
                     Label("エクスポート完了", systemImage: "checkmark.circle.fill")
-                        .foregroundColor(.green)
+                        .foregroundStyle(DesignSystem.Colors.accent)
                         .font(DesignSystem.Fonts.button)
                 } else {
                     Button(action: exportData) {
@@ -253,7 +254,7 @@ struct DataExportView: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(Color.blue)
+                    .background(DesignSystem.Colors.accent)
                     .cornerRadius(12)
                     .disabled(isExporting)
                 }

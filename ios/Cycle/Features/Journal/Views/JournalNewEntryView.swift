@@ -26,6 +26,7 @@ struct JournalNewEntryView: View {
             )
             .navigationTitle("新しいエントリ")
             .navigationBarTitleDisplayMode(.inline)
+            .modifier(GlassNavBarModifier())
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("キャンセル") {

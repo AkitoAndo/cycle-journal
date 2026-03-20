@@ -47,6 +47,7 @@ struct DiaryPickerView: View {
             }
             .navigationTitle("日記を選択")
             .navigationBarTitleDisplayMode(.inline)
+            .modifier(GlassNavBarModifier())
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("キャンセル") {

@@ -2,8 +2,9 @@
 //  IconCircle.swift
 //  Cycle
 //
-//  円形アイコン表示（グラデーション背景付き）
-//  コーチビジュアル、プロフィールアイコン等で共通利用
+//  円形アイコン表示
+//  iOS 26+: Liquid Glass 背景
+//  iOS 17-25: グラデーション背景
 //
 
 import SwiftUI
@@ -23,15 +24,22 @@ struct IconCircle: View {
 
     var body: some View {
         ZStack {
-            Circle()
-                .fill(
-                    LinearGradient(
-                        colors: [color.opacity(0.3), color.opacity(0.1)],
-                        startPoint: .top,
-                        endPoint: .bottom
+            if #available(iOS 26.0, *) {
+                Circle()
+                    .fill(.clear)
+                    .frame(width: size, height: size)
+                    .glassEffect(.regular, in: .circle)
+            } else {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [color.opacity(0.3), color.opacity(0.1)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
                     )
-                )
-                .frame(width: size, height: size)
+                    .frame(width: size, height: size)
+            }
 
             Image(systemName: icon)
                 .font(.system(size: size * iconScale))

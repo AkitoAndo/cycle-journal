@@ -53,6 +53,7 @@ struct TaskPreviewView: View {
             .background(DesignSystem.Colors.background)
             .navigationTitle("タスクプレビュー")
             .navigationBarTitleDisplayMode(.inline)
+            .modifier(GlassNavBarModifier())
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("閉じる") {
@@ -72,17 +73,11 @@ struct TaskPreviewView: View {
                 .font(DesignSystem.Fonts.headline)
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
 
-            Text(task.title)
-                .font(DesignSystem.Fonts.body)
-                .foregroundStyle(DesignSystem.Colors.textPrimary)
-                .padding(DesignSystem.Spacing.lg)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(DesignSystem.Colors.surface)
-                .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous)
-                        .stroke(DesignSystem.Colors.grey.opacity(0.6), lineWidth: 0.5)
-                )
+            SurfaceCard {
+                Text(task.title)
+                    .font(DesignSystem.Fonts.body)
+                    .foregroundStyle(DesignSystem.Colors.textPrimary)
+            }
         }
         .padding(.horizontal, DesignSystem.Spacing.lg)
     }
@@ -97,17 +92,11 @@ struct TaskPreviewView: View {
                 .font(DesignSystem.Fonts.headline)
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
 
-            Text(content)
-                .font(DesignSystem.Fonts.body)
-                .foregroundStyle(DesignSystem.Colors.textPrimary)
-                .padding(DesignSystem.Spacing.lg)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(DesignSystem.Colors.surface)
-                .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md))
-                .overlay(
-                    RoundedRectangle(cornerRadius: DesignSystem.Spacing.md)
-                        .stroke(DesignSystem.Colors.grey.opacity(0.6), lineWidth: 0.5)
-                )
+            SurfaceCard {
+                Text(content)
+                    .font(DesignSystem.Fonts.body)
+                    .foregroundStyle(DesignSystem.Colors.textPrimary)
+            }
         }
         .padding(.horizontal, DesignSystem.Spacing.lg)
     }

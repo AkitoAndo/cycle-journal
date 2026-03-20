@@ -24,6 +24,7 @@ struct CoachChatView: View {
             }
             .navigationTitle("Cycle との会話")
             .navigationBarTitleDisplayMode(.inline)
+            .modifier(GlassNavBarModifier())
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("終了") {
@@ -107,8 +108,7 @@ struct CoachChatView: View {
                     .focused($isTextFieldFocused)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(20)
+                    .modifier(ChatInputBackground())
                     .onSubmit {
                         sendMessage()
                     }
@@ -116,13 +116,13 @@ struct CoachChatView: View {
                 Button(action: sendMessage) {
                     Image(systemName: "arrow.up.circle.fill")
                         .font(.system(size: 32))
-                        .foregroundColor(canSend ? .green : .gray)
+                        .foregroundStyle(canSend ? DesignSystem.Colors.accent : DesignSystem.Colors.grey)
                 }
                 .disabled(!canSend)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
-            .background(Color(.systemBackground))
+            .background(DesignSystem.Colors.background)
         }
     }
 
@@ -177,9 +177,9 @@ struct MessageBubbleView: View {
                 // コーチアバター
                 Image(systemName: "tree")
                     .font(.system(size: DesignSystem.FontSize.title3))
-                    .foregroundColor(.green)
+                    .foregroundStyle(DesignSystem.Colors.accent)
                     .frame(width: 32, height: 32)
-                    .background(Color.green.opacity(0.2))
+                    .background(DesignSystem.Colors.accentLight.opacity(0.3))
                     .clipShape(Circle())
             }
 
@@ -190,10 +190,7 @@ struct MessageBubbleView: View {
                     .foregroundColor(message.role == .user ? .white : .primary)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
-                    .background(
-                        message.role == .user ? Color.blue : Color(.systemGray5)
-                    )
-                    .cornerRadius(18)
+                    .modifier(ChatBubbleBackground(isUser: message.role == .user))
 
                 // タイムスタンプ
                 Text(timeFormatter.string(from: message.createdAt))
@@ -218,23 +215,22 @@ struct TypingIndicatorView: View {
             // コーチアバター
             Image(systemName: "tree")
                 .font(.system(size: DesignSystem.FontSize.title3))
-                .foregroundColor(.green)
+                .foregroundStyle(DesignSystem.Colors.accent)
                 .frame(width: 32, height: 32)
-                .background(Color.green.opacity(0.2))
+                .background(DesignSystem.Colors.accentLight.opacity(0.3))
                 .clipShape(Circle())
 
             HStack(spacing: 4) {
                 ForEach(0..<3) { index in
                     Circle()
-                        .fill(Color.gray)
+                        .fill(DesignSystem.Colors.grey)
                         .frame(width: 8, height: 8)
                         .offset(y: animationOffset(for: index))
                 }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .background(Color(.systemGray5))
-            .cornerRadius(18)
+            .modifier(ChatBubbleBackground(isUser: false))
 
             Spacer(minLength: 60)
         }
@@ -251,6 +247,43 @@ struct TypingIndicatorView: View {
     private func animationOffset(for index: Int) -> CGFloat {
         let delay = Double(index) * 0.15
         return animationOffset * cos(delay * .pi)
+    }
+}
+
+// MARK: - Chat Input Background Modifier
+
+private struct ChatInputBackground: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                .glassEffect(.regular, in: .capsule)
+        } else {
+            content
+                .background(DesignSystem.Colors.surface)
+                .cornerRadius(20)
+        }
+    }
+}
+
+// MARK: - Chat Bubble Background Modifier
+
+private struct ChatBubbleBackground: ViewModifier {
+    let isUser: Bool
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                .background(
+                    isUser ? DesignSystem.Colors.accent : DesignSystem.Colors.greyLight
+                )
+                .glassEffect(.regular, in: .rect(cornerRadius: 18))
+        } else {
+            content
+                .background(
+                    isUser ? DesignSystem.Colors.accent : DesignSystem.Colors.greyLight
+                )
+                .cornerRadius(18)
+        }
     }
 }
 

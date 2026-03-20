@@ -39,7 +39,7 @@ struct SessionHistoryView: View {
                             if let emotion = session.emotionLabel {
                                 Text(emotion)
                                     .font(DesignSystem.Fonts.caption)
-                                    .foregroundColor(.blue)
+                                    .foregroundStyle(DesignSystem.Colors.accent)
                             }
                         }
                         .padding(.vertical, 4)
@@ -49,6 +49,7 @@ struct SessionHistoryView: View {
             }
             .navigationTitle("会話履歴")
             .navigationBarTitleDisplayMode(.inline)
+            .modifier(GlassNavBarModifier())
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("完了") {

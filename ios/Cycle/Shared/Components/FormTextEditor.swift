@@ -3,7 +3,8 @@
 //  Cycle
 //
 //  ラベル付き複数行テキストエディタ
-//  タスク詳細・日記本文・振り返り入力等で共通利用
+//  iOS 26+: Liquid Glass 背景
+//  iOS 17-25: surface背景 + ボーダー
 //
 
 import SwiftUI
@@ -31,12 +32,7 @@ struct FormTextEditor: View {
                 .scrollContentBackground(.hidden)
                 .frame(minHeight: minHeight)
                 .padding(DesignSystem.Spacing.md)
-                .background(DesignSystem.Colors.surface)
-                .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md))
-                .overlay(
-                    RoundedRectangle(cornerRadius: DesignSystem.Spacing.md)
-                        .stroke(DesignSystem.Colors.grey.opacity(0.6), lineWidth: 0.5)
-                )
+                .modifier(FormFieldBackground())
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
                 .font(DesignSystem.Fonts.body)
                 .tint(DesignSystem.Colors.accent)

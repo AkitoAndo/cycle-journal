@@ -63,6 +63,7 @@ struct TaskEditView: View {
             .background(DesignSystem.Colors.background)
             .navigationTitle("タスクを編集")
             .navigationBarTitleDisplayMode(.inline)
+            .modifier(GlassNavBarModifier())
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("キャンセル") {
@@ -81,48 +82,13 @@ struct TaskEditView: View {
     }
 
     private var titleSection: some View {
-        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
-            Text("タイトル")
-                .font(DesignSystem.Fonts.headline)
-                .foregroundStyle(DesignSystem.Colors.textPrimary)
-
-            TextField("", text: $editTitle)
-                .textFieldStyle(.plain)
-                .font(DesignSystem.Fonts.body)
-                .foregroundStyle(DesignSystem.Colors.textPrimary)
-                .padding(DesignSystem.Spacing.lg)
-                .background(DesignSystem.Colors.surface)
-                .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous)
-                        .stroke(DesignSystem.Colors.grey.opacity(0.6), lineWidth: 0.5)
-                )
-                .tint(DesignSystem.Colors.accent)
-        }
-        .padding(.horizontal, DesignSystem.Spacing.lg)
+        FormTextField(label: "タイトル", text: $editTitle)
+            .padding(.horizontal, DesignSystem.Spacing.lg)
     }
 
     private var descriptionSection: some View {
-        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
-            Text("詳細")
-                .font(DesignSystem.Fonts.headline)
-                .foregroundStyle(DesignSystem.Colors.textPrimary)
-
-            TextEditor(text: $editDescription)
-                .scrollContentBackground(.hidden)
-                .frame(minHeight: 120)
-                .padding(DesignSystem.Spacing.md)
-                .background(DesignSystem.Colors.surface)
-                .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md))
-                .overlay(
-                    RoundedRectangle(cornerRadius: DesignSystem.Spacing.md)
-                        .stroke(DesignSystem.Colors.grey.opacity(0.6), lineWidth: 0.5)
-                )
-                .foregroundStyle(DesignSystem.Colors.textPrimary)
-                .font(DesignSystem.Fonts.body)
-                .tint(DesignSystem.Colors.accent)
-        }
-        .padding(.horizontal, DesignSystem.Spacing.lg)
+        FormTextEditor(label: "詳細", text: $editDescription)
+            .padding(.horizontal, DesignSystem.Spacing.lg)
     }
 
     // MARK: - Section Contents

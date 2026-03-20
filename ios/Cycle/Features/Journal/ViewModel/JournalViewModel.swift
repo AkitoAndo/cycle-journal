@@ -52,6 +52,12 @@ final class JournalViewModel: ObservableObject {
         availableTags = loadAvailableTags()
     }
 
+    /// データをリロード（外部からのデータ変更後に呼ぶ）
+    func reloadData() {
+        entries = JournalStore.loadAll()
+        availableTags = loadAvailableTags()
+    }
+
     // MARK: - Computed Properties
 
     /// 選択された日付のエントリ（新しい順）

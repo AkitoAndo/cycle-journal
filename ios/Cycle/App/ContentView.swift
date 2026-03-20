@@ -8,41 +8,105 @@
 import SwiftUI
 
 struct ContentView: View {
+    @EnvironmentObject var journalViewModel: JournalViewModel
+    @EnvironmentObject var taskViewModel: TaskViewModel
+    @EnvironmentObject var coachStore: CoachStore
+    @EnvironmentObject var authStore: AuthStore
+
     @State private var selectedTab = 0
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            // メインコンテンツ
-            Group {
-                switch selectedTab {
-                case 0:
-                    NavigationStack {
-                        JournalListView()
-                    }
-                case 1:
-                    CoachView_Placeholder()
-                case 2:
-                    NavigationStack {
-                        TaskListView()
-                    }
-                case 3:
-                    SettingsView_Placeholder()
-                default:
-                    NavigationStack {
-                        JournalListView()
-                    }
-                }
-            }
-            .padding(.bottom, 55)
+        if #available(iOS 26.0, *) {
+            liquidGlassLayout
+        } else {
+            legacyLayout
+        }
+    }
 
-            // カスタムタブバー
+    // MARK: - iOS 26+ Liquid Glass Layout
+
+    @available(iOS 26.0, *)
+    private var liquidGlassLayout: some View {
+        ZStack(alignment: .bottom) {
+            // コンテンツはタブバーの裏まで広がる（透けて見える）
+            tabContent
+                .ignoresSafeArea(.keyboard)
+
+            // フローティング Liquid Glass タブバー
+            GlassEffectContainer {
+                HStack(spacing: 0) {
+                    TabBarButton(
+                        icon: "leaf",
+                        label: "Journal",
+                        isSelected: selectedTab == 0,
+                        action: { selectedTab = 0 }
+                    )
+                    TabBarButton(
+                        icon: "bubble.left.and.bubble.right",
+                        label: "Coach",
+                        isSelected: selectedTab == 1,
+                        action: { selectedTab = 1 }
+                    )
+                    TabBarButton(
+                        icon: "checklist",
+                        label: "Tasks",
+                        isSelected: selectedTab == 2,
+                        action: { selectedTab = 2 }
+                    )
+                    TabBarButton(
+                        icon: "gearshape",
+                        label: "Settings",
+                        isSelected: selectedTab == 3,
+                        action: { selectedTab = 3 }
+                    )
+                }
+                .frame(height: 55)
+                .glassEffect(.regular, in: .capsule)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 8)
+            }
+        }
+    }
+
+    // MARK: - iOS 17-25 Legacy Layout
+
+    private var legacyLayout: some View {
+        ZStack(alignment: .bottom) {
+            tabContent
+                .padding(.bottom, 55)
+
             CustomTabBar(selectedTab: $selectedTab)
         }
         .ignoresSafeArea(.keyboard)
     }
+
+    // MARK: - Tab Content
+
+    private var tabContent: some View {
+        Group {
+            switch selectedTab {
+            case 0:
+                NavigationStack {
+                    JournalListView()
+                }
+            case 1:
+                CoachHomeView()
+            case 2:
+                NavigationStack {
+                    TaskListView()
+                }
+            case 3:
+                SettingsView()
+            default:
+                NavigationStack {
+                    JournalListView()
+                }
+            }
+        }
+    }
 }
 
-// MARK: - Custom Tab Bar
+// MARK: - Custom Tab Bar (iOS 17-25)
 
 struct CustomTabBar: View {
     @Binding var selectedTab: Int
@@ -55,21 +119,18 @@ struct CustomTabBar: View {
                 isSelected: selectedTab == 0,
                 action: { selectedTab = 0 }
             )
-
             TabBarButton(
                 icon: "bubble.left.and.bubble.right",
                 label: "Coach",
                 isSelected: selectedTab == 1,
                 action: { selectedTab = 1 }
             )
-
             TabBarButton(
                 icon: "checklist",
                 label: "Tasks",
                 isSelected: selectedTab == 2,
                 action: { selectedTab = 2 }
             )
-
             TabBarButton(
                 icon: "gearshape",
                 label: "Settings",
@@ -81,6 +142,8 @@ struct CustomTabBar: View {
         .background(DesignSystem.Colors.background)
     }
 }
+
+// MARK: - Tab Bar Button
 
 struct TabBarButton: View {
     let icon: String
@@ -95,41 +158,11 @@ struct TabBarButton: View {
                     .font(.system(size: DesignSystem.FontSize.title3))
 
                 Text(label)
-                    .font(.system(size: 10))
+                    .font(DesignSystem.Fonts.caption2)
             }
-            .foregroundStyle(isSelected ? DesignSystem.Colors.accent : DesignSystem.Colors.textSecondary)
+            .foregroundStyle(isSelected ? DesignSystem.Colors.accent : DesignSystem.Colors.textTertiary)
             .frame(maxWidth: .infinity)
         }
         .accessibilityIdentifier("tab_\(label)")
-    }
-}
-
-// MARK: - Placeholders
-
-private struct CoachView_Placeholder: View {
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 16) {
-                Text("Coach MVP").font(DesignSystem.Fonts.sectionTitle)
-                Text("ここにコーチ画面が入ります。")
-                    .foregroundStyle(.secondary)
-            }
-            .padding()
-            .navigationTitle("Coach")
-        }
-    }
-}
-
-private struct SettingsView_Placeholder: View {
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 16) {
-                Text("Settings MVP").font(DesignSystem.Fonts.sectionTitle)
-                Text("ここに設定画面が入ります。")
-                    .foregroundStyle(.secondary)
-            }
-            .padding()
-            .navigationTitle("Settings")
-        }
     }
 }

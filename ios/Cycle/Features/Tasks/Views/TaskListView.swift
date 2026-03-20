@@ -12,7 +12,7 @@ import SwiftUI
 struct TaskListView: View {
     // MARK: - Properties
 
-    @StateObject private var vm = TaskViewModel()
+    @EnvironmentObject var vm: TaskViewModel
     @State private var showNewTask = false
     @State private var editingTask: TaskItem?
     @State private var previewingTask: TaskItem?
@@ -118,6 +118,14 @@ struct TaskListView: View {
             showNewTask = true
         }
         .padding(.trailing, DesignSystem.Spacing.xl + 2)
-        .padding(.bottom, DesignSystem.Spacing.xl - 2)
+        .padding(.bottom, fabBottomPadding)
+    }
+
+    private var fabBottomPadding: CGFloat {
+        if #available(iOS 26.0, *) {
+            return 80
+        } else {
+            return DesignSystem.Spacing.xl - 2
+        }
     }
 }

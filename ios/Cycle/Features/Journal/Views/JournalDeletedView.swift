@@ -17,6 +17,7 @@ struct JournalDeletedView: View {
             content
                 .navigationTitle("最近削除した項目")
                 .navigationBarTitleDisplayMode(.inline)
+                .modifier(GlassNavBarModifier())
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("閉じる") {
@@ -84,9 +85,7 @@ struct JournalDeletedRow: View {
 
     var body: some View {
         entryContent
-            .listRowInsets(rowInsets)
-            .listRowSeparator(.hidden)
-            .listRowBackground(Color.clear)
+            .customListRowStyle()
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 permanentlyDeleteButton
                 restoreButton
@@ -94,46 +93,23 @@ struct JournalDeletedRow: View {
     }
 
     private var entryContent: some View {
-        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
-            Text(entry.text)
-                .font(DesignSystem.Fonts.body)
-                .foregroundStyle(DesignSystem.Colors.textPrimary)
-                .lineSpacing(4)
-                .lineLimit(3)
+        SurfaceCard {
+            VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+                Text(entry.text)
+                    .font(DesignSystem.Fonts.body)
+                    .foregroundStyle(DesignSystem.Colors.textPrimary)
+                    .lineSpacing(4)
+                    .lineLimit(3)
 
-            dateText
+                dateText
+            }
         }
-        .padding(DesignSystem.Spacing.lg)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(DesignSystem.Colors.surface)
-        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous))
-        .overlay(borderOverlay)
-        .shadow(
-            color: DesignSystem.Colors.brownDark.opacity(0.08),
-            radius: 4,
-            x: 0,
-            y: 2
-        )
     }
 
     private var dateText: some View {
         Text(entry.date.formatted(.dateTime.year().month().day().hour().minute()))
             .font(DesignSystem.Fonts.caption)
             .foregroundStyle(DesignSystem.Colors.textSecondary)
-    }
-
-    private var borderOverlay: some View {
-        RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous)
-            .stroke(DesignSystem.Colors.grey.opacity(0.6), lineWidth: 0.5)
-    }
-
-    private var rowInsets: EdgeInsets {
-        EdgeInsets(
-            top: DesignSystem.Spacing.xs,
-            leading: DesignSystem.Spacing.lg,
-            bottom: DesignSystem.Spacing.xs,
-            trailing: DesignSystem.Spacing.lg
-        )
     }
 
     private var permanentlyDeleteButton: some View {
@@ -148,6 +124,6 @@ struct JournalDeletedRow: View {
             Label("復元", systemImage: "arrow.uturn.backward")
                 .labelStyle(.iconOnly)
         }
-        .tint(.blue)
+        .tint(DesignSystem.Colors.accent)
     }
 }

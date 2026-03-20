@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     gcp_project_id: str = "cycle-journal"
     gcp_region: str = "asia-northeast1"
     apple_bundle_id: str = "com.cycle.journal"
+    google_client_id: str = ""  # iOS用Google OAuth Client ID
 
     # Vertex AI Claude
     claude_model: str = "claude-sonnet-4-20250514"

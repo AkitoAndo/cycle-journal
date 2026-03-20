@@ -33,9 +33,10 @@ struct CoachHomeView: View {
                 }
                 .padding()
             }
-            .background(Color(.systemGroupedBackground))
+            .background(DesignSystem.Colors.background)
             .navigationTitle("Cycle")
             .navigationBarTitleDisplayMode(.inline)
+            .modifier(GlassNavBarModifier())
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showingHistory = true }) {
@@ -71,24 +72,8 @@ struct CoachHomeView: View {
     // MARK: - Components
 
     private var coachVisual: some View {
-        VStack(spacing: 8) {
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [Color.green.opacity(0.3), Color.green.opacity(0.1)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .frame(width: 120, height: 120)
-
-                Image(systemName: "tree")
-                    .font(DesignSystem.Fonts.heroIcon)
-                    .foregroundColor(.green)
-            }
-        }
-        .padding(.top, 20)
+        IconCircle(icon: "tree", size: 120, color: DesignSystem.Colors.accent)
+            .padding(.top, 20)
     }
 
     private var greetingSection: some View {
@@ -108,34 +93,10 @@ struct CoachHomeView: View {
 
     private var actionButtons: some View {
         VStack(spacing: 12) {
-            Button(action: startNewChat) {
-                HStack {
-                    Image(systemName: "bubble.left")
-                    Text("話しかける")
-                }
-                .font(DesignSystem.Fonts.button)
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.green)
-                .cornerRadius(12)
-            }
+            PrimaryButton(title: "話しかける", icon: "bubble.left", color: DesignSystem.Colors.accent, action: startNewChat)
 
-            Button(action: { showingDiaryPicker = true }) {
-                HStack {
-                    Image(systemName: "book")
-                    Text("日記から話す")
-                }
-                .font(DesignSystem.Fonts.button)
-                .foregroundColor(.green)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.green.opacity(0.1))
-                .cornerRadius(12)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.green, lineWidth: 1)
-                )
+            SecondaryButton(title: "日記から話す", icon: "book", color: DesignSystem.Colors.accent) {
+                showingDiaryPicker = true
             }
         }
         .padding(.horizontal)
@@ -143,9 +104,7 @@ struct CoachHomeView: View {
 
     private var recentSessionsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("最近の会話")
-                .font(DesignSystem.Fonts.button)
-                .foregroundColor(.secondary)
+            SectionLabel(title: "最近の会話")
 
             ForEach(coachStore.recentSessions) { session in
                 SessionRowView(session: session)

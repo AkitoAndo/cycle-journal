@@ -21,8 +21,11 @@ struct SignInView: View {
 
             Spacer()
 
-            // Sign in with Apple ボタン
-            signInButton
+            // サインインボタン
+            VStack(spacing: 12) {
+                appleSignInButton
+                googleSignInButton
+            }
 
             // エラー表示
             if let error = authStore.error {
@@ -43,7 +46,7 @@ struct SignInView: View {
                 .frame(height: 40)
         }
         .padding()
-        .background(Color(.systemBackground))
+        .background(DesignSystem.Colors.background)
     }
 
     // MARK: - Components
@@ -54,7 +57,7 @@ struct SignInView: View {
                 Circle()
                     .fill(
                         LinearGradient(
-                            colors: [Color.green.opacity(0.3), Color.green.opacity(0.1)],
+                            colors: [DesignSystem.Colors.accentLight.opacity(0.5), DesignSystem.Colors.accentLight.opacity(0.3)],
                             startPoint: .top,
                             endPoint: .bottom
                         )
@@ -63,7 +66,7 @@ struct SignInView: View {
 
                 Image(systemName: "tree")
                     .font(DesignSystem.Fonts.heroIcon)
-                    .foregroundColor(.green)
+                    .foregroundStyle(DesignSystem.Colors.accent)
             }
 
             Text("Cycle")
@@ -85,12 +88,10 @@ struct SignInView: View {
         }
     }
 
-    private var signInButton: some View {
+    private var appleSignInButton: some View {
         SignInWithAppleButton(.signIn) { request in
             request.requestedScopes = [.fullName, .email]
-        } onCompletion: { _ in
-            // Delegateパターンで処理するため、ここでは何もしない
-        }
+        } onCompletion: { _ in }
         .signInWithAppleButtonStyle(.black)
         .frame(height: 50)
         .cornerRadius(8)
@@ -101,28 +102,24 @@ struct SignInView: View {
         .disabled(authStore.isLoading)
         .opacity(authStore.isLoading ? 0.6 : 1.0)
     }
-}
 
-// MARK: - Custom Sign In Button (Alternative)
-
-struct CustomSignInWithAppleButton: View {
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
+    private var googleSignInButton: some View {
+        Button(action: { authStore.signInWithGoogle() }) {
             HStack(spacing: 8) {
-                Image(systemName: "apple.logo")
+                Image(systemName: "g.circle.fill")
                     .font(DesignSystem.Fonts.sectionTitle)
-                Text("Appleでサインイン")
+                Text("Googleでサインイン")
                     .font(DesignSystem.Fonts.button)
             }
             .foregroundColor(.white)
             .frame(maxWidth: .infinity)
             .frame(height: 50)
-            .background(Color.black)
+            .background(Color(red: 0.26, green: 0.52, blue: 0.96))
             .cornerRadius(8)
         }
         .padding(.horizontal, 40)
+        .disabled(authStore.isLoading)
+        .opacity(authStore.isLoading ? 0.6 : 1.0)
     }
 }
 

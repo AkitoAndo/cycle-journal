@@ -9,9 +9,14 @@ class VerifyTokenRequest(BaseModel):
     identity_token: str
 
 
+class GoogleVerifyRequest(BaseModel):
+    id_token: str
+
+
 class VerifyTokenData(BaseModel):
     user_id: str
-    apple_user_id: str
+    apple_user_id: str | None = None
+    google_user_id: str | None = None
     email: str | None = None
     is_new_user: bool
     created_at: datetime

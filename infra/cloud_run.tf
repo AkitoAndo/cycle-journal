@@ -48,6 +48,11 @@ resource "google_cloud_run_v2_service" "api" {
         name  = "USE_LANGGRAPH"
         value = var.use_langgraph ? "true" : "false"
       }
+
+      env {
+        name  = "GOOGLE_CLIENT_ID"
+        value = var.google_client_id
+      }
     }
   }
 

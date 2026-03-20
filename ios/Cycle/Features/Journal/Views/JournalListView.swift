@@ -108,6 +108,14 @@ struct JournalListView: View {
             showNewEntry = true
         }
         .padding(.trailing, DesignSystem.Spacing.xl + 2)
-        .padding(.bottom, DesignSystem.Spacing.xl - 2)
+        .padding(.bottom, fabBottomPadding)
+    }
+
+    private var fabBottomPadding: CGFloat {
+        if #available(iOS 26.0, *) {
+            return 80
+        } else {
+            return DesignSystem.Spacing.xl - 2
+        }
     }
 }

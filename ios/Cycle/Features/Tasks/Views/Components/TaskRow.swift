@@ -20,9 +20,7 @@ struct TaskRow: View {
 
     var body: some View {
         taskContent
-            .listRowInsets(rowInsets)
-            .listRowSeparator(.hidden)
-            .listRowBackground(Color.clear)
+            .customListRowStyle()
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 if !isReorderMode {
                     deleteButton
@@ -38,22 +36,13 @@ struct TaskRow: View {
     // MARK: - Task Content
 
     private var taskContent: some View {
-        HStack(spacing: DesignSystem.Spacing.md) {
-            checkboxButton
-            taskTitle
-            Spacer()
+        SurfaceCard {
+            HStack(spacing: DesignSystem.Spacing.md) {
+                checkboxButton
+                taskTitle
+                Spacer()
+            }
         }
-        .padding(DesignSystem.Spacing.lg)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(DesignSystem.Colors.surface)
-        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous))
-        .overlay(borderOverlay)
-        .shadow(
-            color: DesignSystem.Colors.brownDark.opacity(0.08),
-            radius: 4,
-            x: 0,
-            y: 2
-        )
     }
 
     private var checkboxButton: some View {
@@ -78,19 +67,6 @@ struct TaskRow: View {
             )
     }
 
-    private var borderOverlay: some View {
-        RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous)
-            .stroke(DesignSystem.Colors.grey.opacity(0.6), lineWidth: 0.5)
-    }
-
-    private var rowInsets: EdgeInsets {
-        EdgeInsets(
-            top: DesignSystem.Spacing.xs,
-            leading: DesignSystem.Spacing.lg,
-            bottom: DesignSystem.Spacing.xs,
-            trailing: DesignSystem.Spacing.lg
-        )
-    }
 
     // MARK: - Swipe Actions
 
@@ -122,6 +98,6 @@ struct TaskRow: View {
             Label("アーカイブ", systemImage: "archivebox")
                 .labelStyle(.iconOnly)
         }
-        .tint(.blue)
+        .tint(DesignSystem.Colors.accent)
     }
 }
