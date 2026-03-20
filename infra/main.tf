@@ -8,9 +8,11 @@ terraform {
     }
   }
 
+  # prefix は -backend-config で環境ごとに切り替え
+  # dev:  terraform init -backend-config="prefix=terraform/dev"
+  # prod: terraform init -backend-config="prefix=terraform/prod"
   backend "gcs" {
     bucket = "cycle-journal-tfstate"
-    prefix = "terraform/state"
   }
 }
 
@@ -19,7 +21,7 @@ provider "google" {
   region  = var.region
 }
 
-# API有効化
+# API有効化（冪等 — dev/prod両方で適用しても安全）
 resource "google_project_service" "apis" {
   for_each = toset([
     "run.googleapis.com",
