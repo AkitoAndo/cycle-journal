@@ -27,7 +27,7 @@ struct SignInView: View {
             // エラー表示
             if let error = authStore.error {
                 Text(error)
-                    .font(.caption)
+                    .font(DesignSystem.Fonts.caption)
                     .foregroundColor(.red)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
@@ -62,12 +62,12 @@ struct SignInView: View {
                     .frame(width: 120, height: 120)
 
                 Image(systemName: "tree")
-                    .font(.system(size: 50))
+                    .font(DesignSystem.Fonts.heroIcon)
                     .foregroundColor(.green)
             }
 
             Text("Cycle")
-                .font(.largeTitle)
+                .font(DesignSystem.Fonts.largeTitle)
                 .fontWeight(.bold)
         }
     }
@@ -75,11 +75,11 @@ struct SignInView: View {
     private var appDescription: some View {
         VStack(spacing: 12) {
             Text("自分と向き合う日記アプリ")
-                .font(.title3)
+                .font(DesignSystem.Fonts.sectionTitle)
                 .fontWeight(.medium)
 
             Text("日記を書き、振り返り、\n成長のサイクルを回そう")
-                .font(.body)
+                .font(DesignSystem.Fonts.body)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
         }
@@ -112,9 +112,9 @@ struct CustomSignInWithAppleButton: View {
         Button(action: action) {
             HStack(spacing: 8) {
                 Image(systemName: "apple.logo")
-                    .font(.title3)
+                    .font(DesignSystem.Fonts.sectionTitle)
                 Text("Appleでサインイン")
-                    .font(.headline)
+                    .font(DesignSystem.Fonts.button)
             }
             .foregroundColor(.white)
             .frame(maxWidth: .infinity)

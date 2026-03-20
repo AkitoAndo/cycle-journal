@@ -37,12 +37,21 @@ struct CycleApp: App {
         UICollectionView.appearance().backgroundColor = backgroundColor
     }
 
+    // true にすると起動時に Component Catalog を直接表示（開発確認用）
+    private let showCatalog = false
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .task {
-                    TestDataProvider.setupIfNeeded()
+            if showCatalog {
+                NavigationStack {
+                    ComponentCatalogView()
                 }
+            } else {
+                ContentView()
+                    .task {
+                        TestDataProvider.setupIfNeeded()
+                    }
+            }
         }
     }
 }

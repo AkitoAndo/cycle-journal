@@ -37,6 +37,43 @@ enum DesignSystem {
         static let largeTitle: CGFloat = 34
     }
 
+    /// フォントスタイルのプリセット
+    /// 使用例: .font(DesignSystem.Fonts.screenTitle)
+    enum Fonts {
+        /// 画面タイトル（28pt bold）— Today's Focus, 3月 等
+        static let screenTitle: Font = .system(size: FontSize.title, weight: .bold)
+        /// セクションタイトル（20pt semibold）— セクション見出し
+        static let sectionTitle: Font = .system(size: FontSize.title3, weight: .semibold)
+        /// ヘッダーアイコン（26pt）— ナビゲーションバーのアイコン
+        static let headerIcon: Font = .system(size: 26)
+        /// 見出し（17pt semibold）— フォームラベル、リスト見出し
+        static let headline: Font = .system(size: FontSize.headline, weight: .semibold)
+        /// 見出し（17pt regular）— 強調しない見出し
+        static let headlineRegular: Font = .system(size: FontSize.headline)
+        /// 本文（16pt）— 通常のテキスト
+        static let body: Font = .system(size: FontSize.body)
+        /// 本文（16pt medium）— やや強調したテキスト
+        static let bodyMedium: Font = .system(size: FontSize.body, weight: .medium)
+        /// 小見出し（15pt）— 補助テキスト
+        static let subheadline: Font = .system(size: 15)
+        /// ラベル（14pt medium）— タブ、フィルタ
+        static let label: Font = .system(size: 14, weight: .medium)
+        /// キャプション（12pt）— 日時、補足情報
+        static let caption: Font = .system(size: FontSize.caption)
+        /// 小キャプション（10pt）— バッジ、タブバーラベル
+        static let caption2: Font = .system(size: 10)
+        /// 大アイコン（48pt）— Empty State のアイコン
+        static let largeIcon: Font = .system(size: 48)
+        /// 特大アイコン（50pt）— コーチのビジュアル
+        static let heroIcon: Font = .system(size: 50)
+        /// ボタンテキスト（17pt semibold）— プライマリボタン
+        static let button: Font = .system(size: FontSize.headline, weight: .semibold)
+        /// 大タイトル（34pt bold）— ログイン画面等
+        static let largeTitle: Font = .system(size: FontSize.largeTitle, weight: .bold)
+        /// タイトル2（24pt semibold）— サブ画面タイトル
+        static let title2: Font = .system(size: FontSize.title2, weight: .semibold)
+    }
+
     enum ComponentSize {
         static let inputHeight: CGFloat = 50
         static let buttonHeight: CGFloat = 44

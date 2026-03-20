@@ -31,7 +31,7 @@ struct JournalHeader: View {
 
     private var monthYearTitle: some View {
         Text(selectedDate.formatted(.dateTime.year().month(.wide)))
-            .font(.system(size: 28, weight: .bold))
+            .font(DesignSystem.Fonts.screenTitle)
             .foregroundStyle(DesignSystem.Colors.textPrimary)
     }
 
@@ -54,7 +54,7 @@ struct JournalHeader: View {
             }
         } label: {
             Image(systemName: "ellipsis.circle")
-                .font(.system(size: 26))
+                .font(DesignSystem.Fonts.headerIcon)
                 .foregroundStyle(DesignSystem.Colors.textSecondary)
         }
         .accessibilityIdentifier("journal_menu")

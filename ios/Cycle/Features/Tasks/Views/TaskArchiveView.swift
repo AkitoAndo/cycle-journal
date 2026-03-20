@@ -47,17 +47,8 @@ struct TaskArchiveView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: DesignSystem.Spacing.lg) {
-            Image(systemName: "archivebox")
-                .font(.system(size: 48))
-                .foregroundStyle(DesignSystem.Colors.textSecondary)
-
-            Text("アーカイブはありません")
-                .font(.system(size: DesignSystem.FontSize.body))
-                .foregroundStyle(DesignSystem.Colors.textSecondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(DesignSystem.Colors.background)
+        EmptyStateView(icon: "archivebox", title: "アーカイブはまだありません", subtitle: "完了したタスクをアーカイブするとここに表示されます")
+            .background(DesignSystem.Colors.background)
     }
 
     private var archiveList: some View {
@@ -80,7 +71,7 @@ struct TaskArchiveView: View {
                     }
                 } header: {
                     Text(archive.date.formatted(.dateTime.year().month().day().weekday(.wide)))
-                        .font(.system(size: DesignSystem.FontSize.caption))
+                        .font(DesignSystem.Fonts.caption)
                         .foregroundStyle(DesignSystem.Colors.textSecondary)
                 }
             }
@@ -131,7 +122,7 @@ struct TaskArchiveRow: View {
 
     private var taskTitle: some View {
         Text(task.title)
-            .font(.system(size: DesignSystem.FontSize.body))
+            .font(DesignSystem.Fonts.body)
             .foregroundStyle(DesignSystem.Colors.textPrimary)
     }
 

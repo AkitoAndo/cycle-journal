@@ -57,7 +57,7 @@ private struct FieldTabButton: View {
     var body: some View {
         Button(action: onTap) {
             Text(field.rawValue)
-                .font(.system(size: DesignSystem.FontSize.body, weight: .medium))
+                .font(DesignSystem.Fonts.bodyMedium)
                 .foregroundStyle(
                     isSelected
                         ? DesignSystem.Colors.background

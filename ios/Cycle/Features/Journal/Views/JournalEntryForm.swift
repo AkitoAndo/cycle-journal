@@ -52,7 +52,7 @@ struct JournalEntryForm: View {
     private var contentSection: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
             Text("内容")
-                .font(.system(size: DesignSystem.FontSize.headline, weight: .semibold))
+                .font(DesignSystem.Fonts.headline)
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
 
             TextEditor(text: $text)
@@ -67,7 +67,7 @@ struct JournalEntryForm: View {
                         .stroke(DesignSystem.Colors.grey.opacity(0.6), lineWidth: 0.5)
                 )
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
-                .font(.system(size: DesignSystem.FontSize.body))
+                .font(DesignSystem.Fonts.body)
                 .tint(DesignSystem.Colors.accent)
         }
         .padding(.horizontal, DesignSystem.Spacing.lg)

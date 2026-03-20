@@ -24,18 +24,18 @@ struct EmptyStateView: View {
             Spacer()
 
             Image(systemName: icon)
-                .font(.system(size: 48))
+                .font(DesignSystem.Fonts.largeIcon)
                 .foregroundStyle(DesignSystem.Colors.textTertiary)
                 .symbolEffect(.pulse.byLayer, options: .repeat(3))
 
             VStack(spacing: DesignSystem.Spacing.sm) {
                 Text(title)
-                    .font(.system(size: DesignSystem.FontSize.headline))
+                    .font(DesignSystem.Fonts.headlineRegular)
                     .foregroundStyle(DesignSystem.Colors.textPrimary)
 
                 if let subtitle = subtitle {
                     Text(subtitle)
-                        .font(.system(size: DesignSystem.FontSize.body))
+                        .font(DesignSystem.Fonts.body)
                         .foregroundStyle(DesignSystem.Colors.textSecondary)
                         .multilineTextAlignment(.center)
                 }

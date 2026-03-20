@@ -94,7 +94,7 @@ struct JournalSearchView: View {
                     if vm.searchViewTab == 1 && !vm.allTags.isEmpty {
                         VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
                             Text("タグで絞り込み")
-                                .font(.system(size: DesignSystem.FontSize.caption))
+                                .font(DesignSystem.Fonts.caption)
                                 .foregroundStyle(DesignSystem.Colors.textSecondary)
 
                             ScrollView(.horizontal, showsIndicators: false) {
@@ -104,7 +104,7 @@ struct JournalSearchView: View {
                                             toggleSearchTag(tag)
                                         }) {
                                             Text(tag)
-                                                .font(.system(size: DesignSystem.FontSize.caption))
+                                                .font(DesignSystem.Fonts.caption)
                                                 .padding(.horizontal, DesignSystem.Spacing.md)
                                                 .padding(.vertical, DesignSystem.Spacing.xs + 2)
                                                 .background(vm.selectedSearchTags.contains(tag) ? DesignSystem.Colors.accent : DesignSystem.Colors.greyLight)
@@ -126,7 +126,7 @@ struct JournalSearchView: View {
                     if !vm.selectedSearchTags.isEmpty {
                         HStack {
                             Text("\(tagSearchResults.count)件の結果")
-                                .font(.system(size: DesignSystem.FontSize.body))
+                                .font(DesignSystem.Fonts.body)
                                 .foregroundStyle(DesignSystem.Colors.textSecondary)
                             Spacer()
                         }
@@ -140,7 +140,7 @@ struct JournalSearchView: View {
                             Spacer()
                             VStack(spacing: DesignSystem.Spacing.lg) {
                                 Image(systemName: "tag")
-                                    .font(.system(size: DesignSystem.FontSize.largeTitle))
+                                    .font(DesignSystem.Fonts.largeTitle)
                                     .foregroundStyle(DesignSystem.Colors.textTertiary)
                                 Text("タグを選択してください")
                                     .foregroundStyle(DesignSystem.Colors.textSecondary)
@@ -190,7 +190,7 @@ struct JournalSearchView: View {
         VStack(spacing: 0) {
             HStack {
                 Text(self.vm.searchText.isEmpty ? "\(self.vm.allEntries.count)件のエントリ" : "\(self.textSearchResults.count)件の結果")
-                    .font(.system(size: DesignSystem.FontSize.body))
+                    .font(DesignSystem.Fonts.body)
                     .foregroundStyle(DesignSystem.Colors.textSecondary)
                 Spacer()
             }
@@ -206,14 +206,7 @@ struct JournalSearchView: View {
     private func entryList(entries: [JournalEntry], showEmptyMessage: String) -> some View {
         List {
             if entries.isEmpty {
-                VStack(spacing: DesignSystem.Spacing.lg) {
-                    Image(systemName: "doc.text.magnifyingglass")
-                        .font(.system(size: DesignSystem.FontSize.largeTitle))
-                        .foregroundStyle(DesignSystem.Colors.textTertiary)
-                    Text(showEmptyMessage)
-                        .foregroundStyle(DesignSystem.Colors.textSecondary)
-                }
-                .frame(maxWidth: .infinity)
+                EmptyStateView(icon: "magnifyingglass", title: "見つかりませんでした")
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
             } else {
@@ -221,17 +214,17 @@ struct JournalSearchView: View {
                     ForEach(entries) { entry in
                         VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
                             Text(entry.text)
-                                .font(.system(size: DesignSystem.FontSize.body))
+                                .font(DesignSystem.Fonts.body)
                                 .foregroundStyle(DesignSystem.Colors.textPrimary)
                                 .lineSpacing(4)
 
                             HStack(spacing: DesignSystem.Spacing.sm) {
                                 Text(entry.date, format: .dateTime.year().month().day())
-                                    .font(.system(size: DesignSystem.FontSize.caption))
+                                    .font(DesignSystem.Fonts.caption)
                                     .foregroundStyle(DesignSystem.Colors.textSecondary)
 
                                 Text(entry.date.timeHM)
-                                    .font(.system(size: DesignSystem.FontSize.caption))
+                                    .font(DesignSystem.Fonts.caption)
                                     .foregroundStyle(DesignSystem.Colors.textSecondary)
 
                                 if !entry.tags.isEmpty {

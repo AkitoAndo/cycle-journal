@@ -22,12 +22,12 @@ struct TagManagementView: View {
                 // Input area
                 HStack(spacing: DesignSystem.Spacing.md) {
                     Image(systemName: "tag")
-                        .font(.system(size: DesignSystem.FontSize.body))
+                        .font(DesignSystem.Fonts.body)
                         .foregroundStyle(DesignSystem.Colors.textSecondary)
 
                     TextField("新しいタグを追加", text: $newTagText)
                         .textFieldStyle(.plain)
-                        .font(.system(size: DesignSystem.FontSize.body))
+                        .font(DesignSystem.Fonts.body)
                         .foregroundStyle(DesignSystem.Colors.textPrimary)
                         .focused($isInputFocused)
                         .submitLabel(.done)
@@ -63,7 +63,7 @@ struct TagManagementView: View {
                         ForEach(vm.allTags, id: \.self) { tag in
                             HStack {
                                 Text(tag)
-                                    .font(.system(size: DesignSystem.FontSize.body))
+                                    .font(DesignSystem.Fonts.body)
                                     .foregroundStyle(DesignSystem.Colors.textPrimary)
                                 Spacer()
                             }
@@ -144,27 +144,7 @@ struct TagManagementView: View {
     }
 
     private var emptyStateView: some View {
-        VStack(spacing: DesignSystem.Spacing.lg) {
-            Spacer()
-
-            Image(systemName: "tag")
-                .font(.system(size: 48))
-                .foregroundStyle(DesignSystem.Colors.textTertiary)
-
-            VStack(spacing: DesignSystem.Spacing.sm) {
-                Text("タグがまだありません")
-                    .font(.system(size: DesignSystem.FontSize.headline))
-                    .foregroundStyle(DesignSystem.Colors.textPrimary)
-
-                Text("上の入力欄から新しいタグを追加できます")
-                    .font(.system(size: DesignSystem.FontSize.body))
-                    .foregroundStyle(DesignSystem.Colors.textSecondary)
-                    .multilineTextAlignment(.center)
-            }
-
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        EmptyStateView(icon: "tag", title: "タグがまだありません", subtitle: "タグを追加して日記を整理しましょう")
     }
 
     private func addTag() {
