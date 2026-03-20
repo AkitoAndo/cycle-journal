@@ -5,7 +5,7 @@ output "cloud_run_url" {
 
 output "artifact_registry_repo" {
   description = "Artifact Registry repository path"
-  value       = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.api.repository_id}"
+  value       = "${var.region}-docker.pkg.dev/${var.project_id}/cycle-api"
 }
 
 output "service_account_email" {
