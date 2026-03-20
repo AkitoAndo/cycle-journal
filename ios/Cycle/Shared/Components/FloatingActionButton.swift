@@ -2,7 +2,9 @@
 //  FloatingActionButton.swift
 //  Cycle
 //
-//  Created by Takeshi Ogata on 2025/11/29.
+//  フローティングアクションボタン（FAB）
+//  iOS 26+: Liquid Glass 円形ボタン
+//  iOS 17-25: ソリッド背景 + シャドウ
 //
 
 import SwiftUI
@@ -17,16 +19,38 @@ struct FloatingActionButton: View {
 
     var body: some View {
         Button(action: {
-            // 触覚フィードバック
             let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
             impactFeedback.impactOccurred()
-
             action()
         }) {
             Image(systemName: icon)
                 .font(DesignSystem.Fonts.title2)
-                .foregroundStyle(DesignSystem.Colors.background)
+                .foregroundStyle(fabForeground)
                 .frame(width: 56, height: 56)
+                .modifier(FABBackgroundStyle(isPressed: isPressed))
+        }
+        .buttonStyle(ScaleButtonStyle())
+        .accessibilityIdentifier("fab_\(icon)")
+    }
+
+    private var fabForeground: Color {
+        if #available(iOS 26.0, *) {
+            return DesignSystem.Colors.accent
+        } else {
+            return DesignSystem.Colors.background
+        }
+    }
+}
+
+private struct FABBackgroundStyle: ViewModifier {
+    let isPressed: Bool
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                .glassEffect(.regular.interactive(), in: .circle)
+        } else {
+            content
                 .background(DesignSystem.Colors.accent)
                 .clipShape(Circle())
                 .shadow(
@@ -36,8 +60,6 @@ struct FloatingActionButton: View {
                     y: isPressed ? 2 : 4
                 )
         }
-        .buttonStyle(ScaleButtonStyle())
-        .accessibilityIdentifier("fab_\(icon)")
     }
 }
 

@@ -38,6 +38,18 @@ enum TestDataProvider {
         #endif
     }
 
+    /// デモデータ投入（CycleApp.init から同期的に呼ぶ）
+    @MainActor
+    static func setupSync() {
+        guard isPreviewData else { return }
+        clearAllData()
+        insertJournalEntries()
+        insertTasks()
+    }
+
+    // true にするとデモデータ投入（確認後 false に戻す）
+    static var isPreviewData: Bool { false }
+
     // MARK: - Clear
 
     private static func clearAllData() {
@@ -96,39 +108,35 @@ enum TestDataProvider {
 
     private static func insertTasks() {
         var tasks: [TaskItem] = [
-            TaskItem(
-                title: "朝の瞑想を10分する",
-                description: "マインドフルネス瞑想を試す",
-                intent: "心を落ち着ける習慣をつけたい",
-                achievementVision: "毎朝穏やかな気持ちでスタートできる"
-            ),
-            TaskItem(
-                title: "週報を書く",
-                description: "今週の振り返りと来週の計画",
-                intent: "自分の進捗を可視化する",
-                notes: "金曜日の夕方までに"
-            ),
-            TaskItem(
-                title: "読書30分",
-                description: "嫌われる勇気の続きを読む"
-            ),
+            TaskItem(title: "朝の瞑想を10分する", description: "マインドフルネス瞑想を試す", intent: "心を落ち着ける習慣をつけたい"),
+            TaskItem(title: "週報を書く", description: "今週の振り返りと来週の計画", notes: "金曜日の夕方までに"),
+            TaskItem(title: "読書30分", description: "嫌われる勇気の続きを読む"),
+            TaskItem(title: "ジムに行く", description: "上半身トレーニング"),
+            TaskItem(title: "部屋の掃除", description: "リビングと寝室"),
+            TaskItem(title: "APIドキュメント更新", description: "OpenAPI specを最新にする"),
+            TaskItem(title: "母に電話する", description: "週末の予定確認"),
+            TaskItem(title: "レシピ調べる", description: "今週の作り置き用"),
+            TaskItem(title: "歯医者の予約", description: "定期検診"),
+            TaskItem(title: "プレゼン資料作成", description: "来週の社内共有用"),
         ]
 
         for i in tasks.indices {
             tasks[i].sortOrder = i
         }
 
-        // 1つ完了済みタスク
-        var completedTask = TaskItem(
-            title: "企画書のレビュー",
-            description: "チームメンバーの企画書にフィードバック"
-        )
-        completedTask.isCompleted = true
-        completedTask.completedAt = Date().addingTimeInterval(-3600)
-        completedTask.fact = "3つの改善点を提案できた"
-        completedTask.insight = "具体的な例を添えるとフィードバックが伝わりやすい"
-        completedTask.nextAction = "次回はもっと早めにレビューする"
-        tasks.append(completedTask)
+        // 完了済みタスク
+        let completedTitles = [
+            ("企画書のレビュー", "3つの改善点を提案できた"),
+            ("買い出し", "冷蔵庫が充実した"),
+            ("ランニング5km", "ペースが安定してきた"),
+        ]
+        for (title, fact) in completedTitles {
+            var t = TaskItem(title: title)
+            t.isCompleted = true
+            t.completedAt = Date().addingTimeInterval(-3600)
+            t.fact = fact
+            tasks.append(t)
+        }
 
         JSONFileStore.save(tasks, to: "tasks.json")
     }

@@ -3,7 +3,8 @@
 //  Cycle
 //
 //  ラベル付きテキスト入力フィールド（1行）
-//  タスク・日記のタイトル入力等で共通利用
+//  iOS 26+: Liquid Glass 背景
+//  iOS 17-25: surface背景 + ボーダー
 //
 
 import SwiftUI
@@ -30,13 +31,26 @@ struct FormTextField: View {
                 .font(DesignSystem.Fonts.body)
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
                 .padding(DesignSystem.Spacing.lg)
+                .modifier(FormFieldBackground())
+                .tint(DesignSystem.Colors.accent)
+        }
+    }
+}
+
+/// フォームフィールドの背景スタイル（TextField / TextEditor 共通）
+struct FormFieldBackground: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                .glassEffect(.regular, in: .rect(cornerRadius: DesignSystem.Spacing.md))
+        } else {
+            content
                 .background(DesignSystem.Colors.surface)
                 .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous)
                         .stroke(DesignSystem.Colors.grey.opacity(0.6), lineWidth: 0.5)
                 )
-                .tint(DesignSystem.Colors.accent)
         }
     }
 }

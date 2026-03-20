@@ -3,7 +3,8 @@
 //  Cycle
 //
 //  プライマリ・セカンダリボタン
-//  CoachHome, SignIn, Settings 等の全幅ボタンで共通利用
+//  iOS 26+: Liquid Glass スタイル
+//  iOS 17-25: ソリッド背景 / 枠線スタイル
 //
 
 import SwiftUI
@@ -14,7 +15,6 @@ import SwiftUI
 /// ```swift
 /// PrimaryButton("話しかける", icon: "bubble.left") { startChat() }
 /// PrimaryButton("保存する") { save() }
-/// SecondaryButton("日記から話す", icon: "book", color: .green) { pickDiary() }
 /// ```
 struct PrimaryButton: View {
     let title: String
@@ -31,23 +31,30 @@ struct PrimaryButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack {
-                if let icon = icon {
-                    Image(systemName: icon)
-                }
-                Text(title)
-            }
-            .font(DesignSystem.Fonts.button)
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(color)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            buttonContent
         }
+        .modifier(PrimaryButtonStyle(color: color))
+    }
+
+    private var buttonContent: some View {
+        HStack {
+            if let icon = icon {
+                Image(systemName: icon)
+            }
+            Text(title)
+        }
+        .font(DesignSystem.Fonts.button)
+        .frame(maxWidth: .infinity)
+        .padding()
     }
 }
 
-/// 全幅のセカンダリボタン（枠線スタイル）
+/// 全幅のセカンダリボタン（枠線 / ガラススタイル）
+///
+/// 使用例:
+/// ```swift
+/// SecondaryButton("日記から話す", icon: "book", color: .green) { pickDiary() }
+/// ```
 struct SecondaryButton: View {
     let title: String
     var icon: String? = nil
@@ -63,22 +70,62 @@ struct SecondaryButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack {
-                if let icon = icon {
-                    Image(systemName: icon)
-                }
-                Text(title)
+            buttonContent
+        }
+        .modifier(SecondaryButtonStyle(color: color))
+    }
+
+    private var buttonContent: some View {
+        HStack {
+            if let icon = icon {
+                Image(systemName: icon)
             }
-            .font(DesignSystem.Fonts.button)
-            .foregroundStyle(color)
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(color.opacity(0.1))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(color, lineWidth: 1)
-            )
+            Text(title)
+        }
+        .font(DesignSystem.Fonts.button)
+        .frame(maxWidth: .infinity)
+        .padding()
+    }
+}
+
+// MARK: - Button Styles
+
+private struct PrimaryButtonStyle: ViewModifier {
+    let color: Color
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                .foregroundStyle(.white)
+                .background(color)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
+        } else {
+            content
+                .foregroundStyle(.white)
+                .background(color)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+    }
+}
+
+private struct SecondaryButtonStyle: ViewModifier {
+    let color: Color
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                .foregroundStyle(color)
+                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
+        } else {
+            content
+                .foregroundStyle(color)
+                .background(color.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(color, lineWidth: 1)
+                )
         }
     }
 }

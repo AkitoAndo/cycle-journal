@@ -86,6 +86,7 @@ struct CoachHomeView: View {
             .background(DesignSystem.Colors.background)
             .navigationTitle("Cycle")
             .navigationBarTitleDisplayMode(.inline)
+            .modifier(GlassNavBarModifier())
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showingHistory = true }) {

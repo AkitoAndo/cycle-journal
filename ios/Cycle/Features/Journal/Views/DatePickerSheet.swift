@@ -30,6 +30,7 @@ struct DatePickerSheet: View {
             }
             .navigationTitle("年月を選択")
             .navigationBarTitleDisplayMode(.inline)
+            .modifier(GlassNavBarModifier())
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("キャンセル") {

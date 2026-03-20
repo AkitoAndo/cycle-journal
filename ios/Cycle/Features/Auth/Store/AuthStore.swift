@@ -6,6 +6,7 @@
 import AuthenticationServices
 import Combine
 import Foundation
+import GoogleSignIn
 import Security
 
 // MARK: - Auth State
@@ -23,14 +24,34 @@ enum AuthState: Equatable {
     }
 }
 
+// MARK: - Auth Provider
+
+enum AuthProvider: String, Codable {
+    case apple
+    case google
+}
+
 // MARK: - User Info
 
 struct AuthUser: Codable, Equatable {
     let userId: String
-    let appleUserId: String
+    let appleUserId: String?
+    let googleUserId: String?
     let email: String?
     let fullName: String?
     let createdAt: Date
+    let provider: AuthProvider
+
+    // 後方互換: appleUserId は以前は非Optional
+    init(userId: String, appleUserId: String? = nil, googleUserId: String? = nil, email: String?, fullName: String?, createdAt: Date, provider: AuthProvider = .apple) {
+        self.userId = userId
+        self.appleUserId = appleUserId
+        self.googleUserId = googleUserId
+        self.email = email
+        self.fullName = fullName
+        self.createdAt = createdAt
+        self.provider = provider
+    }
 }
 
 // MARK: - Auth Store
@@ -71,6 +92,79 @@ class AuthStore: NSObject, ObservableObject {
         controller.performRequests()
     }
 
+    /// Google Sign-Inを開始
+    func signInWithGoogle() {
+        isLoading = true
+        error = nil
+
+        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let rootViewController = scene.windows.first?.rootViewController else {
+            self.error = "画面の取得に失敗しました"
+            self.isLoading = false
+            return
+        }
+
+        GIDSignIn.sharedInstance.signIn(withPresenting: rootViewController) { [weak self] result, error in
+            Task { @MainActor in
+                guard let self else { return }
+
+                if let error {
+                    // キャンセルの場合はエラーを表示しない
+                    if (error as NSError).code == GIDSignInError.canceled.rawValue {
+                        self.isLoading = false
+                        return
+                    }
+                    self.error = error.localizedDescription
+                    self.isLoading = false
+                    return
+                }
+
+                guard let user = result?.user,
+                      let idToken = user.idToken?.tokenString else {
+                    self.error = "Google ID Tokenの取得に失敗しました"
+                    self.isLoading = false
+                    return
+                }
+
+                let fullName = user.profile?.name
+                let email = user.profile?.email
+
+                await self.handleGoogleSignIn(idToken: idToken, fullName: fullName, email: email)
+            }
+        }
+    }
+
+    /// Google Sign-Inの結果を処理（Google Sign-In SDKのコールバックから呼ぶ）
+    func handleGoogleSignIn(idToken: String, fullName: String?, email: String?) async {
+        isLoading = true
+        error = nil
+
+        do {
+            let response = try await authService.verifyGoogleToken(idToken)
+
+            let user = AuthUser(
+                userId: response.userId,
+                googleUserId: response.googleUserId,
+                email: response.email ?? email,
+                fullName: fullName,
+                createdAt: Date(),
+                provider: .google
+            )
+
+            saveToKeychain(key: tokenKey, value: idToken)
+            saveUserToKeychain(user)
+            APIClient.shared.setAuthToken(idToken)
+
+            currentUser = user
+            state = .authenticated(userId: user.userId)
+            isLoading = false
+        } catch {
+            self.error = error.localizedDescription
+            self.state = .unauthenticated
+            self.isLoading = false
+        }
+    }
+
     /// サインアウト
     func signOut() {
         deleteFromKeychain(key: tokenKey)
@@ -82,22 +176,19 @@ class AuthStore: NSObject, ObservableObject {
 
     /// 認証状態を確認
     func checkAuthState() async {
-        // 保存されているトークンを確認
         guard let token = loadFromKeychain(key: tokenKey) else {
             state = .unauthenticated
             return
         }
 
-        // 保存されているユーザー情報を読み込み
         if let userData = loadDataFromKeychain(key: userKey),
            let user = try? JSONDecoder().decode(AuthUser.self, from: userData) {
             currentUser = user
             APIClient.shared.setAuthToken(token)
             state = .authenticated(userId: user.userId)
 
-            // バックグラウンドでトークン検証（失敗してもローカルの状態は維持）
             Task {
-                await validateToken(token)
+                await validateToken(token, provider: user.provider)
             }
         } else {
             state = .unauthenticated
@@ -106,24 +197,30 @@ class AuthStore: NSObject, ObservableObject {
 
     // MARK: - Private Methods
 
-    private func validateToken(_ token: String) async {
+    private func validateToken(_ token: String, provider: AuthProvider = .apple) async {
         do {
-            let response = try await authService.verifyToken(token)
+            let response: AuthVerifyResponse
+            switch provider {
+            case .apple:
+                response = try await authService.verifyToken(token)
+            case .google:
+                response = try await authService.verifyGoogleToken(token)
+            }
 
-            // ユーザー情報を更新
             if let existingUser = currentUser {
                 let updatedUser = AuthUser(
                     userId: response.userId,
                     appleUserId: response.appleUserId,
+                    googleUserId: response.googleUserId,
                     email: response.email ?? existingUser.email,
                     fullName: existingUser.fullName,
-                    createdAt: existingUser.createdAt
+                    createdAt: existingUser.createdAt,
+                    provider: provider
                 )
                 currentUser = updatedUser
                 saveUserToKeychain(updatedUser)
             }
         } catch {
-            // トークンが無効な場合はサインアウト
             if case APIError.unauthorized = error {
                 signOut()
             }
@@ -140,10 +237,8 @@ class AuthStore: NSObject, ObservableObject {
         }
 
         do {
-            // サーバーでトークンを検証
             let response = try await authService.verifyToken(identityToken)
 
-            // ユーザー情報を作成
             let fullName: String? = {
                 if let givenName = credential.fullName?.givenName,
                    let familyName = credential.fullName?.familyName {
@@ -157,17 +252,14 @@ class AuthStore: NSObject, ObservableObject {
                 appleUserId: response.appleUserId,
                 email: response.email ?? credential.email,
                 fullName: fullName,
-                createdAt: Date()
+                createdAt: Date(),
+                provider: .apple
             )
 
-            // Keychainに保存
             saveToKeychain(key: tokenKey, value: identityToken)
             saveUserToKeychain(user)
-
-            // APIClientにトークンを設定
             APIClient.shared.setAuthToken(identityToken)
 
-            // 状態を更新
             currentUser = user
             state = .authenticated(userId: user.userId)
             isLoading = false
@@ -193,10 +285,8 @@ class AuthStore: NSObject, ObservableObject {
             kSecAttrAccount as String: key,
         ]
 
-        // 既存のアイテムを削除
         SecItemDelete(query as CFDictionary)
 
-        // 新しいアイテムを追加
         var newQuery = query
         newQuery[kSecValueData as String] = data
         SecItemAdd(newQuery as CFDictionary, nil)
@@ -264,7 +354,6 @@ extension AuthStore: ASAuthorizationControllerDelegate {
             if let authError = error as? ASAuthorizationError {
                 switch authError.code {
                 case .canceled:
-                    // ユーザーがキャンセル - エラーを表示しない
                     break
                 case .failed:
                     self.error = "認証に失敗しました"
@@ -291,7 +380,6 @@ extension AuthStore: ASAuthorizationControllerDelegate {
 
 extension AuthStore: ASAuthorizationControllerPresentationContextProviding {
     nonisolated func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-        // iOS 15+ではシーンベースのウィンドウを使用
         guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let window = scene.windows.first else {
             return UIWindow()

@@ -47,6 +47,6 @@ struct TaskHeader: View {
         }
         .padding(.horizontal, DesignSystem.Spacing.lg)
         .padding(.vertical, DesignSystem.Spacing.md)
-        .background(DesignSystem.Colors.background)
+        .modifier(GlassHeaderModifier())
     }
 }

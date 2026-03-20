@@ -50,26 +50,8 @@ struct JournalEntryForm: View {
     }
 
     private var contentSection: some View {
-        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
-            Text("内容")
-                .font(DesignSystem.Fonts.headline)
-                .foregroundStyle(DesignSystem.Colors.textPrimary)
-
-            TextEditor(text: $text)
-                .focused($isTextFocused)
-                .scrollContentBackground(.hidden)
-                .frame(height: textEditorMinHeight)
-                .padding(DesignSystem.Spacing.md)
-                .background(DesignSystem.Colors.surface)
-                .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md))
-                .overlay(
-                    RoundedRectangle(cornerRadius: DesignSystem.Spacing.md)
-                        .stroke(DesignSystem.Colors.grey.opacity(0.6), lineWidth: 0.5)
-                )
-                .foregroundStyle(DesignSystem.Colors.textPrimary)
-                .font(DesignSystem.Fonts.body)
-                .tint(DesignSystem.Colors.accent)
-        }
-        .padding(.horizontal, DesignSystem.Spacing.lg)
+        FormTextEditor(label: "日記", text: $text, placeholder: "", minHeight: 200)
+            .focused($isTextFocused)
+            .padding(.horizontal, DesignSystem.Spacing.lg)
     }
 }

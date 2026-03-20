@@ -108,7 +108,7 @@ enum CatalogRegistry {
             ),
             CatalogItem(
                 name: "FloatingActionButton",
-                description: "フローティングアクションボタン（触覚フィードバック付き）",
+                description: "FAB（iOS 26: Liquid Glass circle / iOS 17-25: solid + shadow）",
                 category: .atoms,
                 props: [
                     CatalogProp("icon", "String", "SF Symbolsのアイコン名"),
@@ -129,7 +129,7 @@ enum CatalogRegistry {
             ),
             CatalogItem(
                 name: "SurfaceCard",
-                description: "カード型コンテナ（surface背景 + 角丸 + ボーダー + シャドウ）",
+                description: "カード型コンテナ（iOS 26: Liquid Glass / iOS 17-25: surface + shadow）",
                 category: .atoms,
                 props: [
                     CatalogProp("content", "ViewBuilder", "カード内のコンテンツ"),
@@ -138,7 +138,7 @@ enum CatalogRegistry {
             ),
             CatalogItem(
                 name: "PrimaryButton",
-                description: "全幅のプライマリボタン",
+                description: "全幅のプライマリボタン（iOS 26: Liquid Glass overlay）",
                 category: .atoms,
                 props: [
                     CatalogProp("title", "String", "ボタンテキスト"),
@@ -150,7 +150,7 @@ enum CatalogRegistry {
             ),
             CatalogItem(
                 name: "SecondaryButton",
-                description: "全幅のセカンダリボタン（枠線スタイル）",
+                description: "全幅のセカンダリボタン（iOS 26: Liquid Glass / iOS 17-25: 枠線）",
                 category: .atoms,
                 props: [
                     CatalogProp("title", "String", "ボタンテキスト"),
@@ -195,7 +195,7 @@ enum CatalogRegistry {
             ),
             CatalogItem(
                 name: "IconCircle",
-                description: "円形アイコン（グラデーション背景付き）",
+                description: "円形アイコン（iOS 26: Liquid Glass / iOS 17-25: グラデーション）",
                 category: .atoms,
                 props: [
                     CatalogProp("icon", "String", "SF Symbolsアイコン"),

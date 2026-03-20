@@ -218,7 +218,13 @@ final class TaskViewModel: ObservableObject {
         persist()
     }
 
-    // MARK: - Private Helpers - Initialization
+    // MARK: - Data Loading
+
+    /// データをリロード（外部からのデータ変更後に呼ぶ）
+    func reloadData() {
+        loadData()
+        loadArchives()
+    }
 
     /// データをロード
     private func loadData() {

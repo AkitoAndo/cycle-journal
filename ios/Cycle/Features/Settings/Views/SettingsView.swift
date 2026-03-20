@@ -191,6 +191,7 @@ struct SettingsView: View {
                 #endif
             }
             .navigationTitle("設定")
+            .modifier(GlassNavBarModifier())
             .sheet(isPresented: $showingPrivacyPolicy) {
                 WebDocumentView(title: "プライバシーポリシー", urlString: "https://example.com/privacy")
             }

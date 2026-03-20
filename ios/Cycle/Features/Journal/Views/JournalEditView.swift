@@ -35,6 +35,7 @@ struct JournalEditView: View {
             )
             .navigationTitle("エントリを編集")
             .navigationBarTitleDisplayMode(.inline)
+            .modifier(GlassNavBarModifier())
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("キャンセル") {

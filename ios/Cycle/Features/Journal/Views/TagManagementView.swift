@@ -110,6 +110,7 @@ struct TagManagementView: View {
             .background(DesignSystem.Colors.background)
             .navigationTitle("タグ管理")
             .navigationBarTitleDisplayMode(.inline)
+            .modifier(GlassNavBarModifier())
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("閉じる") {

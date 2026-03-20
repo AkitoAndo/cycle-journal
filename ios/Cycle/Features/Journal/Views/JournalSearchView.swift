@@ -155,6 +155,7 @@ struct JournalSearchView: View {
             }
             .navigationTitle("検索")
             .navigationBarTitleDisplayMode(.inline)
+            .modifier(GlassNavBarModifier())
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("閉じる") {
