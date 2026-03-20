@@ -11,9 +11,12 @@ import SwiftUI
 struct JournalNewEntryView: View {
     @ObservedObject var vm: JournalViewModel
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var coachStore: CoachStore
 
     @State private var inputText: String = ""
     @State private var selectedTags: [String] = []
+    @State private var showCoachPrompt = false
+    @State private var savedText: String = ""
     @FocusState private var isTextFieldFocused: Bool
 
     var body: some View {
@@ -43,6 +46,23 @@ struct JournalNewEntryView: View {
             .onAppear {
                 isTextFieldFocused = true
             }
+            .alert("コーチと話す？", isPresented: $showCoachPrompt) {
+                Button("話してみる") {
+                    Task {
+                        await coachStore.startSessionWithDiary(savedText)
+                    }
+                    dismiss()
+                    // コーチタブに切り替え＆チャット画面を開く
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        NotificationCenter.default.post(name: .navigateToCoachChat, object: nil)
+                    }
+                }
+                Button("あとで", role: .cancel) {
+                    dismiss()
+                }
+            } message: {
+                Text("書いた日記をもとに、コーチと振り返ってみませんか？")
+            }
         }
         .presentationBackground(DesignSystem.Colors.background)
     }
@@ -57,6 +77,7 @@ struct JournalNewEntryView: View {
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
 
-        dismiss()
+        savedText = trimmedText
+        showCoachPrompt = true
     }
 }

@@ -18,26 +18,28 @@ struct SessionRowView: View {
     var body: some View {
         SurfaceCard {
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                     Text(dateFormatter.string(from: session.createdAt))
-                        .font(DesignSystem.Fonts.subheadline)
-                        .foregroundColor(.secondary)
+                        .font(DesignSystem.Fonts.caption)
+                        .foregroundStyle(DesignSystem.Colors.textTertiary)
 
                     Text(session.summary ?? session.firstUserMessage ?? "会話")
                         .font(DesignSystem.Fonts.body)
+                        .foregroundStyle(DesignSystem.Colors.textPrimary)
                         .lineLimit(1)
 
                     if let emotion = session.emotionLabel {
                         Text(emotion)
                             .font(DesignSystem.Fonts.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(DesignSystem.Colors.accent)
                     }
                 }
 
                 Spacer()
 
                 Image(systemName: "chevron.right")
-                    .foregroundColor(.secondary)
+                    .font(DesignSystem.Fonts.caption)
+                    .foregroundStyle(DesignSystem.Colors.textTertiary)
             }
         }
     }

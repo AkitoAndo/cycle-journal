@@ -16,7 +16,7 @@ import SwiftUI
 struct JournalListView: View {
     // MARK: - Properties
 
-    @StateObject private var vm = JournalViewModel()
+    @EnvironmentObject private var vm: JournalViewModel
     @State private var showDatePicker = false
     @State private var showNewEntry = false
     @State private var editingEntry: JournalEntry?

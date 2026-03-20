@@ -8,6 +8,7 @@ import SwiftUI
 struct CoachHomeView: View {
     @EnvironmentObject var coachStore: CoachStore
     @EnvironmentObject var journalViewModel: JournalViewModel
+    @EnvironmentObject var authStore: AuthStore
 
     @State private var showingChat = false
     @State private var showingHistory = false
@@ -16,22 +17,71 @@ struct CoachHomeView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 24) {
-                    // コーチのビジュアル
-                    coachVisual
+                VStack(spacing: DesignSystem.Spacing.xxl) {
+                    // コーチのビジュアル（アプリアイコン）
+                    Image("CycleIcon")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 120, height: 120)
+                        .clipShape(Circle())
+                        .padding(.top, DesignSystem.Spacing.xl)
 
                     // 挨拶メッセージ
-                    greetingSection
+                    VStack(spacing: DesignSystem.Spacing.sm) {
+                        Text(greetingMessage)
+                            .font(DesignSystem.Fonts.sectionTitle)
+                            .foregroundStyle(DesignSystem.Colors.textPrimary)
+                            .multilineTextAlignment(.center)
+
+                        Text("今日はどんな一日だった？")
+                            .font(DesignSystem.Fonts.body)
+                            .foregroundStyle(DesignSystem.Colors.textSecondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.horizontal, DesignSystem.Spacing.lg)
 
                     // アクションボタン
-                    actionButtons
+                    VStack(spacing: DesignSystem.Spacing.md) {
+                        PrimaryButton("話しかける", icon: "bubble.left") {
+                            startNewChat()
+                        }
+
+                        SecondaryButton("日記から話す", icon: "book") {
+                            showingDiaryPicker = true
+                        }
+                    }
+                    .padding(.horizontal, DesignSystem.Spacing.lg)
 
                     // 最近の会話
                     if !coachStore.recentSessions.isEmpty {
-                        recentSessionsSection
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+                            SectionLabel("最近の会話", icon: "clock")
+                                .padding(.horizontal, DesignSystem.Spacing.lg)
+
+                            VStack(spacing: DesignSystem.Spacing.sm) {
+                                ForEach(coachStore.recentSessions) { session in
+                                    SessionRowView(session: session)
+                                        .onTapGesture {
+                                            Task {
+                                                if session.messages.isEmpty, session.serverId != nil {
+                                                    if let fullSession = await coachStore.fetchSessionDetail(session) {
+                                                        coachStore.currentSession = fullSession
+                                                    } else {
+                                                        coachStore.currentSession = session
+                                                    }
+                                                } else {
+                                                    coachStore.currentSession = session
+                                                }
+                                                showingChat = true
+                                            }
+                                        }
+                                }
+                            }
+                            .padding(.horizontal, DesignSystem.Spacing.lg)
+                        }
                     }
                 }
-                .padding()
+                .padding(.bottom, DesignSystem.Spacing.xxl)
             }
             .background(DesignSystem.Colors.background)
             .navigationTitle("Cycle")
@@ -41,12 +91,20 @@ struct CoachHomeView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showingHistory = true }) {
                         Image(systemName: "clock.arrow.circlepath")
+                            .foregroundStyle(DesignSystem.Colors.accent)
                     }
                 }
             }
             .fullScreenCover(isPresented: $showingChat) {
                 CoachChatView()
                     .environmentObject(coachStore)
+                    .environmentObject(authStore)
+            }
+            .onReceive(coachStore.$shouldOpenChat) { shouldOpen in
+                if shouldOpen {
+                    showingChat = true
+                    coachStore.shouldOpenChat = false
+                }
             }
             .sheet(isPresented: $showingHistory) {
                 SessionHistoryView()
@@ -67,65 +125,6 @@ struct CoachHomeView: View {
                 .environmentObject(journalViewModel)
             }
         }
-    }
-
-    // MARK: - Components
-
-    private var coachVisual: some View {
-        IconCircle(icon: "tree", size: 120, color: DesignSystem.Colors.accent)
-            .padding(.top, 20)
-    }
-
-    private var greetingSection: some View {
-        VStack(spacing: 8) {
-            Text(greetingMessage)
-                .font(DesignSystem.Fonts.sectionTitle)
-                .fontWeight(.medium)
-                .multilineTextAlignment(.center)
-
-            Text("今日はどんな一日だった？")
-                .font(DesignSystem.Fonts.body)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .padding(.horizontal)
-    }
-
-    private var actionButtons: some View {
-        VStack(spacing: 12) {
-            PrimaryButton(title: "話しかける", icon: "bubble.left", color: DesignSystem.Colors.accent, action: startNewChat)
-
-            SecondaryButton(title: "日記から話す", icon: "book", color: DesignSystem.Colors.accent) {
-                showingDiaryPicker = true
-            }
-        }
-        .padding(.horizontal)
-    }
-
-    private var recentSessionsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionLabel(title: "最近の会話")
-
-            ForEach(coachStore.recentSessions) { session in
-                SessionRowView(session: session)
-                    .onTapGesture {
-                        Task {
-                            // サーバーにメッセージがある場合は詳細を取得
-                            if session.messages.isEmpty, session.serverId != nil {
-                                if let fullSession = await coachStore.fetchSessionDetail(session) {
-                                    coachStore.currentSession = fullSession
-                                } else {
-                                    coachStore.currentSession = session
-                                }
-                            } else {
-                                coachStore.currentSession = session
-                            }
-                            showingChat = true
-                        }
-                    }
-            }
-        }
-        .padding(.horizontal)
     }
 
     // MARK: - Helpers

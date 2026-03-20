@@ -19,6 +19,11 @@ struct SectionLabel: View {
     let title: String
     var icon: String? = nil
 
+    init(_ title: String, icon: String? = nil) {
+        self.title = title
+        self.icon = icon
+    }
+
     var body: some View {
         HStack(spacing: DesignSystem.Spacing.sm) {
             if let icon = icon {

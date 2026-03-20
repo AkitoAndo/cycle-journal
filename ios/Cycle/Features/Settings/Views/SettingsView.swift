@@ -25,34 +25,84 @@ struct SettingsView: View {
             List {
                 // アカウントセクション
                 Section("アカウント") {
-                    HStack {
-                        Image(systemName: "person.circle.fill")
-                            .font(DesignSystem.Fonts.screenTitle)
-                            .foregroundStyle(DesignSystem.Colors.accent)
+                    if authStore.state.isAuthenticated {
+                        // ログイン済み
+                        HStack {
+                            Image(systemName: "person.circle.fill")
+                                .font(DesignSystem.Fonts.screenTitle)
+                                .foregroundColor(.green)
 
-                        VStack(alignment: .leading) {
-                            if let user = authStore.currentUser {
-                                Text(user.fullName ?? user.email ?? "ユーザー")
-                                    .font(DesignSystem.Fonts.button)
-                                if let email = user.email {
-                                    Text(email)
-                                        .font(DesignSystem.Fonts.caption)
-                                        .foregroundColor(.secondary)
+                            VStack(alignment: .leading) {
+                                if let user = authStore.currentUser {
+                                    Text(user.fullName ?? user.email ?? "ユーザー")
+                                        .font(DesignSystem.Fonts.button)
+                                    if let email = user.email {
+                                        Text(email)
+                                            .font(DesignSystem.Fonts.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                } else {
+                                    Text("ログイン済み")
+                                        .font(DesignSystem.Fonts.button)
                                 }
-                            } else {
-                                Text("ログイン済み")
+                            }
+
+                            Spacer()
+                        }
+                        .padding(.vertical, 4)
+
+                        Button(role: .destructive, action: { showingSignOutAlert = true }) {
+                            HStack {
+                                Image(systemName: "rectangle.portrait.and.arrow.right")
+                                Text("サインアウト")
+                            }
+                        }
+                    } else {
+                        // 未ログイン
+                        HStack {
+                            Image(systemName: "person.circle")
+                                .font(DesignSystem.Fonts.screenTitle)
+                                .foregroundColor(.secondary)
+
+                            VStack(alignment: .leading) {
+                                Text("未ログイン")
                                     .font(DesignSystem.Fonts.button)
+                                Text("サインインするとコーチ機能が使えます")
+                                    .font(DesignSystem.Fonts.caption)
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Spacer()
+                        }
+                        .padding(.vertical, 4)
+
+                        Button(action: { authStore.signInWithApple() }) {
+                            HStack {
+                                Image(systemName: "apple.logo")
+                                Text("Appleでサインイン")
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color.primary)
+                            .foregroundColor(Color(uiColor: .systemBackground))
+                            .cornerRadius(8)
+                        }
+                        .disabled(authStore.isLoading)
+
+                        if authStore.isLoading {
+                            HStack {
+                                ProgressView()
+                                    .padding(.trailing, 4)
+                                Text("サインイン中...")
+                                    .font(DesignSystem.Fonts.caption)
+                                    .foregroundColor(.secondary)
                             }
                         }
 
-                        Spacer()
-                    }
-                    .padding(.vertical, 4)
-
-                    Button(role: .destructive, action: { showingSignOutAlert = true }) {
-                        HStack {
-                            Image(systemName: "rectangle.portrait.and.arrow.right")
-                            Text("サインアウト")
+                        if let error = authStore.error {
+                            Text(error)
+                                .font(DesignSystem.Fonts.caption)
+                                .foregroundColor(.red)
                         }
                     }
                 }
@@ -222,7 +272,7 @@ struct DataExportView: View {
 
                 Image(systemName: "square.and.arrow.up")
                     .font(DesignSystem.Fonts.heroIcon)
-                    .foregroundStyle(DesignSystem.Colors.accent)
+                    .foregroundColor(.blue)
 
                 VStack(spacing: 8) {
                     Text("データエクスポート")
@@ -239,7 +289,7 @@ struct DataExportView: View {
 
                 if exportComplete {
                     Label("エクスポート完了", systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(DesignSystem.Colors.accent)
+                        .foregroundColor(.green)
                         .font(DesignSystem.Fonts.button)
                 } else {
                     Button(action: exportData) {
@@ -254,7 +304,7 @@ struct DataExportView: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(DesignSystem.Colors.accent)
+                    .background(Color.blue)
                     .cornerRadius(12)
                     .disabled(isExporting)
                 }

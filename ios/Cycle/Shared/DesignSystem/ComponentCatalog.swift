@@ -689,13 +689,13 @@ private struct PrimaryButtonPreview: View {
     var body: some View {
         VStack(spacing: 12) {
             previewSection("Default") {
-                PrimaryButton(title: "保存する") {}
+                PrimaryButton("保存する") {}
             }
             previewSection("With icon") {
-                PrimaryButton(title: "話しかける", icon: "bubble.left") {}
+                PrimaryButton("話しかける", icon: "bubble.left") {}
             }
             previewSection("Custom color") {
-                PrimaryButton(title: "送信", color: .green) {}
+                PrimaryButton("送信", color: .green) {}
             }
         }
     }
@@ -705,10 +705,10 @@ private struct SecondaryButtonPreview: View {
     var body: some View {
         VStack(spacing: 12) {
             previewSection("Default") {
-                SecondaryButton(title: "キャンセル") {}
+                SecondaryButton("キャンセル") {}
             }
             previewSection("With icon") {
-                SecondaryButton(title: "日記から話す", icon: "book", color: .green) {}
+                SecondaryButton("日記から話す", icon: "book", color: .green) {}
             }
         }
     }
@@ -732,10 +732,10 @@ private struct SectionLabelPreview: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             previewSection("Text only") {
-                SectionLabel(title: "最近の会話")
+                SectionLabel("最近の会話")
             }
             previewSection("With icon") {
-                SectionLabel(title: "未完了", icon: "circle")
+                SectionLabel("未完了", icon: "circle")
             }
         }
     }

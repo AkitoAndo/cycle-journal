@@ -22,6 +22,13 @@ struct PrimaryButton: View {
     var color: Color = DesignSystem.Colors.accent
     let action: () -> Void
 
+    init(_ title: String, icon: String? = nil, color: Color = DesignSystem.Colors.accent, action: @escaping () -> Void) {
+        self.title = title
+        self.icon = icon
+        self.color = color
+        self.action = action
+    }
+
     var body: some View {
         Button(action: action) {
             buttonContent
@@ -53,6 +60,13 @@ struct SecondaryButton: View {
     var icon: String? = nil
     var color: Color = DesignSystem.Colors.accent
     let action: () -> Void
+
+    init(_ title: String, icon: String? = nil, color: Color = DesignSystem.Colors.accent, action: @escaping () -> Void) {
+        self.title = title
+        self.icon = icon
+        self.color = color
+        self.action = action
+    }
 
     var body: some View {
         Button(action: action) {
