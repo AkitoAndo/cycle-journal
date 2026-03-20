@@ -16,7 +16,7 @@ enum APIEnvironment {
         case .development:
             return "https://cycle-api-dev-1031235624127.asia-northeast1.run.app"
         case .production:
-            return "https://api.cyclejournal.app" // TODO: 本番URL
+            return "https://cycle-api-prod-1031235624127.asia-northeast1.run.app"
         }
     }
 }
