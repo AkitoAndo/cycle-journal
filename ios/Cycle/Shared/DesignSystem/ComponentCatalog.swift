@@ -127,6 +127,84 @@ enum CatalogRegistry {
                 ],
                 preview: AnyView(EmptyStatePreview())
             ),
+            CatalogItem(
+                name: "SurfaceCard",
+                description: "カード型コンテナ（surface背景 + 角丸 + ボーダー + シャドウ）",
+                category: .atoms,
+                props: [
+                    CatalogProp("content", "ViewBuilder", "カード内のコンテンツ"),
+                ],
+                preview: AnyView(SurfaceCardPreview())
+            ),
+            CatalogItem(
+                name: "PrimaryButton",
+                description: "全幅のプライマリボタン",
+                category: .atoms,
+                props: [
+                    CatalogProp("title", "String", "ボタンテキスト"),
+                    CatalogProp("icon", "String?", required: false, default: "nil", "SF Symbolsアイコン"),
+                    CatalogProp("color", "Color", required: false, default: "accent", "背景色"),
+                    CatalogProp("action", "() -> Void", "タップ時のアクション"),
+                ],
+                preview: AnyView(PrimaryButtonPreview())
+            ),
+            CatalogItem(
+                name: "SecondaryButton",
+                description: "全幅のセカンダリボタン（枠線スタイル）",
+                category: .atoms,
+                props: [
+                    CatalogProp("title", "String", "ボタンテキスト"),
+                    CatalogProp("icon", "String?", required: false, default: "nil", "SF Symbolsアイコン"),
+                    CatalogProp("color", "Color", required: false, default: "accent", "枠線・テキスト色"),
+                    CatalogProp("action", "() -> Void", "タップ時のアクション"),
+                ],
+                preview: AnyView(SecondaryButtonPreview())
+            ),
+            CatalogItem(
+                name: "FormTextField",
+                description: "ラベル付き1行テキストフィールド",
+                category: .atoms,
+                props: [
+                    CatalogProp("label", "String", "ラベルテキスト"),
+                    CatalogProp("text", "Binding<String>", "入力値のバインディング"),
+                    CatalogProp("placeholder", "String", required: false, default: "\"\"", "プレースホルダー"),
+                ],
+                preview: AnyView(FormTextFieldPreview())
+            ),
+            CatalogItem(
+                name: "FormTextEditor",
+                description: "ラベル付き複数行テキストエディタ",
+                category: .atoms,
+                props: [
+                    CatalogProp("label", "String", "ラベルテキスト"),
+                    CatalogProp("text", "Binding<String>", "入力値のバインディング"),
+                    CatalogProp("placeholder", "String", required: false, default: "\"\"", "プレースホルダー"),
+                    CatalogProp("minHeight", "CGFloat", required: false, default: "120", "最小高さ"),
+                ],
+                preview: AnyView(FormTextEditorPreview())
+            ),
+            CatalogItem(
+                name: "SectionLabel",
+                description: "セクション見出しラベル",
+                category: .atoms,
+                props: [
+                    CatalogProp("title", "String", "見出しテキスト"),
+                    CatalogProp("icon", "String?", required: false, default: "nil", "SF Symbolsアイコン"),
+                ],
+                preview: AnyView(SectionLabelPreview())
+            ),
+            CatalogItem(
+                name: "IconCircle",
+                description: "円形アイコン（グラデーション背景付き）",
+                category: .atoms,
+                props: [
+                    CatalogProp("icon", "String", "SF Symbolsアイコン"),
+                    CatalogProp("size", "CGFloat", required: false, default: "80", "円のサイズ"),
+                    CatalogProp("iconScale", "CGFloat", required: false, default: "0.42", "アイコンサイズの倍率"),
+                    CatalogProp("color", "Color", required: false, default: "accent", "テーマ色"),
+                ],
+                preview: AnyView(IconCirclePreview())
+            ),
         ]
     }
 
@@ -243,6 +321,16 @@ enum CatalogRegistry {
                     CatalogProp("spacing", "CGFloat", required: false, default: "8", "アイテム間の余白"),
                 ],
                 preview: AnyView(FlowLayoutPreview())
+            ),
+            CatalogItem(
+                name: ".customListRowStyle()",
+                description: "リスト行の共通スタイル（パディング + セパレータ非表示）",
+                category: .layouts,
+                props: [],
+                preview: AnyView(
+                    Text("ViewModifier — .customListRowStyle() で適用\nlistRowInsets + listRowSeparator(.hidden) + listRowBackground(.clear)")
+                        .font(.caption).foregroundStyle(.secondary)
+                )
             ),
         ]
     }
@@ -566,6 +654,107 @@ private struct FlowLayoutPreview: View {
                 ForEach(tags, id: \.self) { tag in
                     TagChip(text: tag)
                 }
+            }
+        }
+    }
+}
+
+// MARK: - New Atom Previews
+
+private struct SurfaceCardPreview: View {
+    var body: some View {
+        VStack(spacing: 12) {
+            previewSection("Basic") {
+                SurfaceCard {
+                    Text("カード内のコンテンツ")
+                        .font(DesignSystem.Fonts.body)
+                }
+            }
+            previewSection("With multiple elements") {
+                SurfaceCard {
+                    HStack {
+                        Image(systemName: "checkmark.circle")
+                            .foregroundStyle(DesignSystem.Colors.accent)
+                        Text("タスクを完了する")
+                            .font(DesignSystem.Fonts.body)
+                        Spacer()
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct PrimaryButtonPreview: View {
+    var body: some View {
+        VStack(spacing: 12) {
+            previewSection("Default") {
+                PrimaryButton("保存する") {}
+            }
+            previewSection("With icon") {
+                PrimaryButton("話しかける", icon: "bubble.left") {}
+            }
+            previewSection("Custom color") {
+                PrimaryButton("送信", color: .green) {}
+            }
+        }
+    }
+}
+
+private struct SecondaryButtonPreview: View {
+    var body: some View {
+        VStack(spacing: 12) {
+            previewSection("Default") {
+                SecondaryButton("キャンセル") {}
+            }
+            previewSection("With icon") {
+                SecondaryButton("日記から話す", icon: "book", color: .green) {}
+            }
+        }
+    }
+}
+
+private struct FormTextFieldPreview: View {
+    @State private var text = ""
+    var body: some View {
+        FormTextField(label: "タイトル", text: $text, placeholder: "タスク名を入力")
+    }
+}
+
+private struct FormTextEditorPreview: View {
+    @State private var text = ""
+    var body: some View {
+        FormTextEditor(label: "詳細", text: $text, placeholder: "タスクの詳細を入力", minHeight: 80)
+    }
+}
+
+private struct SectionLabelPreview: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            previewSection("Text only") {
+                SectionLabel(title: "最近の会話")
+            }
+            previewSection("With icon") {
+                SectionLabel(title: "未完了", icon: "circle")
+            }
+        }
+    }
+}
+
+private struct IconCirclePreview: View {
+    var body: some View {
+        HStack(spacing: 20) {
+            VStack(spacing: 6) {
+                IconCircle(icon: "tree", size: 80, color: .green)
+                Text("Coach").font(.caption2).foregroundStyle(.secondary)
+            }
+            VStack(spacing: 6) {
+                IconCircle(icon: "person.fill", size: 50, color: .blue)
+                Text("Profile").font(.caption2).foregroundStyle(.secondary)
+            }
+            VStack(spacing: 6) {
+                IconCircle(icon: "star.fill", size: 40)
+                Text("Badge").font(.caption2).foregroundStyle(.secondary)
             }
         }
     }
