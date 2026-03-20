@@ -18,35 +18,25 @@ struct SessionHistoryView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            Group {
                 if coachStore.sessions.isEmpty {
-                    ContentUnavailableView(
-                        "会話履歴がありません",
-                        systemImage: "bubble.left.and.bubble.right",
-                        description: Text("コーチと会話を始めると、ここに履歴が表示されます")
+                    EmptyStateView(
+                        icon: "bubble.left.and.bubble.right",
+                        title: "会話履歴がありません",
+                        subtitle: "コーチと会話を始めると、ここに履歴が表示されます"
                     )
                 } else {
-                    ForEach(coachStore.sessions) { session in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(dateFormatter.string(from: session.createdAt))
-                                .font(DesignSystem.Fonts.caption)
-                                .foregroundColor(.secondary)
-
-                            Text(session.summary ?? session.firstUserMessage ?? "会話")
-                                .font(DesignSystem.Fonts.body)
-                                .lineLimit(2)
-
-                            if let emotion = session.emotionLabel {
-                                Text(emotion)
-                                    .font(DesignSystem.Fonts.caption)
-                                    .foregroundColor(.blue)
+                    ScrollView {
+                        VStack(spacing: DesignSystem.Spacing.sm) {
+                            ForEach(coachStore.sessions) { session in
+                                SessionRowView(session: session)
                             }
                         }
-                        .padding(.vertical, 4)
+                        .padding(DesignSystem.Spacing.lg)
                     }
-                    .onDelete(perform: deleteSessions)
                 }
             }
+            .background(DesignSystem.Colors.background)
             .navigationTitle("会話履歴")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -54,18 +44,12 @@ struct SessionHistoryView: View {
                     Button("完了") {
                         dismiss()
                     }
+                    .foregroundStyle(DesignSystem.Colors.accent)
                 }
             }
             .task {
                 await coachStore.fetchServerSessions()
             }
-        }
-    }
-
-    private func deleteSessions(at offsets: IndexSet) {
-        for index in offsets {
-            let session = coachStore.sessions[index]
-            coachStore.deleteSession(session)
         }
     }
 }

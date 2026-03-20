@@ -6,18 +6,26 @@
 import Combine
 import Foundation
 
+extension Notification.Name {
+    static let navigateToCoachChat = Notification.Name("navigateToCoachChat")
+}
+
 class CoachStore: ObservableObject {
     @Published var sessions: [CoachSession] = []
     @Published var currentSession: CoachSession?
     @Published var isLoading: Bool = false
     @Published var error: String?
+    /// ContentView → CoachHomeView へチャット画面を開くよう通知するフラグ
+    @Published var shouldOpenChat: Bool = false
 
     private let userDefaults = UserDefaults.standard
     private let sessionsKey = "CoachSessions"
     private let coachService = CoachService()
 
-    /// APIを使用するかどうか（falseの場合はモックを使用）
-    var useAPI: Bool = true
+    /// APIを使用するかどうか（falseの場合やトークン未設定時はモックを使用）
+    var useAPI: Bool {
+        APIClient.shared.getAuthToken() != nil
+    }
 
     init() {
         loadSessions()

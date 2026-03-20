@@ -732,10 +732,10 @@ private struct SectionLabelPreview: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             previewSection("Text only") {
-                SectionLabel(title: "最近の会話")
+                SectionLabel("最近の会話")
             }
             previewSection("With icon") {
-                SectionLabel(title: "未完了", icon: "circle")
+                SectionLabel("未完了", icon: "circle")
             }
         }
     }

@@ -5,22 +5,37 @@
 
 import Foundation
 
-/// UIテスト用のテストデータ投入
+/// テストデータ投入
 ///
-/// `--uitesting` 起動引数が渡された場合のみ動作
-/// 既存データをクリアし、テスト用の固定データを投入する
+/// - `--uitesting` 起動引数: 既存データをクリアして固定データを投入
+/// - DEBUG ビルド: データが空の場合のみサンプルデータを投入
 enum TestDataProvider {
     static var isUITesting: Bool {
         CommandLine.arguments.contains("--uitesting")
     }
 
-    /// テストデータを投入（既存データはクリア）
+    /// テストデータを投入
     @MainActor
     static func setupIfNeeded() {
-        guard isUITesting else { return }
-        clearAllData()
-        insertJournalEntries()
-        insertTasks()
+        if isUITesting {
+            // UIテスト: クリアして再投入
+            clearAllData()
+            insertJournalEntries()
+            insertTasks()
+            return
+        }
+
+        #if DEBUG
+        // DEBUGビルド: データが空の場合のみサンプルデータを投入
+        let journals = JSONFileStore.load("journals.json", as: [JournalEntry].self)
+        let tasks = JSONFileStore.load("tasks.json", as: [TaskItem].self)
+        let isEmpty = (journals ?? []).isEmpty && (tasks ?? []).isEmpty
+
+        if isEmpty {
+            insertJournalEntries()
+            insertTasks()
+        }
+        #endif
     }
 
     // MARK: - Clear
