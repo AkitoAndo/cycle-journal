@@ -83,6 +83,13 @@ export default defineConfig({
             ],
           },
           {
+            text: 'Store',
+            collapsed: true,
+            items: [
+              { text: 'AS-01: App Store掲載テキスト', link: '/backlog/store/AS-01-store-description' },
+            ],
+          },
+          {
             text: 'Tasks',
             collapsed: true,
             items: [
