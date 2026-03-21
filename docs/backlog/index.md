@@ -38,6 +38,12 @@
 | C-10 | [セッション設計（テーマ〜分岐〜終了〜アーカイブ）](./coach/C-10-session-design) | :memo: Planned | - |
 | C-11 | [AIコーチ システムプロンプト](./coach/C-11-system-prompt) | :memo: Planned | - |
 
+## Store
+
+| # | アイテム | ステータス | 優先度 |
+|---|---------|-----------|--------|
+| AS-01 | [App Store 掲載テキスト](./store/AS-01-store-description) | :memo: Planned | - |
+
 ## Tasks
 
 | # | アイテム | ステータス | 優先度 |
