@@ -36,6 +36,7 @@
 | C-08 | [導入体験（導入画面 + 呼吸セッション）](./coach/C-08-intro-breathing) | :memo: Planned | - |
 | C-09 | [チャットUI（内省型対話UI）](./coach/C-09-chat-ui) | :memo: Planned | - |
 | C-10 | [セッション設計（テーマ〜分岐〜終了〜アーカイブ）](./coach/C-10-session-design) | :memo: Planned | - |
+| C-11 | [AIコーチ システムプロンプト](./coach/C-11-system-prompt) | :memo: Planned | - |
 
 ## Tasks
 

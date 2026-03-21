@@ -79,6 +79,7 @@ export default defineConfig({
               { text: 'C-08: 導入体験', link: '/backlog/coach/C-08-intro-breathing' },
               { text: 'C-09: チャットUI(内省型)', link: '/backlog/coach/C-09-chat-ui' },
               { text: 'C-10: セッション設計', link: '/backlog/coach/C-10-session-design' },
+              { text: 'C-11: システムプロンプト', link: '/backlog/coach/C-11-system-prompt' },
             ],
           },
           {
