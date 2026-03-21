@@ -76,6 +76,9 @@ export default defineConfig({
               { text: 'C-05: API接続', link: '/backlog/coach/C-05-api' },
               { text: 'C-06: LangGraph', link: '/backlog/coach/C-06-langgraph' },
               { text: 'C-07: 文脈管理', link: '/backlog/coach/C-07-context' },
+              { text: 'C-08: 導入体験', link: '/backlog/coach/C-08-intro-breathing' },
+              { text: 'C-09: チャットUI(内省型)', link: '/backlog/coach/C-09-chat-ui' },
+              { text: 'C-10: セッション設計', link: '/backlog/coach/C-10-session-design' },
             ],
           },
           {
