@@ -7,6 +7,7 @@
 | :white_check_mark: Done | 実装済み（スクリーンショットあり） |
 | :construction: In Progress | 実装中 |
 | :memo: Refinement | 未実装・リファインメント中 |
+| :memo: Planned | 要望蓄積中 |
 
 ---
 
@@ -32,6 +33,9 @@
 | C-05 | [Backend API接続（Vertex AI）](./coach/C-05-api) | :white_check_mark: Done | - |
 | C-06 | [LangGraphフロー（感情分析・質問生成）](./coach/C-06-langgraph) | :white_check_mark: Done | - |
 | C-07 | [文脈管理（過去の会話参照）](./coach/C-07-context) | :memo: Refinement | P1 |
+| C-08 | [導入体験（導入画面 + 呼吸セッション）](./coach/C-08-intro-breathing) | :memo: Planned | - |
+| C-09 | [チャットUI（内省型対話UI）](./coach/C-09-chat-ui) | :memo: Planned | - |
+| C-10 | [セッション設計（テーマ〜分岐〜終了〜アーカイブ）](./coach/C-10-session-design) | :memo: Planned | - |
 
 ## Tasks
 
