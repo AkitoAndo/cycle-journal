@@ -21,9 +21,26 @@ struct CoachChatView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                NetworkStatusBanner()
+
                 if !isLoggedIn {
                     offlineBanner
                 }
+
+                if let error = coachStore.lastAPIError, coachStore.error != nil {
+                    ErrorBannerView(
+                        message: error.errorDescription ?? "エラーが発生しました",
+                        isRetryable: error.isRetryable,
+                        onRetry: {
+                            coachStore.clearError()
+                            if let lastUserMessage = coachStore.currentSession?.messages.last(where: { $0.role == .user })?.content {
+                                Task { await coachStore.sendMessage(lastUserMessage) }
+                            }
+                        },
+                        onDismiss: { coachStore.clearError() }
+                    )
+                }
+
                 messageList
                 inputArea
             }
@@ -46,6 +63,13 @@ struct CoachChatView: View {
                 }
             } message: {
                 Text("この会話は履歴に保存されます")
+            }
+            .alert("再ログインが必要です", isPresented: $coachStore.showReauthPrompt) {
+                Button("OK") {
+                    coachStore.showReauthPrompt = false
+                }
+            } message: {
+                Text("セッションの有効期限が切れました。設定画面からサインインし直してください。")
             }
             .onAppear {
                 if let session = coachStore.currentSession,

@@ -31,6 +31,8 @@ enum APIError: LocalizedError {
     case networkError(Error)
     case unauthorized
     case validationError(String)
+    case timeout
+    case offline
 
     var errorDescription: String? {
         switch self {
@@ -48,7 +50,27 @@ enum APIError: LocalizedError {
             return "認証が必要です"
         case .validationError(let message):
             return message
+        case .timeout:
+            return "通信がタイムアウトしました。電波状況をご確認ください。"
+        case .offline:
+            return "インターネットに接続されていません"
         }
+    }
+
+    var isRetryable: Bool {
+        switch self {
+        case .networkError, .timeout, .offline:
+            return true
+        case .httpError(let statusCode, _):
+            return statusCode >= 500
+        default:
+            return false
+        }
+    }
+
+    var requiresReauth: Bool {
+        if case .unauthorized = self { return true }
+        return false
     }
 }
 
@@ -82,7 +104,13 @@ class APIClient {
     private let session: URLSession
     private var authToken: String?
 
-    private init(environment: APIEnvironment = .development) {
+    private init(environment: APIEnvironment = {
+        #if DEBUG
+        return .development
+        #else
+        return .production
+        #endif
+    }()) {
         self.environment = environment
 
         let config = URLSessionConfiguration.default
@@ -184,6 +212,10 @@ class APIClient {
             return try handleResponse(data: data, response: response)
         } catch let error as APIError {
             throw error
+        } catch let error as URLError where error.code == .timedOut {
+            throw APIError.timeout
+        } catch let error as URLError where error.code == .notConnectedToInternet {
+            throw APIError.offline
         } catch {
             throw APIError.networkError(error)
         }
@@ -208,6 +240,10 @@ class APIClient {
             return try handleResponse(data: data, response: response)
         } catch let error as APIError {
             throw error
+        } catch let error as URLError where error.code == .timedOut {
+            throw APIError.timeout
+        } catch let error as URLError where error.code == .notConnectedToInternet {
+            throw APIError.offline
         } catch {
             throw APIError.networkError(error)
         }
@@ -232,6 +268,10 @@ class APIClient {
             return try handleResponse(data: data, response: response)
         } catch let error as APIError {
             throw error
+        } catch let error as URLError where error.code == .timedOut {
+            throw APIError.timeout
+        } catch let error as URLError where error.code == .notConnectedToInternet {
+            throw APIError.offline
         } catch {
             throw APIError.networkError(error)
         }
@@ -260,6 +300,10 @@ class APIClient {
             }
         } catch let error as APIError {
             throw error
+        } catch let error as URLError where error.code == .timedOut {
+            throw APIError.timeout
+        } catch let error as URLError where error.code == .notConnectedToInternet {
+            throw APIError.offline
         } catch {
             throw APIError.networkError(error)
         }
