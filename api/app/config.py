@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     environment: str = "dev"
     gcp_project_id: str = "cycle-journal"
     gcp_region: str = "asia-northeast1"
-    apple_bundle_id: str = "com.cycle.journal"
+    apple_bundle_id: str = "com.akitoando.CycleJournal"
     google_client_id: str = ""  # iOS用Google OAuth Client ID
 
     # Vertex AI Claude
