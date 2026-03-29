@@ -11,8 +11,8 @@ struct SettingsView: View {
     @EnvironmentObject var taskViewModel: TaskViewModel
     @EnvironmentObject var coachStore: CoachStore
 
-    @State private var notificationEnabled = true
-    @State private var taskReminderEnabled = true
+    @State private var notificationSettings = NotificationSettingsStore.load()
+    @State private var systemPermissionGranted = false
     @State private var showingPrivacyPolicy = false
     @State private var showingTerms = false
     @State private var showingDataExport = false
@@ -109,8 +109,46 @@ struct SettingsView: View {
 
                 // 通知セクション
                 Section("通知") {
-                    Toggle("リマインダー通知", isOn: $notificationEnabled)
-                    Toggle("タスク期限通知", isOn: $taskReminderEnabled)
+                    if !systemPermissionGranted {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.orange)
+                            Text("通知が許可されていません")
+                                .font(DesignSystem.Fonts.caption)
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Button("設定を開く") {
+                                if let url = URL(string: UIApplication.openSettingsURLString) {
+                                    UIApplication.shared.open(url)
+                                }
+                            }
+                            .font(DesignSystem.Fonts.caption)
+                        }
+                    }
+
+                    Toggle("リマインダー通知", isOn: $notificationSettings.isReminderEnabled)
+                        .onChange(of: notificationSettings.isReminderEnabled) { _, newValue in
+                            handleReminderToggle(newValue)
+                        }
+
+                    if notificationSettings.isReminderEnabled {
+                        DatePicker(
+                            "リマインダー時刻",
+                            selection: reminderTimeBinding,
+                            displayedComponents: .hourAndMinute
+                        )
+                        .onChange(of: notificationSettings.reminderHour) { _, _ in
+                            updateReminderSchedule()
+                        }
+                        .onChange(of: notificationSettings.reminderMinute) { _, _ in
+                            updateReminderSchedule()
+                        }
+                    }
+
+                    Toggle("タスク締切通知", isOn: $notificationSettings.isTaskDeadlineEnabled)
+                        .onChange(of: notificationSettings.isTaskDeadlineEnabled) { _, newValue in
+                            NotificationSettingsStore.save(notificationSettings)
+                        }
                 }
 
                 // データセクション
@@ -218,7 +256,68 @@ struct SettingsView: View {
             } message: {
                 Text("日記、タスク、コーチ会話の全データを削除します。この操作は取り消せません。")
             }
+            .task {
+                await checkNotificationPermission()
+            }
         }
+    }
+
+    // MARK: - Notification Helpers
+
+    /// リマインダー時刻のバインディング
+    private var reminderTimeBinding: Binding<Date> {
+        Binding<Date>(
+            get: {
+                var components = DateComponents()
+                components.hour = notificationSettings.reminderHour
+                components.minute = notificationSettings.reminderMinute
+                return Calendar.current.date(from: components) ?? Date()
+            },
+            set: { newDate in
+                let components = Calendar.current.dateComponents([.hour, .minute], from: newDate)
+                notificationSettings.reminderHour = components.hour ?? 21
+                notificationSettings.reminderMinute = components.minute ?? 0
+                NotificationSettingsStore.save(notificationSettings)
+            }
+        )
+    }
+
+    /// 通知権限を確認
+    private func checkNotificationPermission() async {
+        let status = await NotificationManager.shared.checkPermissionStatus()
+        systemPermissionGranted = (status == .authorized)
+    }
+
+    /// リマインダートグルのハンドリング
+    private func handleReminderToggle(_ enabled: Bool) {
+        if enabled {
+            Task {
+                let granted = await NotificationManager.shared.requestPermission()
+                systemPermissionGranted = granted
+                if granted {
+                    NotificationManager.shared.scheduleDailyReminder(
+                        hour: notificationSettings.reminderHour,
+                        minute: notificationSettings.reminderMinute
+                    )
+                } else {
+                    notificationSettings.isReminderEnabled = false
+                }
+                NotificationSettingsStore.save(notificationSettings)
+            }
+        } else {
+            NotificationManager.shared.cancelDailyReminder()
+            NotificationSettingsStore.save(notificationSettings)
+        }
+    }
+
+    /// リマインダースケジュールを更新
+    private func updateReminderSchedule() {
+        guard notificationSettings.isReminderEnabled else { return }
+        NotificationManager.shared.scheduleDailyReminder(
+            hour: notificationSettings.reminderHour,
+            minute: notificationSettings.reminderMinute
+        )
+        NotificationSettingsStore.save(notificationSettings)
     }
 
     // MARK: - Helpers

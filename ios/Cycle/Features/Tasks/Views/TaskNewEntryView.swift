@@ -19,6 +19,8 @@ struct TaskNewEntryView: View {
     @State private var inputFact: String = ""
     @State private var inputInsight: String = ""
     @State private var inputNextAction: String = ""
+    @State private var hasDueDate: Bool = false
+    @State private var inputDueDate: Date = Date().addingTimeInterval(24 * 60 * 60)
     @State private var selectedSection: TaskSectionTabs.Section = .basic
     @FocusState private var isTitleFocused: Bool
 
@@ -84,10 +86,28 @@ struct TaskNewEntryView: View {
 
     // MARK: - Section Contents
 
+    private var dueDateSection: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
+            Toggle("締切日を設定", isOn: $hasDueDate)
+                .padding(.horizontal, DesignSystem.Spacing.lg)
+
+            if hasDueDate {
+                DatePicker(
+                    "締切日時",
+                    selection: $inputDueDate,
+                    in: Date()...,
+                    displayedComponents: [.date, .hourAndMinute]
+                )
+                .padding(.horizontal, DesignSystem.Spacing.lg)
+            }
+        }
+    }
+
     private var basicSectionContent: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.xl) {
             titleSection
             descriptionSection
+            dueDateSection
         }
     }
 
@@ -127,7 +147,8 @@ struct TaskNewEntryView: View {
             notes: trimmedNotes,
             fact: trimmedFact,
             insight: trimmedInsight,
-            nextAction: trimmedNextAction
+            nextAction: trimmedNextAction,
+            dueDate: hasDueDate ? inputDueDate : nil
         )
 
         // 保存後のフィードバック

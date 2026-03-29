@@ -75,7 +75,8 @@ final class TaskViewModel: ObservableObject {
         notes: String = "",
         fact: String = "",
         insight: String = "",
-        nextAction: String = ""
+        nextAction: String = "",
+        dueDate: Date? = nil
     ) {
         guard let trimmedTitle = trimTitle(title), !trimmedTitle.isEmpty else { return }
 
@@ -91,9 +92,13 @@ final class TaskViewModel: ObservableObject {
         newTask.fact = fact
         newTask.insight = insight
         newTask.nextAction = nextAction
+        newTask.dueDate = dueDate
 
         tasks.append(newTask)
         persist()
+
+        // 締切通知をスケジュール
+        scheduleDeadlineNotificationIfNeeded(for: newTask)
 
         // サーバーに同期
         let taskIndex = tasks.count - 1
@@ -129,6 +134,13 @@ final class TaskViewModel: ObservableObject {
         tasks[index].completedAt = tasks[index].isCompleted ? Date() : nil
         persist()
 
+        // 締切通知の管理
+        if tasks[index].isCompleted {
+            NotificationManager.shared.cancelTaskDeadlineNotification(taskId: tasks[index].id)
+        } else {
+            scheduleDeadlineNotificationIfNeeded(for: tasks[index])
+        }
+
         // サーバーに同期
         let updatedTask = tasks[index]
         Task {
@@ -146,7 +158,8 @@ final class TaskViewModel: ObservableObject {
         newNotes: String = "",
         newFact: String = "",
         newInsight: String = "",
-        newNextAction: String = ""
+        newNextAction: String = "",
+        newDueDate: Date? = nil
     ) {
         guard let trimmedTitle = trimTitle(newTitle), !trimmedTitle.isEmpty else { return }
 
@@ -160,7 +173,12 @@ final class TaskViewModel: ObservableObject {
             tasks[index].fact = newFact
             tasks[index].insight = newInsight
             tasks[index].nextAction = newNextAction
+            tasks[index].dueDate = newDueDate
             persist()
+
+            // 締切通知を再スケジュール
+            NotificationManager.shared.cancelTaskDeadlineNotification(taskId: tasks[index].id)
+            scheduleDeadlineNotificationIfNeeded(for: tasks[index])
 
             // サーバーに同期
             let updatedTask = tasks[index]
@@ -188,6 +206,9 @@ final class TaskViewModel: ObservableObject {
         guard let index = findTaskIndex(task) else { return }
         tasks[index].deletedAt = Date()
         persist()
+
+        // 締切通知をキャンセル
+        NotificationManager.shared.cancelTaskDeadlineNotification(taskId: task.id)
 
         // サーバーから削除
         Task {
@@ -269,6 +290,24 @@ final class TaskViewModel: ObservableObject {
     private func trimTitle(_ title: String) -> String? {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
+    }
+
+    // MARK: - Private Helpers - Notifications
+
+    /// タスク締切通知が有効な場合にスケジュール
+    private func scheduleDeadlineNotificationIfNeeded(for task: TaskItem) {
+        let settings = NotificationSettingsStore.load()
+        guard settings.isTaskDeadlineEnabled,
+              let dueDate = task.dueDate,
+              !task.isCompleted,
+              task.deletedAt == nil else { return }
+
+        NotificationManager.shared.scheduleTaskDeadlineNotification(
+            taskId: task.id,
+            title: task.title,
+            dueDate: dueDate,
+            minutesBefore: settings.deadlineAlertMinutesBefore
+        )
     }
 
     // MARK: - Private Helpers - Persistence
