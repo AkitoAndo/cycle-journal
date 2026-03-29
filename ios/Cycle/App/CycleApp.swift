@@ -7,9 +7,32 @@
 
 import GoogleSignIn
 import SwiftUI
+import UserNotifications
+
+/// フォアグラウンドでの通知表示を制御するAppDelegate
+class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        UNUserNotificationCenter.current().delegate = self
+        return true
+    }
+
+    /// フォアグラウンドで通知を受信した場合にバナーとサウンドで表示
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .sound])
+    }
+}
 
 @main
 struct CycleApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
     init() {
         // Google Sign-In
         GIDSignIn.sharedInstance.configuration = GIDConfiguration(

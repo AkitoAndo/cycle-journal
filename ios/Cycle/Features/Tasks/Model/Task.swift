@@ -35,6 +35,9 @@ struct TaskItem: Identifiable, Codable, Hashable {
     /// 完了日時
     var completedAt: Date?
 
+    /// 締切日時
+    var dueDate: Date?
+
     /// 削除日時（論理削除用）
     var deletedAt: Date?
 

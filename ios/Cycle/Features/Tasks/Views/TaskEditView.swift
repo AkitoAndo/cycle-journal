@@ -20,6 +20,8 @@ struct TaskEditView: View {
     @State private var editFact: String
     @State private var editInsight: String
     @State private var editNextAction: String
+    @State private var hasDueDate: Bool
+    @State private var editDueDate: Date
     @State private var selectedSection: TaskSectionTabs.Section = .basic
 
     init(vm: TaskViewModel, task: TaskItem) {
@@ -33,6 +35,8 @@ struct TaskEditView: View {
         _editFact = State(initialValue: task.fact)
         _editInsight = State(initialValue: task.insight)
         _editNextAction = State(initialValue: task.nextAction)
+        _hasDueDate = State(initialValue: task.dueDate != nil)
+        _editDueDate = State(initialValue: task.dueDate ?? Date().addingTimeInterval(24 * 60 * 60))
     }
 
     var body: some View {
@@ -91,12 +95,30 @@ struct TaskEditView: View {
             .padding(.horizontal, DesignSystem.Spacing.lg)
     }
 
+    private var dueDateSection: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
+            Toggle("締切日を設定", isOn: $hasDueDate)
+                .padding(.horizontal, DesignSystem.Spacing.lg)
+
+            if hasDueDate {
+                DatePicker(
+                    "締切日時",
+                    selection: $editDueDate,
+                    in: Date()...,
+                    displayedComponents: [.date, .hourAndMinute]
+                )
+                .padding(.horizontal, DesignSystem.Spacing.lg)
+            }
+        }
+    }
+
     // MARK: - Section Contents
 
     private var basicSectionContent: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.xl) {
             titleSection
             descriptionSection
+            dueDateSection
         }
     }
 
@@ -137,7 +159,8 @@ struct TaskEditView: View {
             newNotes: trimmedNotes,
             newFact: trimmedFact,
             newInsight: trimmedInsight,
-            newNextAction: trimmedNextAction
+            newNextAction: trimmedNextAction,
+            newDueDate: hasDueDate ? editDueDate : nil
         )
 
         // 保存後のフィードバック
