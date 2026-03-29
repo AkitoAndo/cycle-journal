@@ -200,6 +200,9 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showingDataExport) {
                 DataExportView()
+                    .environmentObject(journalViewModel)
+                    .environmentObject(taskViewModel)
+                    .environmentObject(coachStore)
             }
             .alert("サインアウト", isPresented: $showingSignOutAlert) {
                 Button("キャンセル", role: .cancel) {}
@@ -262,54 +265,79 @@ struct WebDocumentView: View {
 
 struct DataExportView: View {
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var journalViewModel: JournalViewModel
+    @EnvironmentObject var taskViewModel: TaskViewModel
+    @EnvironmentObject var coachStore: CoachStore
+
+    @State private var selectedFormat: ExportFormat = .json
+    @State private var showShareSheet = false
+    @State private var exportFileURL: URL?
     @State private var isExporting = false
-    @State private var exportComplete = false
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 24) {
+            VStack(spacing: DesignSystem.Spacing.xxl) {
                 Spacer()
 
                 Image(systemName: "square.and.arrow.up")
                     .font(DesignSystem.Fonts.heroIcon)
                     .foregroundColor(.blue)
 
-                VStack(spacing: 8) {
+                VStack(spacing: DesignSystem.Spacing.sm) {
                     Text("データエクスポート")
                         .font(DesignSystem.Fonts.title2)
                         .fontWeight(.bold)
 
-                    Text("日記、会話履歴、タスクのデータを\nJSON形式でエクスポートします")
+                    Text("日記、タスク、振り返り、コーチ会話の\nデータをエクスポートします")
                         .font(DesignSystem.Fonts.body)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                 }
 
-                Spacer()
+                // フォーマット選択
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
+                    Text("エクスポート形式")
+                        .font(DesignSystem.Fonts.headline)
 
-                if exportComplete {
-                    Label("エクスポート完了", systemImage: "checkmark.circle.fill")
-                        .foregroundColor(.green)
-                        .font(DesignSystem.Fonts.button)
-                } else {
-                    Button(action: exportData) {
-                        if isExporting {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        } else {
-                            Text("エクスポートする")
+                    Picker("形式", selection: $selectedFormat) {
+                        ForEach(ExportFormat.allCases) { format in
+                            Text(format.rawValue).tag(format)
                         }
                     }
-                    .font(DesignSystem.Fonts.button)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .cornerRadius(12)
-                    .disabled(isExporting)
+                    .pickerStyle(.segmented)
                 }
+                .padding(.horizontal)
+
+                // データ概要
+                VStack(spacing: DesignSystem.Spacing.sm) {
+                    dataCountRow(label: "ジャーナル", count: journalViewModel.allEntries.filter { $0.deletedAt == nil }.count)
+                    dataCountRow(label: "タスク", count: taskViewModel.tasks.filter { $0.deletedAt == nil }.count)
+                    dataCountRow(label: "アーカイブ", count: taskViewModel.archives.count)
+                    dataCountRow(label: "コーチセッション", count: coachStore.sessions.count)
+                }
+                .padding(.horizontal)
+
+                Spacer()
+
+                // エクスポートボタン
+                Button(action: exportData) {
+                    if isExporting {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    } else {
+                        Text("エクスポートする")
+                    }
+                }
+                .font(DesignSystem.Fonts.button)
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.blue)
+                .cornerRadius(12)
+                .disabled(isExporting)
+                .padding(.horizontal)
             }
-            .padding()
+            .padding(.vertical)
             .navigationTitle("データエクスポート")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -319,16 +347,64 @@ struct DataExportView: View {
                     }
                 }
             }
+            .sheet(isPresented: $showShareSheet) {
+                if let url = exportFileURL {
+                    ShareSheet(activityItems: [url])
+                }
+            }
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func dataCountRow(label: String, count: Int) -> some View {
+        HStack {
+            Text(label)
+                .font(DesignSystem.Fonts.body)
+                .foregroundColor(.secondary)
+            Spacer()
+            Text("\(count)件")
+                .font(DesignSystem.Fonts.body)
+                .foregroundColor(.secondary)
         }
     }
 
     private func exportData() {
         isExporting = true
 
-        // TODO: 実際のエクスポート処理
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-            isExporting = false
-            exportComplete = true
+        let journals = journalViewModel.allEntries
+        let tasks = taskViewModel.tasks
+        let archives = taskViewModel.archives
+        let sessions = coachStore.sessions
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            let data: Data
+            switch selectedFormat {
+            case .json:
+                data = DataExportService.exportJSON(
+                    journals: journals,
+                    tasks: tasks,
+                    archives: archives,
+                    sessions: sessions
+                )
+            case .csv:
+                data = DataExportService.exportCSV(
+                    journals: journals,
+                    tasks: tasks,
+                    archives: archives,
+                    sessions: sessions
+                )
+            }
+
+            let fileURL = DataExportService.createTemporaryFile(data: data, format: selectedFormat)
+
+            DispatchQueue.main.async {
+                isExporting = false
+                if let url = fileURL {
+                    exportFileURL = url
+                    showShareSheet = true
+                }
+            }
         }
     }
 }
