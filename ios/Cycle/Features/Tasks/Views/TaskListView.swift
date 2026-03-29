@@ -58,9 +58,31 @@ struct TaskListView: View {
     private var mainContent: some View {
         VStack(spacing: DesignSystem.Spacing.sm) {
             header
+
+            NetworkStatusBanner()
+
+            if let error = vm.lastSyncError, vm.syncError != nil {
+                ErrorBannerView(
+                    message: error.errorDescription ?? "同期エラー",
+                    isRetryable: error.isRetryable,
+                    onRetry: {
+                        vm.clearSyncError()
+                        Task { await vm.fetchServerTasks() }
+                    },
+                    onDismiss: { vm.clearSyncError() }
+                )
+            }
+
             taskListOrEmptyState
         }
         .background(DesignSystem.Colors.background)
+        .alert("再ログインが必要です", isPresented: $vm.showReauthPrompt) {
+            Button("OK") {
+                vm.showReauthPrompt = false
+            }
+        } message: {
+            Text("セッションの有効期限が切れました。設定画面からサインインし直してください。")
+        }
     }
 
     // MARK: - Components

@@ -15,6 +15,8 @@ class CoachStore: ObservableObject {
     @Published var currentSession: CoachSession?
     @Published var isLoading: Bool = false
     @Published var error: String?
+    @Published var lastAPIError: APIError?
+    @Published var showReauthPrompt: Bool = false
     /// ContentView → CoachHomeView へチャット画面を開くよう通知するフラグ
     @Published var shouldOpenChat: Bool = false
 
@@ -169,10 +171,21 @@ class CoachStore: ObservableObject {
             }
         } catch {
             await MainActor.run {
-                self.error = error.localizedDescription
+                let apiError = (error as? APIError) ?? .networkError(error)
+                self.lastAPIError = apiError
+                self.error = apiError.errorDescription
+                if apiError.requiresReauth {
+                    self.showReauthPrompt = true
+                }
                 isLoading = false
             }
         }
+    }
+
+    /// エラーを消去
+    func clearError() {
+        error = nil
+        lastAPIError = nil
     }
 
     /// 日記を元にセッションを開始
@@ -275,7 +288,12 @@ class CoachStore: ObservableObject {
             }
         } catch {
             await MainActor.run {
-                self.error = error.localizedDescription
+                let apiError = (error as? APIError) ?? .networkError(error)
+                self.lastAPIError = apiError
+                self.error = apiError.errorDescription
+                if apiError.requiresReauth {
+                    self.showReauthPrompt = true
+                }
                 isLoading = false
             }
         }
@@ -301,7 +319,9 @@ class CoachStore: ObservableObject {
             return fullSession
         } catch {
             await MainActor.run {
-                self.error = error.localizedDescription
+                let apiError = (error as? APIError) ?? .networkError(error)
+                self.lastAPIError = apiError
+                self.error = apiError.errorDescription
             }
             return nil
         }

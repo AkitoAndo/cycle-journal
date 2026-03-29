@@ -26,6 +26,12 @@ final class TaskViewModel: ObservableObject {
     /// 同期エラー
     @Published var syncError: String?
 
+    /// 最後のAPIエラー（リトライ判定用）
+    @Published var lastSyncError: APIError?
+
+    /// 再認証プロンプト表示フラグ
+    @Published var showReauthPrompt: Bool = false
+
     private let taskService = TaskService()
 
     // MARK: - Initialization
@@ -108,7 +114,10 @@ final class TaskViewModel: ObservableObject {
             tasks[localIndex].serverId = serverTask.taskId
             persist()
         } catch {
-            syncError = error.localizedDescription
+            let apiError = (error as? APIError) ?? .networkError(error)
+            lastSyncError = apiError
+            syncError = apiError.errorDescription
+            if apiError.requiresReauth { showReauthPrompt = true }
         }
     }
 
@@ -295,9 +304,18 @@ final class TaskViewModel: ObservableObject {
             persist()
             isSyncing = false
         } catch {
-            syncError = error.localizedDescription
+            let apiError = (error as? APIError) ?? .networkError(error)
+            lastSyncError = apiError
+            syncError = apiError.errorDescription
+            if apiError.requiresReauth { showReauthPrompt = true }
             isSyncing = false
         }
+    }
+
+    /// エラーを消去
+    func clearSyncError() {
+        syncError = nil
+        lastSyncError = nil
     }
 
     /// サーバーのタスクを更新
@@ -311,7 +329,10 @@ final class TaskViewModel: ObservableObject {
                 status: status
             )
         } catch {
-            syncError = error.localizedDescription
+            let apiError = (error as? APIError) ?? .networkError(error)
+            lastSyncError = apiError
+            syncError = apiError.errorDescription
+            if apiError.requiresReauth { showReauthPrompt = true }
         }
     }
 
@@ -321,7 +342,10 @@ final class TaskViewModel: ObservableObject {
         do {
             try await taskService.deleteTask(taskId: serverId)
         } catch {
-            syncError = error.localizedDescription
+            let apiError = (error as? APIError) ?? .networkError(error)
+            lastSyncError = apiError
+            syncError = apiError.errorDescription
+            if apiError.requiresReauth { showReauthPrompt = true }
         }
     }
 
