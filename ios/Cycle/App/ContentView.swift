@@ -13,6 +13,7 @@ struct ContentView: View {
     @StateObject private var journalViewModel = JournalViewModel()
     @StateObject private var authStore = AuthStore()
     @StateObject private var taskViewModel = TaskViewModel()
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -52,6 +53,12 @@ struct ContentView: View {
             coachStore.shouldOpenChat = true
         }
         .ignoresSafeArea(.keyboard)
+        .overlay {
+            if !hasCompletedOnboarding {
+                OnboardingView()
+                    .transition(.opacity)
+            }
+        }
     }
 }
 
