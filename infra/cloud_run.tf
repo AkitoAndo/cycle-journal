@@ -11,7 +11,7 @@ resource "google_cloud_run_v2_service" "api" {
     }
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.api.repository_id}/api:latest"
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/cycle-api/api:latest"
 
       ports {
         container_port = 8080
