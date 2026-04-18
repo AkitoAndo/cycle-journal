@@ -1,0 +1,15 @@
+# Googleでサインイン ボタンがタップでき、クラッシュしないことを確認
+# 実際のOAuth同意画面はSafari/ASWebAuthenticationSessionで表示されるため実機テスト必須
+appId: com.akitoando.CycleJournal
+tags:
+  - smoke
+  - auth
+---
+- clearState
+- launchApp:
+    clearKeychain: true
+- assertVisible: "Googleでサインイン"
+- tapOn: "Googleでサインイン"
+# タップ後に少し待つ（OAuth画面がフェードインする時間）
+- waitForAnimationToEnd:
+    timeout: 3000

@@ -1,0 +1,16 @@
+# Sign in with Apple ボタンがタップでき、クラッシュしないことを確認
+# Apple認証ダイアログの挙動はSimulatorと実機で異なるため、ここではタップ可能性のみ検証
+appId: com.akitoando.CycleJournal
+tags:
+  - smoke
+  - auth
+---
+- clearState
+- launchApp:
+    clearKeychain: true
+- assertVisible: "Sign in with Apple"
+- tapOn: "Sign in with Apple"
+# タップ後にアプリがまだ前面で動作していれば成功
+- extendedWaitUntil:
+    visible: "Cycle"
+    timeout: 5000

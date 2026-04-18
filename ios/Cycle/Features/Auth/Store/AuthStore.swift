@@ -42,7 +42,6 @@ struct AuthUser: Codable, Equatable {
     let createdAt: Date
     let provider: AuthProvider
 
-    // 後方互換: appleUserId は以前は非Optional
     init(userId: String, appleUserId: String? = nil, googleUserId: String? = nil, email: String?, fullName: String?, createdAt: Date, provider: AuthProvider = .apple) {
         self.userId = userId
         self.appleUserId = appleUserId
@@ -65,11 +64,16 @@ class AuthStore: NSObject, ObservableObject {
 
     private let authService = AuthService()
     private let keychainService = "com.cycle.journal.auth"
-    private let tokenKey = "identityToken"
+    private let accessTokenKey = "accessToken"
+    private let refreshTokenKey = "refreshToken"
+    private let legacyTokenKey = "identityToken"
     private let userKey = "currentUser"
 
     override init() {
         super.init()
+        APIClient.shared.setTokenRefresher { [weak self] in
+            try await self?.refreshAccessToken() ?? ""
+        }
         Task {
             await checkAuthState()
         }
@@ -109,7 +113,6 @@ class AuthStore: NSObject, ObservableObject {
                 guard let self else { return }
 
                 if let error {
-                    // キャンセルの場合はエラーを表示しない
                     if (error as NSError).code == GIDSignInError.canceled.rawValue {
                         self.isLoading = false
                         return
@@ -134,7 +137,7 @@ class AuthStore: NSObject, ObservableObject {
         }
     }
 
-    /// Google Sign-Inの結果を処理（Google Sign-In SDKのコールバックから呼ぶ）
+    /// Google Sign-Inの結果を処理
     func handleGoogleSignIn(idToken: String, fullName: String?, email: String?) async {
         isLoading = true
         error = nil
@@ -151,9 +154,7 @@ class AuthStore: NSObject, ObservableObject {
                 provider: .google
             )
 
-            saveToKeychain(key: tokenKey, value: idToken)
-            saveUserToKeychain(user)
-            APIClient.shared.setAuthToken(idToken)
+            persistSession(user: user, accessToken: response.accessToken, refreshToken: response.refreshToken)
 
             currentUser = user
             state = .authenticated(userId: user.userId)
@@ -165,67 +166,81 @@ class AuthStore: NSObject, ObservableObject {
         }
     }
 
-    /// サインアウト
+    /// サインアウト: サーバーrefresh token無効化 + ローカル削除 + Google SDK sign out
     func signOut() {
-        deleteFromKeychain(key: tokenKey)
-        deleteFromKeychain(key: userKey)
-        APIClient.shared.setAuthToken(nil)
-        currentUser = nil
-        state = .unauthenticated
+        if let refreshToken = loadFromKeychain(key: refreshTokenKey) {
+            Task {
+                try? await authService.logout(refreshToken: refreshToken)
+            }
+        }
+        GIDSignIn.sharedInstance.signOut()
+        clearLocalAuth()
     }
 
     /// 認証状態を確認
     func checkAuthState() async {
-        guard let token = loadFromKeychain(key: tokenKey) else {
+        // 旧バージョンからアップデートしたユーザー: identityToken のみ → 再サインイン要求
+        if loadFromKeychain(key: accessTokenKey) == nil, loadFromKeychain(key: legacyTokenKey) != nil {
+            clearLocalAuth()
+            return
+        }
+
+        guard let accessToken = loadFromKeychain(key: accessTokenKey) else {
             state = .unauthenticated
             return
         }
 
-        if let userData = loadDataFromKeychain(key: userKey),
-           let user = try? JSONDecoder().decode(AuthUser.self, from: userData) {
-            currentUser = user
-            APIClient.shared.setAuthToken(token)
-            state = .authenticated(userId: user.userId)
+        guard let userData = loadDataFromKeychain(key: userKey),
+              let user = try? JSONDecoder().decode(AuthUser.self, from: userData) else {
+            clearLocalAuth()
+            return
+        }
 
-            Task {
-                await validateToken(token, provider: user.provider)
-            }
-        } else {
-            state = .unauthenticated
+        currentUser = user
+        APIClient.shared.setAuthToken(accessToken)
+        state = .authenticated(userId: user.userId)
+    }
+
+    // MARK: - Token Refresh
+
+    /// Refresh tokenで新しいアクセストークンを取得。
+    /// APIClientから呼ばれる。失敗時はサインアウト状態に遷移して例外を投げる。
+    func refreshAccessToken() async throws -> String {
+        guard let refreshToken = loadFromKeychain(key: refreshTokenKey) else {
+            clearLocalAuth()
+            throw APIError.unauthorized
+        }
+
+        do {
+            let response = try await authService.refresh(refreshToken: refreshToken)
+            saveToKeychain(key: accessTokenKey, value: response.accessToken)
+            saveToKeychain(key: refreshTokenKey, value: response.refreshToken)
+            APIClient.shared.setAuthToken(response.accessToken)
+            return response.accessToken
+        } catch {
+            clearLocalAuth()
+            throw error
         }
     }
 
     // MARK: - Private Methods
 
-    private func validateToken(_ token: String, provider: AuthProvider = .apple) async {
-        do {
-            let response: AuthVerifyResponse
-            switch provider {
-            case .apple:
-                response = try await authService.verifyToken(token)
-            case .google:
-                response = try await authService.verifyGoogleToken(token)
-            }
+    private func persistSession(user: AuthUser, accessToken: String, refreshToken: String) {
+        saveToKeychain(key: accessTokenKey, value: accessToken)
+        saveToKeychain(key: refreshTokenKey, value: refreshToken)
+        saveUserToKeychain(user)
+        deleteFromKeychain(key: legacyTokenKey)
+        APIClient.shared.setAuthToken(accessToken)
+    }
 
-            if let existingUser = currentUser {
-                let updatedUser = AuthUser(
-                    userId: response.userId,
-                    appleUserId: response.appleUserId,
-                    googleUserId: response.googleUserId,
-                    email: response.email ?? existingUser.email,
-                    fullName: existingUser.fullName,
-                    createdAt: existingUser.createdAt,
-                    provider: provider
-                )
-                currentUser = updatedUser
-                saveUserToKeychain(updatedUser)
-            }
-        } catch {
-            if case APIError.unauthorized = error {
-                signOut()
-            }
-            print("Token validation failed: \(error)")
-        }
+    private func clearLocalAuth() {
+        deleteFromKeychain(key: accessTokenKey)
+        deleteFromKeychain(key: refreshTokenKey)
+        deleteFromKeychain(key: legacyTokenKey)
+        deleteFromKeychain(key: userKey)
+        APIClient.shared.setAuthToken(nil)
+        currentUser = nil
+        state = .unauthenticated
     }
 
     private func handleSignInSuccess(credential: ASAuthorizationAppleIDCredential) async {
@@ -256,9 +271,7 @@ class AuthStore: NSObject, ObservableObject {
                 provider: .apple
             )
 
-            saveToKeychain(key: tokenKey, value: identityToken)
-            saveUserToKeychain(user)
-            APIClient.shared.setAuthToken(identityToken)
+            persistSession(user: user, accessToken: response.accessToken, refreshToken: response.refreshToken)
 
             currentUser = user
             state = .authenticated(userId: user.userId)

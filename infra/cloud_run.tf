@@ -53,10 +53,23 @@ resource "google_cloud_run_v2_service" "api" {
         name  = "GOOGLE_CLIENT_ID"
         value = var.google_client_id
       }
+
+      env {
+        name = "JWT_SECRET_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.jwt_secret.secret_id
+            version = "latest"
+          }
+        }
+      }
     }
   }
 
-  depends_on = [google_project_service.apis]
+  depends_on = [
+    google_project_service.apis,
+    google_secret_manager_secret_version.jwt_secret,
+  ]
 }
 
 # 未認証アクセスを許可（認証はアプリ側のミドルウェアで行う）
