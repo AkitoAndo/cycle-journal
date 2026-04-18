@@ -1,0 +1,5 @@
+# Maestro test suite config
+# Usage:
+#   cd ios/maestro
+#   maestro --device=<sim-id> test . --include-tags=smoke
+appId: com.akitoando.CycleJournal

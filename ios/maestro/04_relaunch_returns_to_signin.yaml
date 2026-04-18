@@ -1,0 +1,15 @@
+# 未認証状態でアプリを停止→再起動すると SignInView に戻ることを確認
+# （認証済みKeychainがない場合、checkAuthStateがunauthenticatedに遷移）
+appId: com.akitoando.CycleJournal
+tags:
+  - smoke
+  - auth
+---
+- clearState
+- launchApp:
+    clearKeychain: true
+- assertVisible: "Sign in with Apple"
+- stopApp
+- launchApp
+- assertVisible: "Sign in with Apple"
+- assertNotVisible: "Journal"
