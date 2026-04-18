@@ -10,6 +10,13 @@ class Settings(BaseSettings):
     apple_bundle_id: str = "com.akitoando.CycleJournal"
     google_client_id: str = ""  # iOS用Google OAuth Client ID
 
+    # JWT (サーバー発行トークン)
+    jwt_secret_key: str = "dev-insecure-local-only"  # prodはSecret Managerで上書き
+    jwt_algorithm: str = "HS256"
+    jwt_issuer: str = "cycle-journal"
+    access_token_expire_minutes: int = 60
+    refresh_token_expire_days: int = 30
+
     # Vertex AI Claude
     claude_model: str = "claude-sonnet-4-20250514"
     claude_max_tokens: int = 500

@@ -31,6 +31,11 @@ class InvalidTokenError(AppError):
         super().__init__("InvalidToken", message, 401)
 
 
+class RefreshTokenError(AppError):
+    def __init__(self, message: str = "Invalid or expired refresh token"):
+        super().__init__("RefreshTokenInvalid", message, 401)
+
+
 class NotFoundError(AppError):
     def __init__(self, resource: str = "Resource"):
         super().__init__("NotFound", f"{resource} not found", 404)

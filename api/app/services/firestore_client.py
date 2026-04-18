@@ -25,3 +25,7 @@ def sessions_ref(db: AsyncClient):
 
 def tasks_ref(db: AsyncClient):
     return db.collection("tasks")
+
+
+def refresh_tokens_ref(db: AsyncClient):
+    return db.collection("refresh_tokens")

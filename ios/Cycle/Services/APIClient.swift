@@ -95,14 +95,41 @@ struct APIErrorFieldDetail: Decodable {
     let message: String
 }
 
+// MARK: - Token Refresh Coordinator
+
+/// 並行する401リクエストに対して refresh を1回だけ実行し、全員に新トークンを配布するactor.
+actor TokenRefreshCoordinator {
+    private var inFlight: Task<String, Error>?
+
+    func refresh(using refresher: @Sendable @escaping () async throws -> String) async throws -> String {
+        if let existing = inFlight {
+            return try await existing.value
+        }
+        let task = Task { try await refresher() }
+        inFlight = task
+        do {
+            let result = try await task.value
+            inFlight = nil
+            return result
+        } catch {
+            inFlight = nil
+            throw error
+        }
+    }
+}
+
 // MARK: - API Client
 
 class APIClient {
     static let shared = APIClient()
 
+    typealias TokenRefresher = @Sendable () async throws -> String
+
     private let environment: APIEnvironment
     private let session: URLSession
     private var authToken: String?
+    private var tokenRefresher: TokenRefresher?
+    private let refreshCoordinator = TokenRefreshCoordinator()
 
     private init(environment: APIEnvironment = {
         #if DEBUG
@@ -127,6 +154,40 @@ class APIClient {
 
     func getAuthToken() -> String? {
         return authToken
+    }
+
+    /// AuthStoreがinit時に設定。401時のaccess tokenリフレッシュに使う。
+    func setTokenRefresher(_ refresher: TokenRefresher?) {
+        self.tokenRefresher = refresher
+    }
+
+    // MARK: - 401 Retry
+
+    /// 401時に refresh → 1回だけリトライ。
+    /// requiresAuth=falseまたはrefresherが未設定のときはリトライしない。
+    private func sendWithRetry(
+        _ request: URLRequest,
+        requiresAuth: Bool
+    ) async throws -> (Data, URLResponse) {
+        let (data, response) = try await session.data(for: request)
+
+        guard requiresAuth,
+              let http = response as? HTTPURLResponse,
+              http.statusCode == 401,
+              let refresher = tokenRefresher else {
+            return (data, response)
+        }
+
+        let newToken: String
+        do {
+            newToken = try await refreshCoordinator.refresh(using: refresher)
+        } catch {
+            return (data, response)
+        }
+
+        var retryRequest = request
+        retryRequest.setValue("Bearer \(newToken)", forHTTPHeaderField: "Authorization")
+        return try await session.data(for: retryRequest)
     }
 
     // MARK: - Request Building
@@ -208,7 +269,7 @@ class APIClient {
         let request = buildRequest(url: url, method: "GET", requiresAuth: requiresAuth)
 
         do {
-            let (data, response) = try await session.data(for: request)
+            let (data, response) = try await sendWithRetry(request, requiresAuth: requiresAuth)
             return try handleResponse(data: data, response: response)
         } catch let error as APIError {
             throw error
@@ -236,7 +297,7 @@ class APIClient {
         let request = buildRequest(url: url, method: "POST", body: bodyData, requiresAuth: requiresAuth)
 
         do {
-            let (data, response) = try await session.data(for: request)
+            let (data, response) = try await sendWithRetry(request, requiresAuth: requiresAuth)
             return try handleResponse(data: data, response: response)
         } catch let error as APIError {
             throw error
@@ -264,7 +325,7 @@ class APIClient {
         let request = buildRequest(url: url, method: "PUT", body: bodyData, requiresAuth: requiresAuth)
 
         do {
-            let (data, response) = try await session.data(for: request)
+            let (data, response) = try await sendWithRetry(request, requiresAuth: requiresAuth)
             return try handleResponse(data: data, response: response)
         } catch let error as APIError {
             throw error
@@ -285,7 +346,7 @@ class APIClient {
         let request = buildRequest(url: url, method: "DELETE", requiresAuth: requiresAuth)
 
         do {
-            let (_, response) = try await session.data(for: request)
+            let (_, response) = try await sendWithRetry(request, requiresAuth: requiresAuth)
 
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw APIError.invalidResponse

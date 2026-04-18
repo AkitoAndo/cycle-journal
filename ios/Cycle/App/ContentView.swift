@@ -9,15 +9,34 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var selectedTab = 0
-    @StateObject private var coachStore = CoachStore()
-    @StateObject private var journalViewModel = JournalViewModel()
-    @StateObject private var authStore = AuthStore()
-    @StateObject private var taskViewModel = TaskViewModel()
+    @EnvironmentObject private var coachStore: CoachStore
+    @EnvironmentObject private var journalViewModel: JournalViewModel
+    @EnvironmentObject private var authStore: AuthStore
+    @EnvironmentObject private var taskViewModel: TaskViewModel
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
 
     var body: some View {
+        Group {
+            switch authStore.state {
+            case .unknown:
+                splashView
+            case .unauthenticated:
+                SignInView()
+            case .authenticated:
+                mainContent
+            }
+        }
+    }
+
+    private var splashView: some View {
+        ZStack {
+            DesignSystem.Colors.background.ignoresSafeArea()
+            ProgressView()
+        }
+    }
+
+    private var mainContent: some View {
         ZStack(alignment: .bottom) {
-            // メインコンテンツ
             Group {
                 switch selectedTab {
                 case 0:
@@ -40,16 +59,10 @@ struct ContentView: View {
             }
             .padding(.bottom, 55)
 
-            // カスタムタブバー
             CustomTabBar(selectedTab: $selectedTab)
         }
-        .environmentObject(coachStore)
-        .environmentObject(journalViewModel)
-        .environmentObject(authStore)
-        .environmentObject(taskViewModel)
         .onReceive(NotificationCenter.default.publisher(for: .navigateToCoachChat)) { _ in
             selectedTab = 1
-            // CoachHomeView側でshowingChatをトリガー
             coachStore.shouldOpenChat = true
         }
         .ignoresSafeArea(.keyboard)

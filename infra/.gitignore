@@ -1,0 +1,6 @@
+# Terraform plan output
+tfplan-*
+
+# Terraform working directory
+.terraform/
+.terraform.lock.hcl.backup

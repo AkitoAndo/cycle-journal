@@ -62,12 +62,11 @@ def mock_firestore():
 
 @pytest.fixture
 def mock_auth():
-    """Mock Apple auth to return a fixed user_id."""
+    """Mock server access-token verification to return a fixed user_id."""
     with patch(
-        "app.middleware.auth_middleware.verify_apple_token",
-        new_callable=AsyncMock,
+        "app.middleware.auth_middleware.verify_access_token",
     ) as mock:
-        mock.return_value = {"sub": "test-user-123", "email": "test@example.com"}
+        mock.return_value = {"sub": "test-user-123", "provider": "apple", "type": "access"}
         yield mock
 
 
