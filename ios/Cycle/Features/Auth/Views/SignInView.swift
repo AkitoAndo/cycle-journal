@@ -91,14 +91,13 @@ struct SignInView: View {
     private var appleSignInButton: some View {
         SignInWithAppleButton(.signIn) { request in
             request.requestedScopes = [.fullName, .email]
-        } onCompletion: { _ in }
+        } onCompletion: { result in
+            Task { await authStore.handleAppleAuthorization(result) }
+        }
         .signInWithAppleButtonStyle(.black)
         .frame(height: 50)
         .cornerRadius(8)
         .padding(.horizontal, 40)
-        .onTapGesture {
-            authStore.signInWithApple()
-        }
         .disabled(authStore.isLoading)
         .opacity(authStore.isLoading ? 0.6 : 1.0)
     }

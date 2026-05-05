@@ -81,7 +81,9 @@ class AuthStore: NSObject, ObservableObject {
 
     // MARK: - Public Methods
 
-    /// Sign in with Appleを開始
+    /// Sign in with Appleを開始（自前で ASAuthorizationController を立てる経路）
+    /// SettingsView の Button から呼ばれる。SignInView は SignInWithAppleButton 経由で
+    /// `handleAppleAuthorization(_:)` を使う。
     func signInWithApple() {
         isLoading = true
         error = nil
@@ -94,6 +96,50 @@ class AuthStore: NSObject, ObservableObject {
         controller.delegate = self
         controller.presentationContextProvider = self
         controller.performRequests()
+    }
+
+    /// `SignInWithAppleButton` の onCompletion から呼ぶ。
+    /// 成功時は credential を取り出して既存の sign-in 成功処理に流す。
+    func handleAppleAuthorization(_ result: Result<ASAuthorization, Error>) async {
+        isLoading = true
+        error = nil
+
+        switch result {
+        case .success(let authorization):
+            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else {
+                self.error = "認証情報の取得に失敗しました"
+                self.isLoading = false
+                return
+            }
+            await handleSignInSuccess(credential: credential)
+
+        case .failure(let error):
+            applyAuthorizationError(error)
+            self.isLoading = false
+        }
+    }
+
+    private func applyAuthorizationError(_ error: Error) {
+        if let authError = error as? ASAuthorizationError {
+            switch authError.code {
+            case .canceled:
+                return
+            case .failed:
+                self.error = "認証に失敗しました"
+            case .invalidResponse:
+                self.error = "無効な応答を受け取りました"
+            case .notHandled:
+                self.error = "認証リクエストが処理されませんでした"
+            case .notInteractive:
+                self.error = "認証に対話が必要です"
+            case .unknown:
+                self.error = "不明なエラーが発生しました"
+            @unknown default:
+                self.error = "エラーが発生しました"
+            }
+        } else {
+            self.error = error.localizedDescription
+        }
     }
 
     /// Google Sign-Inを開始
