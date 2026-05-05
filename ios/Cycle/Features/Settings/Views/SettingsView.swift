@@ -19,6 +19,8 @@ struct SettingsView: View {
     @State private var showingSignOutAlert = false
     @State private var showingClearDataAlert = false
     @State private var showingComponentCatalog = false
+    @State private var showingDeleteAccountAlert = false
+    @State private var isDeletingAccount = false
 
     var body: some View {
         NavigationStack {
@@ -57,6 +59,20 @@ struct SettingsView: View {
                                 Text("サインアウト")
                             }
                         }
+
+                        Button(role: .destructive, action: { showingDeleteAccountAlert = true }) {
+                            HStack {
+                                if isDeletingAccount {
+                                    ProgressView()
+                                        .padding(.trailing, 4)
+                                } else {
+                                    Image(systemName: "trash")
+                                }
+                                Text(isDeletingAccount ? "アカウントを削除中..." : "アカウントを削除")
+                            }
+                        }
+                        .disabled(isDeletingAccount)
+                        .accessibilityIdentifier("delete_account_button")
                     } else {
                         // 未ログイン
                         HStack {
@@ -258,6 +274,18 @@ struct SettingsView: View {
                 Button("削除", role: .destructive) {}
             } message: {
                 Text("日記、タスク、コーチ会話の全データを削除します。この操作は取り消せません。")
+            }
+            .alert("アカウントを削除", isPresented: $showingDeleteAccountAlert) {
+                Button("キャンセル", role: .cancel) {}
+                Button("削除", role: .destructive) {
+                    Task {
+                        isDeletingAccount = true
+                        await authStore.deleteAccount()
+                        isDeletingAccount = false
+                    }
+                }
+            } message: {
+                Text("アカウントとすべてのデータ（日記・タスク・コーチ会話）がサーバーから完全に削除されます。\nこの操作は取り消せません。")
             }
             .task {
                 await checkNotificationPermission()

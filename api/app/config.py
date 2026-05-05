@@ -10,6 +10,12 @@ class Settings(BaseSettings):
     apple_bundle_id: str = "com.akitoando.CycleJournal"
     google_client_id: str = ""  # iOS用Google OAuth Client ID
 
+    # Sign in with Apple - revoke / token exchange 用
+    # 未設定の場合は revoke / code 交換は no-op になる（ローカル開発フォールバック）
+    apple_team_id: str = ""
+    apple_key_id: str = ""
+    apple_private_key: str = ""  # .p8 ファイルの中身（PEM）
+
     # JWT (サーバー発行トークン)
     jwt_secret_key: str = "dev-insecure-local-only"  # prodはSecret Managerで上書き
     jwt_algorithm: str = "HS256"

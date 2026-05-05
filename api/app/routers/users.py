@@ -6,6 +6,7 @@ from google.cloud.firestore import AsyncClient
 from app.dependencies import get_current_user, get_firestore
 from app.exceptions import NotFoundError
 from app.models.user import UserData, UserSettings
+from app.services.account_service import delete_user_account
 from app.services.firestore_client import users_ref
 
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -38,3 +39,21 @@ async def get_me(
             updated_at=data.get("updated_at"),
         )
     }
+
+
+@router.delete("/me")
+async def delete_me(
+    user_id: str = Depends(get_current_user),
+    db: AsyncClient = Depends(get_firestore),
+):
+    """認証済みユーザー自身のアカウントを完全に削除する.
+
+    - Apple Sign in 連携時は Apple 側で refresh token を revoke
+    - サーバ発行の refresh tokens をすべて削除
+    - ユーザーが所有する sessions / tasks とそのサブコレクションを削除
+    - users/{user_id} ドキュメントを削除
+
+    削除統計をレスポンスに含める（クライアントは ok のみ確認すれば十分）。
+    """
+    stats = await delete_user_account(db, user_id)
+    return {"data": {"ok": True, **stats}}

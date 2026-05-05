@@ -45,6 +45,26 @@ resource "google_cloud_run_v2_service" "api" {
       }
 
       env {
+        name  = "APPLE_TEAM_ID"
+        value = var.apple_team_id
+      }
+
+      env {
+        name  = "APPLE_KEY_ID"
+        value = var.apple_key_id
+      }
+
+      env {
+        name = "APPLE_PRIVATE_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.apple_auth.secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      env {
         name  = "USE_LANGGRAPH"
         value = var.use_langgraph ? "true" : "false"
       }
@@ -69,6 +89,7 @@ resource "google_cloud_run_v2_service" "api" {
   depends_on = [
     google_project_service.apis,
     google_secret_manager_secret_version.jwt_secret,
+    google_secret_manager_secret.apple_auth,
   ]
 }
 

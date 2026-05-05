@@ -9,6 +9,9 @@ import Foundation
 
 struct AuthVerifyRequest: Encodable {
     let identityToken: String
+    /// `ASAuthorizationAppleIDCredential.authorizationCode` を utf8 文字列化したもの。
+    /// サーバ側で Apple refresh token に交換し、アカウント削除時の revoke に使う。
+    let authorizationCode: String?
 }
 
 struct GoogleVerifyRequest: Encodable {
@@ -47,8 +50,14 @@ class AuthService {
     private let apiClient = APIClient.shared
 
     /// Apple Identity Tokenを検証
-    func verifyToken(_ identityToken: String) async throws -> AuthVerifyResponse {
-        let request = AuthVerifyRequest(identityToken: identityToken)
+    func verifyToken(
+        _ identityToken: String,
+        authorizationCode: String? = nil
+    ) async throws -> AuthVerifyResponse {
+        let request = AuthVerifyRequest(
+            identityToken: identityToken,
+            authorizationCode: authorizationCode
+        )
 
         let response: APIResponse<AuthVerifyResponse> = try await apiClient.post(
             path: "/auth/verify",
@@ -94,5 +103,11 @@ class AuthService {
             body: request,
             requiresAuth: false
         )
+    }
+
+    /// 認証済みユーザー自身のアカウントを完全削除する。
+    /// サーバ側で Apple revoke + Firestore データ全削除を行う。
+    func deleteAccount() async throws {
+        try await apiClient.delete(path: "/users/me", requiresAuth: true)
     }
 }
