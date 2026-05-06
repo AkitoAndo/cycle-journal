@@ -1,3 +1,5 @@
-project_id  = "cycle-journal"
-region      = "asia-northeast1"
-environment = "dev"
+project_id    = "cycle-journal"
+region        = "asia-northeast1"
+environment   = "dev"
+apple_team_id = "AXSR25N22T"
+apple_key_id  = "TXTX42VXG4"

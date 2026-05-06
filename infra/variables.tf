@@ -26,3 +26,13 @@ variable "google_client_id" {
   type        = string
   default     = "1031235624127-6fgcbv1khltu4snpktpdd0cab025coab.apps.googleusercontent.com"
 }
+
+variable "apple_team_id" {
+  description = "Apple Developer Team ID (Sign in with Apple revoke 用)"
+  type        = string
+}
+
+variable "apple_key_id" {
+  description = "Apple Sign in with Apple Key ID (.p8 と対になる)"
+  type        = string
+}

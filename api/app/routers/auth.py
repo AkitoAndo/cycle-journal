@@ -15,7 +15,10 @@ from app.models.auth import (
     VerifyTokenData,
     VerifyTokenRequest,
 )
-from app.services.apple_auth import verify_apple_token
+from app.services.apple_auth import (
+    exchange_apple_code,
+    verify_apple_token,
+)
 from app.services.firestore_client import users_ref
 from app.services.google_auth import verify_google_token
 from app.services.token_service import (
@@ -49,12 +52,24 @@ async def verify_token(
     apple_user_id = claims.get("sub", "")
     email = claims.get("email")
 
+    # authorization_code があれば Apple refresh_token に交換してユーザードキュメントに保存する。
+    # アカウント削除時に Apple 側で revoke するために必要（App Store ガイドライン 5.1.1(v)）。
+    # 失敗しても識別トークン検証自体は成功しているのでサインインは続行する。
+    apple_refresh_token: str | None = None
+    if body.authorization_code:
+        try:
+            token_response = await exchange_apple_code(body.authorization_code)
+            apple_refresh_token = token_response.get("refresh_token")
+        except Exception:
+            apple_refresh_token = None
+
     user_id, is_new_user, created_at = await _find_or_create_user(
         db=db,
         user_id=apple_user_id,
         email=email,
         provider_field="apple_user_id",
         provider_value=apple_user_id,
+        apple_refresh_token=apple_refresh_token,
     )
 
     access_token, expires_in = create_access_token(user_id, "apple")
@@ -154,6 +169,7 @@ async def _find_or_create_user(
     email: str | None,
     provider_field: str,
     provider_value: str,
+    apple_refresh_token: str | None = None,
 ) -> tuple[str, bool, datetime]:
     """Firestoreでユーザーを検索 or 作成."""
     ref = users_ref(db)
@@ -164,7 +180,7 @@ async def _find_or_create_user(
     is_new_user = not snapshot.exists
 
     if is_new_user:
-        user_data = {
+        user_data: dict = {
             provider_field: provider_value,
             "email": email,
             "display_name": None,
@@ -172,9 +188,19 @@ async def _find_or_create_user(
             "created_at": now,
             "updated_at": now,
         }
+        if apple_refresh_token:
+            user_data["apple_refresh_token"] = apple_refresh_token
         await user_doc.set(user_data)
         created_at = now
     else:
         created_at = snapshot.get("created_at") or now
+        # 既存ユーザーで新しい apple_refresh_token を取得した場合は更新する。
+        if apple_refresh_token:
+            await user_doc.update(
+                {
+                    "apple_refresh_token": apple_refresh_token,
+                    "updated_at": now,
+                }
+            )
 
     return user_id, is_new_user, created_at

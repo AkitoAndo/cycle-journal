@@ -113,6 +113,23 @@ async def revoke_refresh_token(db: AsyncClient, token: str) -> None:
     await refresh_tokens_ref(db).document(token_hash).delete()
 
 
+async def revoke_all_refresh_tokens_for_user(db: AsyncClient, user_id: str) -> int:
+    """指定ユーザーの全 refresh_tokens を Firestore から削除する。
+
+    Returns: 削除した token 数。
+    """
+    from google.cloud.firestore_v1.base_query import FieldFilter
+
+    query = refresh_tokens_ref(db).where(
+        filter=FieldFilter("user_id", "==", user_id)
+    )
+    deleted = 0
+    async for doc in query.stream():
+        await doc.reference.delete()
+        deleted += 1
+    return deleted
+
+
 async def rotate_refresh_token(
     db: AsyncClient, old_token: str
 ) -> tuple[str, str, int]:

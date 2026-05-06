@@ -223,6 +223,26 @@ class AuthStore: NSObject, ObservableObject {
         clearLocalAuth()
     }
 
+    /// アカウントを完全に削除する。
+    /// サーバ側で Apple revoke + Firestore データ全削除を行ったのち、ローカルもクリアする。
+    /// 失敗時は `error` をセットして isLoading を戻すだけで、認証状態は維持する。
+    func deleteAccount() async {
+        isLoading = true
+        error = nil
+
+        do {
+            try await authService.deleteAccount()
+        } catch {
+            self.error = "アカウントの削除に失敗しました: \(error.localizedDescription)"
+            self.isLoading = false
+            return
+        }
+
+        GIDSignIn.sharedInstance.signOut()
+        clearLocalAuth()
+        isLoading = false
+    }
+
     /// 認証状態を確認
     func checkAuthState() async {
         // 旧バージョンからアップデートしたユーザー: identityToken のみ → 再サインイン要求
@@ -297,8 +317,15 @@ class AuthStore: NSObject, ObservableObject {
             return
         }
 
+        // authorization_code はアカウント削除時の Apple revoke に必要なのでサーバへ送る。
+        let authorizationCode = credential.authorizationCode
+            .flatMap { String(data: $0, encoding: .utf8) }
+
         do {
-            let response = try await authService.verifyToken(identityToken)
+            let response = try await authService.verifyToken(
+                identityToken,
+                authorizationCode: authorizationCode
+            )
 
             let fullName: String? = {
                 if let givenName = credential.fullName?.givenName,

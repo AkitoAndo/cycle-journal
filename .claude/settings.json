@@ -1,0 +1,13 @@
+{
+  "extraKnownMarketplaces": {
+    "tomokiishimine-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "TomokiIshimine/tomokiishimine-marketplace"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "claude-code-workflow-kit@tomokiishimine-marketplace": true
+  }
+}
