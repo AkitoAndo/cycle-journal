@@ -3,11 +3,12 @@
 //  Cycle
 //
 //  フローティングアクションボタン（FAB）
-//  iOS 26+: Liquid Glass 円形ボタン
-//  iOS 17-25: ソリッド背景 + シャドウ
+//  iPhone iOS 26+: Liquid Glass 円形ボタン
+//  iPad / iOS 17-25: ソリッド背景 + シャドウ
 //
 
 import SwiftUI
+import UIKit
 
 /// フローティングアクションボタン（FAB）
 /// タップ時のスケールアニメーションと触覚フィードバック付き
@@ -28,17 +29,27 @@ struct FloatingActionButton: View {
                 .foregroundStyle(fabForeground)
                 .frame(width: 56, height: 56)
                 .modifier(FABBackgroundStyle(isPressed: isPressed))
+                .contentShape(Circle())
         }
         .buttonStyle(ScaleButtonStyle())
         .accessibilityIdentifier("fab_\(icon)")
     }
 
     private var fabForeground: Color {
-        if #available(iOS 26.0, *) {
+        if Self.useLiquidGlass {
             return DesignSystem.Colors.accent
         } else {
             return DesignSystem.Colors.background
         }
+    }
+
+    /// iPad では iOS 26+ でも Liquid Glass を使わない
+    /// （iPadOS 26.x で `glassEffect` の hit-test が抜けるケースが報告されているため）
+    static var useLiquidGlass: Bool {
+        if #available(iOS 26.0, *) {
+            return UIDevice.current.userInterfaceIdiom != .pad
+        }
+        return false
     }
 }
 
@@ -46,7 +57,7 @@ private struct FABBackgroundStyle: ViewModifier {
     let isPressed: Bool
 
     func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
+        if #available(iOS 26.0, *), FloatingActionButton.useLiquidGlass {
             content
                 .glassEffect(.regular.interactive(), in: .circle)
         } else {
