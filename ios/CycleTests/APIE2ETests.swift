@@ -31,7 +31,7 @@ struct AuthE2ETests {
         do {
             let _: APIResponse<AuthVerifyResponse> = try await APIClient.shared.post(
                 path: "/auth/verify",
-                body: AuthVerifyRequest(identityToken: ""),
+                body: AuthVerifyRequest(identityToken: "", authorizationCode: nil),
                 requiresAuth: false
             )
             Issue.record("空トークンでエラーが返るべき")
@@ -54,7 +54,7 @@ struct AuthE2ETests {
         do {
             let _: APIResponse<AuthVerifyResponse> = try await APIClient.shared.post(
                 path: "/auth/verify",
-                body: AuthVerifyRequest(identityToken: "invalid.jwt.token"),
+                body: AuthVerifyRequest(identityToken: "invalid.jwt.token", authorizationCode: nil),
                 requiresAuth: false
             )
             Issue.record("不正トークンでエラーが返るべき")

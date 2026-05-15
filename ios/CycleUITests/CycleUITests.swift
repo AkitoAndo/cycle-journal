@@ -241,6 +241,67 @@ final class CycleUITests: XCTestCase {
         XCTAssertFalse(task.exists)
     }
 
+    // MARK: - iPad Regression (#40)
+
+    /// App Store Review Guideline 2.1(a) リジェクト再現テスト。
+    /// iPad で Tasks タブの + ボタン (FAB) をタップしたとき、
+    /// 新規タスク入力シートが開くことを確認する。
+    @MainActor
+    func testIPad_TasksFAB_OpensNewTaskSheet() throws {
+        try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .pad, "iPad 専用テスト")
+
+        tapTab("Tasks")
+
+        // タブ切替直後にタスクリストの最初のセルが出るのを待つ（FAB が立ち上がる前提条件）
+        _ = app.staticTexts["朝の瞑想を10分する"].waitForExistence(timeout: 10)
+
+        let fab = app.buttons["fab_plus"]
+        XCTAssertTrue(fab.waitForExistence(timeout: 10), "FAB が見つからない")
+
+        takeScreenshot("ipad-tasks-before-fab-tap")
+        // isHittable も検証する。iPad で false なら "無反応バグ" を再現していることを意味する
+        let hittable = fab.isHittable
+        if hittable {
+            fab.tap()
+        } else {
+            // 強制的に座標でタップして「タップ自体は届く」かを観察する
+            let coord = fab.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            coord.tap()
+        }
+        takeScreenshot("ipad-tasks-after-fab-tap")
+
+        let titleField = app.textFields.firstMatch
+        let appeared = titleField.waitForExistence(timeout: 3)
+        XCTAssertTrue(hittable, "FAB が isHittable=false（無反応バグの兆候）")
+        XCTAssertTrue(appeared, "FAB タップ後に新規タスクシートのテキストフィールドが現れない")
+    }
+
+    /// 同上、Journal タブの + ボタン。
+    @MainActor
+    func testIPad_JournalFAB_OpensNewEntrySheet() throws {
+        try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .pad, "iPad 専用テスト")
+
+        tapTab("Journal")
+
+        let fab = app.buttons["fab_plus"]
+        XCTAssertTrue(fab.waitForExistence(timeout: 10), "FAB が見つからない")
+
+        takeScreenshot("ipad-journal-before-fab-tap")
+        let hittable = fab.isHittable
+        if hittable {
+            fab.tap()
+        } else {
+            let coord = fab.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            coord.tap()
+        }
+        takeScreenshot("ipad-journal-after-fab-tap")
+
+        let textView = app.textViews.firstMatch
+        let appeared = textView.waitForExistence(timeout: 3)
+        XCTAssertTrue(hittable, "FAB が isHittable=false（無反応バグの兆候）")
+        XCTAssertTrue(appeared, "FAB タップ後に新規エントリシートのテキストエリアが現れない")
+    }
+
     @MainActor
     func testTaskToggleCompletion() {
         tapTab("Tasks")

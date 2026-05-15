@@ -321,6 +321,12 @@ final class TaskViewModel: ObservableObject {
 
     /// サーバーからタスク一覧を取得してローカルとマージ
     func fetchServerTasks() async {
+        #if DEBUG
+        if CommandLine.arguments.contains("--uitesting") {
+            return // UI テスト時はネットワーク同期しない（auth 状態を壊さないため）
+        }
+        #endif
+
         isSyncing = true
         syncError = nil
 
