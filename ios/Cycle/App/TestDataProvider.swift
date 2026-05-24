@@ -18,7 +18,8 @@ enum TestDataProvider {
     @MainActor
     static func setupIfNeeded() {
         if isUITesting {
-            // UIテスト: クリアして再投入
+            // UIテスト: オンボーディング・データをリセットして既知の状態にする
+            UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
             clearAllData()
             insertJournalEntries()
             insertTasks()
