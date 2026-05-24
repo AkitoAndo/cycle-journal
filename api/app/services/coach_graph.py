@@ -42,10 +42,13 @@ def _get_client() -> anthropic.AnthropicVertex:
     )
 
 
-def _quick_classify(client: Any, prompt: str) -> str:
-    """短い分類タスクをClaude に実行させる."""
+def _quick_classify(client: Any, prompt: str, model: str | None = None) -> str:
+    """短い分類タスクをClaude に実行させる.
+
+    model 未指定時は settings.claude_model_quick(Haiku) を使う。
+    """
     resp = client.messages.create(
-        model=settings.claude_model,
+        model=model or settings.claude_model_quick,
         max_tokens=50,
         messages=[{"role": "user", "content": prompt}],
         temperature=0.0,
@@ -95,29 +98,34 @@ def generate_response(state: CoachState) -> dict:
     if state.history:
         messages.extend(state.history)
 
-    # ユーザーメッセージを構築
-    content = state.user_message
+    # 分析結果(動的)は user message 側に注入する。
+    # system は SYSTEM_PROMPT そのもので固定し prompt caching の prefix を崩さない。
+    analysis_block = (
+        "## 現在の分析結果\n"
+        f"- 検出された感情: {state.detected_emotion}\n"
+        f"- Cycle要素: {state.cycle_element}\n"
+        "この情報をもとに、適切な問いかけや共感を返してください。\n\n"
+    )
+
+    body = state.user_message
     if state.diary_content:
-        content = (
+        body = (
             f"【日記の内容】\n{state.diary_content}\n\n"
             f"【ユーザーのメッセージ】\n{state.user_message}"
         )
 
-    # 分析結果をシステムプロンプトに追加
-    enhanced_system = (
-        f"{SYSTEM_PROMPT}\n\n"
-        f"## 現在の分析結果\n"
-        f"- 検出された感情: {state.detected_emotion}\n"
-        f"- Cycle要素: {state.cycle_element}\n"
-        f"- この情報をもとに、適切な問いかけや共感を返してください。"
-    )
-
-    messages.append({"role": "user", "content": content})
+    messages.append({"role": "user", "content": analysis_block + body})
 
     resp = client.messages.create(
-        model=settings.claude_model,
+        model=settings.claude_model_coach,
         max_tokens=settings.claude_max_tokens,
-        system=enhanced_system,
+        system=[
+            {
+                "type": "text",
+                "text": SYSTEM_PROMPT,
+                "cache_control": {"type": "ephemeral"},
+            }
+        ],
         messages=messages,
         temperature=settings.claude_temperature,
     )
@@ -139,7 +147,7 @@ def safety_filter(state: CoachState) -> dict:
     if not is_safe:
         return {
             "is_safe": False,
-            "response": "ごめんね、うまく言葉にできなかった。もう少し教えてもらえるかな？",
+            "response": "ごめんね、うまく言葉にできなかった。もう少し教えてもらえるかな？",  # noqa: E501
         }
     return {"is_safe": True}
 
