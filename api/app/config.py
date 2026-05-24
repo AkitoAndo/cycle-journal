@@ -48,6 +48,14 @@ class Settings(BaseSettings):
     apple_iap_env: str = "Sandbox"
     apple_iap_app_apple_id: int | None = None
 
+    # GA4 Measurement Protocol (サーバーサイドからのイベント送信用)
+    # - GA4 Admin → Data Streams → 該当 iOS stream → Measurement Protocol API secrets
+    #   で API secret を発行し Secret Manager 経由で注入する
+    # - measurement_id / api_secret が空のときは send_event は no-op
+    ga4_measurement_id: str = ""
+    ga4_api_secret: str = ""
+    ga4_endpoint: str = "https://www.google-analytics.com/mp/collect"
+
     model_config = {"env_prefix": "", "case_sensitive": False}
 
 
