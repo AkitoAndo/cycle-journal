@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.exceptions import AppError, app_error_handler
-from app.routers import auth, coach, health, sessions, tasks, users
+from app.routers import auth, coach, health, iap, sessions, tasks, users
 
 app = FastAPI(
     title="CycleJournal API",
@@ -29,3 +29,4 @@ app.include_router(coach.router)
 app.include_router(sessions.router)
 app.include_router(tasks.router)
 app.include_router(users.router)
+app.include_router(iap.router)
