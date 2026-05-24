@@ -245,6 +245,13 @@ class AuthStore: NSObject, ObservableObject {
 
     /// 認証状態を確認
     func checkAuthState() async {
+        #if DEBUG
+        let mockUser = AuthUser(userId: "debug-user", email: "debug@test.com", fullName: "Debug User", createdAt: Date(), provider: .apple)
+        currentUser = mockUser
+        state = .authenticated(userId: "debug-user")
+        return
+        #endif
+
         // 旧バージョンからアップデートしたユーザー: identityToken のみ → 再サインイン要求
         if loadFromKeychain(key: accessTokenKey) == nil, loadFromKeychain(key: legacyTokenKey) != nil {
             clearLocalAuth()

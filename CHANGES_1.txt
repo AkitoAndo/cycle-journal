@@ -1,0 +1,196 @@
+# AuthStore.swift 変更点
+
+## 変更日: 2026-05-18
+
+### 変更内容
+`checkAuthState()` に `#if DEBUG` ブロックを追加。
+
+DEBUGビルド時は認証処理をスキップし、モックユーザーで即座に認証済み状態にする。
+
+### 変更箇所
+- ファイル: AuthStore.swift
+- メソッド: `checkAuthState()`
+
+### 追加コード
+```swift
+#if DEBUG
+let mockUser = AuthUser(userId: "debug-user", email: "debug@test.com", fullName: "Debug User", createdAt: Date(), provider: .apple)
+currentUser = mockUser
+state = .authenticated(userId: "debug-user")
+return
+#endif
+```
+
+### 目的
+試験運転時にSign in with Apple / Google認証をスキップしてメイン画面に直接アクセスできるようにする。
+RELEASEビルドでは従来通りの認証フローが動作する。
+
+### 注意
+- APIコールはモックユーザーID（"debug-user"）で飛ぶため、バックエンドが必要な機能はエラーになる場合がある。
+- `No such module 'GoogleSignIn'` エラーはこの変更とは無関係。SPM/CocoaPodsの依存関係が未解決の可能性がある。
+
+---
+
+# JournalListView.swift / TaskListView.swift 変更点
+
+## 変更日: 2026-05-18
+
+### 変更内容
+＋ボタン（FloatingActionButton）のbottom paddingを `fabBottomPadding` から固定値に変更。
+
+### 変更箇所
+- `Features/Journal/Views/JournalListView.swift`
+- `Features/Tasks/Views/TaskListView.swift`
+
+### 変更前
+```swift
+.padding(.bottom, fabBottomPadding)
+
+private var fabBottomPadding: CGFloat {
+    if #available(iOS 26.0, *) {
+        return 80
+    } else {
+        return DesignSystem.Spacing.xl - 2
+    }
+}
+```
+
+### 変更後
+```swift
+.padding(.bottom, DesignSystem.Spacing.xl - 2)
+```
+
+### 目的
+デスクトップの参照版Cycleに合わせて＋ボタンの位置を統一。
+iOS 26で80ptに変わっていた挙動を元に戻す。
+
+---
+
+# FloatingActionButton.swift 変更点
+
+## 変更日: 2026-05-18
+
+### 変更内容
+iOS 26での `glassEffect` を廃止し、全OSで茶色（`DesignSystem.Colors.accent`）の背景に統一。
+
+### 変更前
+- iOS 26+: `glassEffect` + アクセントカラーのアイコン
+- iOS 17-25: アクセントカラー背景 + 白アイコン
+
+### 変更後
+- 全OS: アクセントカラー（茶色）背景 + 白アイコン + シャドウ
+
+---
+
+# JournalHeader.swift 変更点
+
+## 変更日: 2026-05-18
+
+### 変更内容
+「May 2026」ヘッダー欄を参照版Cycleの仕様に合わせた。
+
+### 変更箇所と内容
+1. 背景: `.modifier(GlassHeaderModifier())` → `.background(DesignSystem.Colors.background)`
+2. 月年フォント: `DesignSystem.Fonts.screenTitle` → `.system(size: 28, weight: .bold)`
+3. メニューアイコンフォント: `DesignSystem.Fonts.headerIcon` → `.system(size: 26)`
+4. `.accessibilityIdentifier("journal_menu")` を削除
+
+---
+
+# JournalHeader.swift 追加変更
+
+## 変更日: 2026-05-18
+
+### 変更内容
+月年表示を日本語ロケールに変更。「May 2026」→「2026年5月」
+
+### 変更箇所
+```swift
+// 変更前
+.formatted(.dateTime.year().month(.wide))
+// 変更後
+.formatted(.dateTime.year().month(.wide).locale(Locale(identifier: "ja_JP")))
+
+---
+
+# WeekCalendarView.swift 変更点
+
+## 変更日: 2026-05-18
+
+### 変更内容
+曜日表示を日本語（日月火水木金土）に変更。
+
+### 変更箇所
+```swift
+// 変更前
+Text(date, format: .dateTime.weekday(.abbreviated))
+    .textCase(.uppercase)
+
+// 変更後（配列から直接取得。ロケール依存なし）
+Text(["日", "月", "火", "水", "木", "金", "土"][Calendar.current.component(.weekday, from: date) - 1])
+
+---
+
+# ContentView.swift 変更点
+
+## 変更日: 2026-05-18
+
+### 変更内容
+DEBUGビルド時のサインイン画面スキップをAuthStore側からContentView側に移動。
+
+### 変更箇所
+```swift
+// 変更前
+switch authStore.state {
+case .unknown: splashView
+case .unauthenticated: SignInView()
+case .authenticated: mainContent
+}
+
+// 変更後
+#if DEBUG
+mainContent
+#else
+switch authStore.state {
+case .unknown: splashView
+case .unauthenticated: SignInView()
+case .authenticated: mainContent
+}
+#endif
+```
+
+### 目的
+AuthStore.checkAuthState()のTaskによる非同期処理タイミングの問題を回避し、
+確実にサインイン画面をスキップする。旧版Cycleと同じアプローチ。
+
+---
+
+# TaskHeader.swift 変更点
+
+## 変更日: 2026-05-18
+
+### 変更内容
+「Today's Focus」ヘッダーを旧Cycleの仕様に合わせた。
+
+### 変更箇所
+0. タイトルテキスト: `"Today's Focus"` → `"今日やること"`
+1. タイトルフォント: `DesignSystem.Fonts.screenTitle` → `.system(size: 28, weight: .bold)`
+2. メニューアイコンフォント: `DesignSystem.Fonts.headerIcon` → `.system(size: 26)`
+3. 背景: `.modifier(GlassHeaderModifier())` → `.background(DesignSystem.Colors.background)`
+4. `.accessibilityIdentifier("task_menu")` を削除
+
+---
+
+# WeekCalendarView.swift 追加変更
+
+## 変更日: 2026-05-18
+
+### 変更内容
+曜日の文字色を日付と同じ色（`textPrimary`）に統一。
+
+### 変更箇所
+```swift
+// 変更前
+.foregroundStyle(DesignSystem.Colors.textTertiary)
+// 変更後
+.foregroundStyle(DesignSystem.Colors.textPrimary)

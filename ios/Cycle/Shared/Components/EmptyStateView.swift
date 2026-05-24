@@ -26,7 +26,6 @@ struct EmptyStateView: View {
             Image(systemName: icon)
                 .font(DesignSystem.Fonts.largeIcon)
                 .foregroundStyle(DesignSystem.Colors.textTertiary)
-                .symbolEffect(.pulse.byLayer, options: .repeat(3))
 
             VStack(spacing: DesignSystem.Spacing.sm) {
                 Text(title)

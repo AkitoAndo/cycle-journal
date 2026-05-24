@@ -17,6 +17,9 @@ struct ContentView: View {
 
     var body: some View {
         Group {
+            #if DEBUG
+            mainContent
+            #else
             switch authStore.state {
             case .unknown:
                 splashView
@@ -25,6 +28,7 @@ struct ContentView: View {
             case .authenticated:
                 mainContent
             }
+            #endif
         }
     }
 
@@ -44,7 +48,9 @@ struct ContentView: View {
                         JournalListView()
                     }
                 case 1:
-                    CoachHomeView()
+                    NavigationStack {
+                        CoachHomeView()
+                    }
                 case 2:
                     NavigationStack {
                         TaskListView()
@@ -84,28 +90,32 @@ struct CustomTabBar: View {
         HStack(spacing: 0) {
             TabBarButton(
                 icon: "leaf",
-                label: "Journal",
+                selectedIcon: "leaf.fill",
+                label: "ジャーナル",
                 isSelected: selectedTab == 0,
                 action: { selectedTab = 0 }
             )
 
             TabBarButton(
                 icon: "bubble.left.and.bubble.right",
-                label: "Coach",
+                selectedIcon: "bubble.left.and.bubble.right.fill",
+                label: "セッション",
                 isSelected: selectedTab == 1,
                 action: { selectedTab = 1 }
             )
 
             TabBarButton(
                 icon: "checklist",
-                label: "Tasks",
+                selectedIcon: "checklist.checked",
+                label: "タスクリスト",
                 isSelected: selectedTab == 2,
                 action: { selectedTab = 2 }
             )
 
             TabBarButton(
                 icon: "gearshape",
-                label: "Settings",
+                selectedIcon: "gearshape.fill",
+                label: "設定",
                 isSelected: selectedTab == 3,
                 action: { selectedTab = 3 }
             )
@@ -117,6 +127,7 @@ struct CustomTabBar: View {
 
 struct TabBarButton: View {
     let icon: String
+    let selectedIcon: String
     let label: String
     let isSelected: Bool
     let action: () -> Void
@@ -124,7 +135,7 @@ struct TabBarButton: View {
     var body: some View {
         Button(action: action) {
             VStack(spacing: 4) {
-                Image(systemName: icon)
+                Image(systemName: isSelected ? selectedIcon : icon)
                     .font(.system(size: DesignSystem.FontSize.title3))
 
                 Text(label)

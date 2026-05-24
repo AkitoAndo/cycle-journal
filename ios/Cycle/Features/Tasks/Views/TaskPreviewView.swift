@@ -23,6 +23,10 @@ struct TaskPreviewView: View {
                         descriptionSection
                     }
 
+                    if let dueDate = task.dueDate {
+                        deadlineSection(date: dueDate)
+                    }
+
                     if !task.intent.isEmpty {
                         fieldSection(title: "意図", content: task.intent)
                     }
@@ -84,6 +88,21 @@ struct TaskPreviewView: View {
 
     private var descriptionSection: some View {
         fieldSection(title: "詳細", content: task.description)
+    }
+
+    private func deadlineSection(date: Date) -> some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+            Text("締切日時")
+                .font(DesignSystem.Fonts.headline)
+                .foregroundStyle(DesignSystem.Colors.textPrimary)
+
+            SurfaceCard {
+                Text(date.formatted(.dateTime.year().month().day().weekday(.abbreviated).hour().minute().locale(Locale(identifier: "ja_JP"))))
+                    .font(DesignSystem.Fonts.body)
+                    .foregroundStyle(DesignSystem.Colors.textPrimary)
+            }
+        }
+        .padding(.horizontal, DesignSystem.Spacing.lg)
     }
 
     private func fieldSection(title: String, content: String) -> some View {

@@ -24,6 +24,7 @@ struct DatePickerSheet: View {
                 .datePickerStyle(.graphical)
                 .tint(DesignSystem.Colors.accent)
                 .colorScheme(.light)
+                .environment(\.locale, Locale(identifier: "ja_JP"))
                 .padding()
 
                 Spacer()
@@ -45,7 +46,7 @@ struct DatePickerSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.medium])
         .presentationBackground(DesignSystem.Colors.background)
         .onAppear {
             selectedDate = vm.selectedDate

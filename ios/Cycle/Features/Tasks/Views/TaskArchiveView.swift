@@ -48,7 +48,7 @@ struct TaskArchiveView: View {
     }
 
     private var emptyState: some View {
-        EmptyStateView(icon: "archivebox", title: "アーカイブはまだありません", subtitle: "完了したタスクをアーカイブするとここに表示されます")
+        EmptyStateView(icon: "archivebox", title: "アーカイブはまだありません")
             .background(DesignSystem.Colors.background)
     }
 

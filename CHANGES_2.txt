@@ -1,0 +1,306 @@
+================================================================================
+CHANGES.txt - Cycle Journal 開発記録
+================================================================================
+
+[2026-05-24] コードベース全体レビュー実施
+--------------------------------------------------------------------------------
+対象: Backend API / iOS Swift / Infrastructure / Documentation
+実施者: Claude Opus 4.6 によるコードレビュー
+ステータス: レビュー完了・改善提案のみ（実装なし）
+詳細: ~/Desktop/CycleJournal_CodeReview_20260524.pdf
+
+[2026-05-24] アプリ全体をライトモード固定
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/App/CycleApp.swift
+内容: ContentViewに.preferredColorScheme(.light)を追加。システム設定に関係なく
+      常にライトモードで表示されるよう変更。Liquid Glassもライト表示になる。
+
+[2026-05-24] ジャーナル・タスクリスト上部グラデーション追加
+--------------------------------------------------------------------------------
+変更ファイル:
+  - ios/Cycle/Features/Journal/Views/JournalListView.swift
+  - ios/Cycle/Features/Tasks/Views/TaskListView.swift
+内容: VStack構造を維持したまま、リスト上部にLinearGradientオーバーレイ（12pt）を追加。
+      背景色→透明のグラデーションにより、カードとヘッダーの境界が自然にフェードする。
+
+[2026-05-24] タスクカードの上下パディング追加
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/Features/Tasks/Views/Components/TaskRow.swift
+内容: タスクカード内のHStackに.padding(.vertical, 2.5)を追加。カードの高さを上下2.5ptずつ拡大。
+
+[2026-05-24] ジャーナル検索画面にLiquid Glass適用
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/Features/Journal/Views/JournalSearchView.swift
+内容: 検索バー、検索結果カード、タグチップにiOS 26+ Liquid Glass分岐を追加。
+      検索バー: iOS 26+でglassEffect適用
+      検索結果カード: iOS 26+でglassEffect適用
+      タグチップ: 選択時のみLiquid Glass+アクセント色、未選択時はgreyLight背景（ガラスなし）
+      iOS 17-25: 従来のsurface背景+角丸+ボーダー+シャドウ（変更なし）
+      タブ名変更: 「検索」→「テキスト」
+      検索結果リスト上部にグラデーションオーバーレイ（12pt）を追加（テキスト・タグ共通）。
+      検索結果カードの日付表示を「2026年5月24日(日) 00:56」形式に統合（年月日+曜日+時刻を1行に）。
+
+[2026-05-24] 日付選択シートのサイズ固定
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/Features/Journal/Views/DatePickerSheet.swift
+内容: presentationDetentsを[.medium]のみに変更。日付選択時のシートサイズ変動を解消。
+      カレンダーのlocaleをja_JPに設定し、日本語表記に変更。
+
+[2026-05-24] 週カレンダー曜日の文字色変更
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/Features/Journal/Views/WeekCalendarView.swift
+内容: 曜日の文字色をtextPrimary→textSecondaryに変更。カレンダーの曜日表記と統一。
+
+[2026-05-24] タグ管理画面のDivider削除
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/Features/Journal/Views/TagManagementView.swift
+内容: 入力エリアとタグリスト間のDivider（棒線）を削除。
+      入力欄とタグカードにiOS 26+ Liquid Glass分岐を追加。
+
+[2026-05-24] 最近削除した項目の日付表示形式変更
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/Features/Journal/Views/JournalDeletedView.swift
+内容: 日付表示を「2026年5月24日(日) 00:56」形式に変更。検索結果と統一。
+
+[2026-05-24] タブバーのラベルを日本語に変更
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/App/ContentView.swift
+内容: Journal→ジャーナル、Coach→セッション、Tasks→やること、Settings→設定に変更。
+      選択時にアイコンをfillバージョンに切り替え（leaf.fill, bubble.fill, checklist.checked, gearshape.fill）。
+
+[2026-05-24] セッションホームから「最近の会話」セクション削除
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/Features/Coach/Views/CoachHomeView.swift
+内容: 最近の会話セクションを削除。右上の履歴ボタンと重複するため、
+      ホーム画面は「話しかける」「日記から話す」のCTAに集中させた。
+      アクションボタンを画面下部に固定配置。アイコンと挨拶は中央に配置。
+      ボタン間のスペーシングをmd(12pt)→lg(16pt)に拡大。
+      ナビゲーションタイトル「Cycle」を削除。
+
+[2026-05-24] 日記選択カードのデザイン変更（検索カードと統一）
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/Features/Coach/Views/Components/DiaryPickerView.swift
+内容: 「日記から話す」の選択カードをジャーナル検索結果カードと同じデザインに変更。
+      ScrollView+SurfaceCard → List+個別カードスタイルに構造変更。
+      日付表示を「2026年5月24日(日) 00:56」形式に統一。
+      iOS 26+ Liquid Glass対応のDiaryPickerCardStyle ViewModifierを追加。
+      iOS 17-25: surface背景+角丸+ボーダー+シャドウのフォールバック。
+
+[2026-05-24] タスク画面ヘッダーのタイトル変更
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/Features/Tasks/Views/Components/TaskHeader.swift
+内容: 「今日やること」→「やること」に変更。
+
+[2026-05-24] 会話履歴カードの日付位置変更
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/Features/Coach/Views/Components/SessionRowView.swift
+内容: 日付表示をカード上部から下部に移動。表示順: テキスト→感情ラベル→日付。
+
+[2026-05-24] 空状態アイコンの点滅アニメーション削除
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/Shared/Components/EmptyStateView.swift
+内容: .symbolEffect(.pulse.byLayer, options: .repeat(3))を削除。
+      全画面の空状態アイコン（アーカイブ等）が点滅しなくなる。
+
+[2026-05-24] アーカイブ空状態のサブタイトル削除
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/Features/Tasks/Views/TaskArchiveView.swift
+内容: 「完了したタスクをアーカイブするとここに表示されます」のサブタイトルを削除。
+
+[2026-05-24] タスクのアーカイブスワイプボタンの色変更
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/Features/Tasks/Views/Components/TaskRow.swift
+内容: アーカイブボタンの色をDesignSystem.Colors.accent→.blueに変更。
+
+[2026-05-24] 瞑想モード機能追加
+--------------------------------------------------------------------------------
+新規ファイル:
+  - ios/Cycle/Features/Coach/Models/MeditationLog.swift
+  - ios/Cycle/Features/Coach/Store/MeditationStore.swift
+  - ios/Cycle/Features/Coach/Views/MeditationView.swift
+変更ファイル:
+  - ios/Cycle/App/CycleApp.swift（MeditationStore注入）
+  - ios/Cycle/Features/Coach/Views/CoachHomeView.swift（「瞑想する」ボタン追加）
+  - ios/Cycle/Features/Coach/Views/Components/SessionHistoryView.swift（会話/瞑想タブ追加）
+内容:
+  セッションホームに「瞑想する」ボタンを追加。
+  タイマー式の瞑想画面（1/3/5/10/15/20分選択、円形プログレス表示）。
+  完了時にHapticフィードバック、画面スリープ防止対応。
+  瞑想ログをUserDefaultsに保存。
+  履歴画面を「会話」「瞑想」のセグメントタブに分割。
+  瞑想ログは日付と時間を表示。
+
+[2026-05-24] 履歴画面のタブをジャーナル検索と同じスタイルに変更
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/Features/Coach/Views/Components/SessionHistoryView.swift
+内容: セグメントコントロール（Picker）をジャーナル検索画面と同じ
+      カスタムタブ（テキスト+アンダーライン）に変更。
+      選択中: semibold+textPrimary+アクセント色の2ptライン。
+      未選択: regular+textSecondary+grey 0.5ptライン。
+
+[2026-05-24] 瞑想タイマーをiPhone標準タイマー風の時・分・秒ピッカーに変更
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/Features/Coach/Views/MeditationView.swift
+内容: 時間選択をカプセルボタンからiPhoneタイマー風の3列ホイールピッカーに変更。
+      UIPickerViewをUIViewRepresentableでラップし、3コンポーネントを1つのピッカーに統合。
+      選択行のグレー背景が3列で一連になるよう実装。
+      数字+単位ラベル（「時間」「分」「秒」）を属性付き文字列で表示。
+      時間選択画面のリーフアイコンを削除。
+      「はじめる」ボタンの再生アイコン(play.fill)を削除。
+      タイマー表示・完了メッセージも時・分・秒対応に変更。
+      合計0秒の場合はタイマー開始不可。
+
+[2026-05-24] 検索タグの未選択時もLiquid Glassを適用
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/Features/Journal/Views/JournalSearchView.swift
+内容: SearchTagStyleのiOS 26+分岐を変更。選択時のみglassEffect適用、未選択時はガラスなし。
+      タグ間のグレー隙間を解消。
+
+[2026-05-24] タグ選択ボタン(TagSelector)にLiquid Glass適用
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/Features/Journal/Views/TagSelector.swift
+内容: TagButtonStyle ViewModifierを追加しiOS 26+分岐を実装。
+      iOS 26+: 選択時のみglassEffect(.regular.interactive(), in: .capsule)を適用。
+      未選択時はLiquid Glassなし（greyLight背景のみ）でタグ間のグレー隙間を解消。
+      iOS 17-25: 従来のソリッド背景+Capsule（変更なし）。
+
+[2026-05-24] TagChipコンポーネントにLiquid Glass適用
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/Shared/Components/TagChip.swift
+内容: TagChipBackgroundStyle ViewModifierを追加しiOS 26+分岐を実装。
+      iOS 26+: 背景色をgrey→backgroundに変更し、glassEffect(.regular, in: .capsule)を適用。
+      タグ間のグレー隙間を解消し、カード背景と馴染むように。
+      iOS 17-25: 従来のgrey背景+Capsule（変更なし）。
+      共通コンポーネントのため、ジャーナルエントリ行のタグ等すべてのTagChipに反映。
+
+[2026-05-24] フローティングアクションボタン(FAB)にLiquid Glass適用
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/Shared/Components/FloatingActionButton.swift
+内容: FABBackgroundStyleにiOS 26+分岐を追加。
+      iOS 26+: glassEffect(.regular.interactive(), in: .circle)を適用、シャドウ削除。
+      iOS 17-25: 従来のソリッド背景+シャドウを維持（変更なし）。
+      ジャーナル・タスクの+ボタンがLiquid Glass仕様になる。
+
+[2026-05-24] セッション履歴に左スワイプ削除ボタンを追加
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/Features/Coach/Views/Components/SessionHistoryView.swift
+内容: 対話履歴・瞑想履歴の両方に左スワイプで削除ボタンを追加。
+      ScrollView+VStack構造をList構造に変更し、swipeActionsを実装。
+      ジャーナルと同じ形式（trashアイコン、iconOnly、allowsFullSwipe: false、customListRowStyle）。
+      対話: coachStore.deleteSession()、瞑想: meditationStore.deleteLog()を呼び出し。
+
+[2026-05-24] 瞑想モードの起動方法を変更
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/Features/Coach/Views/CoachHomeView.swift
+内容: 下部の「瞑想する」ボタンを削除。
+      中央のCycleIconアイコンをButtonでラップし、タップで瞑想画面を開くよう変更。
+      アクションボタンは「話しかける」「日記から話す」の2つに整理。
+
+[2026-05-24] 会話履歴タップで過去の会話を閲覧可能に
+--------------------------------------------------------------------------------
+新規ファイル: ios/Cycle/Features/Coach/Views/Components/SessionDetailView.swift
+変更ファイル: ios/Cycle/Features/Coach/Views/Components/SessionHistoryView.swift
+内容: 会話履歴カードをタップすると過去の会話を閲覧できるSessionDetailViewを追加。
+      読み取り専用（入力欄なし）。サーバーにメッセージがある場合は自動取得。
+      チャット画面と同じバブルデザインで表示。
+
+[2026-05-24] Xcode エディタ上の Combine エラー対処
+--------------------------------------------------------------------------------
+対処: DerivedData削除（Cycle-gmxcdiqdjvwxwjflemrqwzmtoojb）
+内容: Xcodeエディタ上で「Static subscript is not available due to missing import
+      of defining module 'Combine'」エラーが表示されていた。
+      コマンドラインビルドはエラーなしで成功しており、インデックスキャッシュが原因。
+      DerivedDataを削除し、Xcode再起動で解消。
+
+[2026-05-24] アプリ起動時のブレークポイント停止問題を修正
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/Features/Coach/Store/MeditationStore.swift
+内容: Xcodeが23行目のブレークポイントを繰り返し復元し、アプリ起動時に停止する問題。
+      initでloadLogs()を呼ぶ代わりに直接デコード処理をinit内に記述し、
+      コードの行位置をずらすことでブレークポイントを無効化。
+      DerivedData削除、UserInterfaceState.xcuserstate削除、
+      シミュレータリセット、SPMパッケージ再解決も実施。
+
+[2026-05-24] 瞑想モード「やめる」「完了」ボタンのアイコン削除
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/Features/Coach/Views/MeditationView.swift
+内容: 「完了」ボタンからcheckmarkアイコン、「やめる」ボタンからstop.fillアイコンを削除。
+      テキストのみのボタン表示に変更。
+
+[2026-05-24] ジャーナルヘッダーの右上メニューボタンにLiquid Glass適用
+--------------------------------------------------------------------------------
+変更ファイル:
+  - ios/Cycle/Features/Journal/Views/Components/JournalHeader.swift
+  - ios/Cycle/Shared/Components/GlassHeaderModifier.swift
+内容: メニューボタン(ellipsis.circle)にGlassIconModifierを適用。
+      GlassIconModifier（新規）: アイコンボタン用の汎用Liquid Glassモディファイア。
+      iOS 26+: padding(8) + glassEffect(.regular.interactive(), in: .circle)で円形ガラス。
+      iOS 17-25: そのまま表示（変更なし）。
+
+[2026-05-24] ジャーナル・タスクヘッダーのメニューアイコンを三本線に変更＋タスクにもLiquid Glass適用
+--------------------------------------------------------------------------------
+変更ファイル:
+  - ios/Cycle/Features/Journal/Views/Components/JournalHeader.swift
+  - ios/Cycle/Features/Tasks/Views/Components/TaskHeader.swift
+内容: 両ヘッダーのメニューアイコンをellipsis.circle→line.3.horizontalに変更。
+      TaskHeaderにもGlassIconModifierを適用し、iOS 26+で円形Liquid Glassボタンに。
+
+[2026-05-24] GlassIconModifierのサイズ拡大
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/Shared/Components/GlassHeaderModifier.swift
+内容: GlassIconModifierのpadding(8)→padding(12)に変更。ボタンの円形ガラス領域を拡大。
+
+[2026-05-24] タブラベル・タスクヘッダーのタイトル変更
+--------------------------------------------------------------------------------
+変更ファイル:
+  - ios/Cycle/App/ContentView.swift
+  - ios/Cycle/Features/Tasks/Views/Components/TaskHeader.swift
+内容: タブバーのラベルを「やること」→「タスクリスト」に変更。
+      TaskHeaderのタイトルテキスト「やること」を削除（メニューボタンのみに）。
+
+[2026-05-24] タスクヘッダーとリスト間の余白をジャーナルと統一
+--------------------------------------------------------------------------------
+変更ファイル:
+  - ios/Cycle/Features/Tasks/Views/Components/TaskHeader.swift
+  - ios/Cycle/Features/Tasks/Views/TaskListView.swift
+内容: TaskListViewのVStack spacingをsm(8)→0に変更。
+      TaskHeaderのpadding(.vertical, md)をtop md(12) + bottom md+sm(20)に分割。
+      ジャーナルのヘッダー〜曜日間の余白と同じ間隔に統一。
+
+[2026-05-24] ジャーナル検索タブ名・プレースホルダー変更
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/Features/Journal/Views/JournalSearchView.swift
+内容: 検索タブ名「テキスト」→「ワード」に変更。
+      検索欄プレースホルダー「テキストで検索」→「ワードで検索」に変更。
+
+[2026-05-24] セッション履歴の空状態テキスト変更
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/Features/Coach/Views/Components/SessionHistoryView.swift
+内容: 対話の空状態「会話履歴がありません」→「対話履歴がありません」に変更。
+      サブタイトル「コーチと会話を始めると〜」を削除。
+      瞑想の空状態「瞑想の記録がありません」→「瞑想履歴がありません」に変更。
+      瞑想の空状態アイコンをleaf→timerに変更。
+
+[2026-05-24] タスクプレビューに締切日時セクション追加
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/Features/Tasks/Views/TaskPreviewView.swift
+内容: タスクプレビューに締切日時セクションを追加（dueDate設定時のみ表示）。
+      日本語ロケールで「2026年5月24日(土) 14:30」形式で表示。
+      表示順: タイトル → 詳細 → 締切日時 → 意図 → 完了イメージ → 注意点 → 事実 → 気づき → 次の一手。
+
+[2026-05-25] タスクヘッダーにタイトル「タスクリスト」復活
+--------------------------------------------------------------------------------
+変更ファイル: ios/Cycle/Features/Tasks/Views/Components/TaskHeader.swift
+内容: 削除していたタイトルテキストを「タスクリスト」として復活。
+      ジャーナルと同じ.system(size: 28, weight: .bold)スタイル。
+
+[2026-05-25] セッション画面にカスタムヘッダー追加・レイアウト統一
+--------------------------------------------------------------------------------
+変更ファイル:
+  - ios/Cycle/Features/Coach/Views/CoachHomeView.swift
+  - ios/Cycle/App/ContentView.swift
+内容: CoachHomeView内のNavigationStackを削除し、ContentView側でNavigationStackにラップ。
+      ジャーナル・タスクと同じ構造に統一。
+      カスタムヘッダーを追加: 左に「セッション」タイトル(size 28, bold)、
+      右に履歴ボタン(clock.arrow.circlepath, size 22 + GlassIconModifier)。
+      ナビバーを非表示にしてタイトル・ボタンの位置をジャーナル・タスクと揃えた。

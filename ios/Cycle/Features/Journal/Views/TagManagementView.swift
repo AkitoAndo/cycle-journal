@@ -45,15 +45,10 @@ struct TagManagementView: View {
                     }
                 }
                 .padding(DesignSystem.Spacing.lg)
-                .background(DesignSystem.Colors.surface)
-                .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous))
+                .modifier(TagManagementCardStyle())
                 .padding(.horizontal, DesignSystem.Spacing.lg)
                 .padding(.top, DesignSystem.Spacing.lg)
                 .padding(.bottom, DesignSystem.Spacing.md)
-
-                Divider()
-                    .background(DesignSystem.Colors.grey)
-                    .padding(.horizontal, DesignSystem.Spacing.lg)
 
                 // Tags list
                 if vm.allTags.isEmpty {
@@ -68,8 +63,7 @@ struct TagManagementView: View {
                                 Spacer()
                             }
                             .padding(DesignSystem.Spacing.lg)
-                            .background(DesignSystem.Colors.surface)
-                            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous))
+                            .modifier(TagManagementCardStyle())
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
                             .listRowInsets(EdgeInsets(
@@ -156,5 +150,18 @@ struct TagManagementView: View {
 
     private func deleteTag(_ tag: String) {
         vm.removeTag(tag)
+    }
+}
+
+private struct TagManagementCardStyle: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: DesignSystem.Spacing.md))
+        } else {
+            content
+                .background(DesignSystem.Colors.surface)
+                .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous))
+        }
     }
 }

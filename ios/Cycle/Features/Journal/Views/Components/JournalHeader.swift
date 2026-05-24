@@ -24,14 +24,14 @@ struct JournalHeader: View {
         }
         .padding(.horizontal, DesignSystem.Spacing.lg)
         .padding(.vertical, DesignSystem.Spacing.md)
-        .modifier(GlassHeaderModifier())
+        .background(DesignSystem.Colors.background)
     }
 
     // MARK: - Components
 
     private var monthYearTitle: some View {
-        Text(selectedDate.formatted(.dateTime.year().month(.wide)))
-            .font(DesignSystem.Fonts.screenTitle)
+        Text(selectedDate.formatted(.dateTime.year().month(.wide).locale(Locale(identifier: "ja_JP"))))
+            .font(.system(size: 28, weight: .bold))
             .foregroundStyle(DesignSystem.Colors.textPrimary)
     }
 
@@ -53,10 +53,10 @@ struct JournalHeader: View {
                 Label("最近削除した項目", systemImage: "trash")
             }
         } label: {
-            Image(systemName: "ellipsis.circle")
-                .font(DesignSystem.Fonts.headerIcon)
+            Image(systemName: "line.3.horizontal")
+                .font(.system(size: 26))
                 .foregroundStyle(DesignSystem.Colors.textSecondary)
+                .modifier(GlassIconModifier())
         }
-        .accessibilityIdentifier("journal_menu")
     }
 }

@@ -107,7 +107,16 @@ struct JournalDeletedRow: View {
     }
 
     private var dateText: some View {
-        Text(entry.date.formatted(.dateTime.year().month().day().hour().minute()))
+        Text(entry.date.formatted(
+            .dateTime
+                .year()
+                .month()
+                .day()
+                .weekday(.abbreviated)
+                .hour(.twoDigits(amPM: .omitted))
+                .minute(.twoDigits)
+                .locale(Locale(identifier: "ja_JP"))
+        ))
             .font(DesignSystem.Fonts.caption)
             .foregroundStyle(DesignSystem.Colors.textSecondary)
     }

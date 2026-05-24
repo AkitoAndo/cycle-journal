@@ -19,10 +19,6 @@ struct SessionRowView: View {
         SurfaceCard {
             HStack {
                 VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
-                    Text(dateFormatter.string(from: session.createdAt))
-                        .font(DesignSystem.Fonts.caption)
-                        .foregroundStyle(DesignSystem.Colors.textTertiary)
-
                     Text(session.summary ?? session.firstUserMessage ?? "会話")
                         .font(DesignSystem.Fonts.body)
                         .foregroundStyle(DesignSystem.Colors.textPrimary)
@@ -33,6 +29,10 @@ struct SessionRowView: View {
                             .font(DesignSystem.Fonts.caption)
                             .foregroundStyle(DesignSystem.Colors.accent)
                     }
+
+                    Text(dateFormatter.string(from: session.createdAt))
+                        .font(DesignSystem.Fonts.caption)
+                        .foregroundStyle(DesignSystem.Colors.textTertiary)
                 }
 
                 Spacer()

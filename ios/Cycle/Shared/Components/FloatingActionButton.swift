@@ -34,11 +34,7 @@ struct FloatingActionButton: View {
     }
 
     private var fabForeground: Color {
-        if #available(iOS 26.0, *) {
-            return DesignSystem.Colors.accent
-        } else {
-            return DesignSystem.Colors.background
-        }
+        DesignSystem.Colors.background
     }
 }
 
@@ -48,6 +44,8 @@ private struct FABBackgroundStyle: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
             content
+                .background(DesignSystem.Colors.accent)
+                .clipShape(Circle())
                 .glassEffect(.regular.interactive(), in: .circle)
         } else {
             content

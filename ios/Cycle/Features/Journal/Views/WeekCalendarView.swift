@@ -44,10 +44,9 @@ struct WeekCalendarView: View {
 
         return VStack(spacing: DesignSystem.Spacing.sm) {
             // 曜日
-            Text(date, format: .dateTime.weekday(.abbreviated))
+            Text(["日", "月", "火", "水", "木", "金", "土"][Calendar.current.component(.weekday, from: date) - 1])
                 .font(.system(size: DesignSystem.FontSize.caption - 1))
-                .foregroundStyle(DesignSystem.Colors.textTertiary)
-                .textCase(.uppercase)
+                .foregroundStyle(DesignSystem.Colors.textSecondary)
 
             // 日付
             Text(date, format: .dateTime.day())

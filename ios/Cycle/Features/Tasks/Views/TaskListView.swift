@@ -56,7 +56,7 @@ struct TaskListView: View {
     }
 
     private var mainContent: some View {
-        VStack(spacing: DesignSystem.Spacing.sm) {
+        VStack(spacing: 0) {
             header
 
             NetworkStatusBanner()
@@ -109,29 +109,39 @@ struct TaskListView: View {
         if vm.tasks.isEmpty {
             EmptyStateView(icon: "checkmark.circle", title: "タスクがまだありません", subtitle: "＋ボタンから新しいタスクを追加しましょう")
         } else {
-            TaskList(
-                incompleteTasks: vm.incompleteTasks,
-                completedTasks: vm.completedTasks,
-                isReorderMode: isReorderMode,
-                onMove: { source, destination in
-                    vm.moveIncompleteTasks(from: source, to: destination)
-                },
-                onToggleCompletion: { task in
-                    vm.toggleCompletion(task)
-                },
-                onEdit: { task in
-                    editingTask = task
-                },
-                onDelete: { task in
-                    vm.deleteTask(task)
-                },
-                onPreview: { task in
-                    previewingTask = task
-                },
-                onArchive: { task in
-                    vm.archiveTask(task)
-                }
-            )
+            ZStack(alignment: .top) {
+                TaskList(
+                    incompleteTasks: vm.incompleteTasks,
+                    completedTasks: vm.completedTasks,
+                    isReorderMode: isReorderMode,
+                    onMove: { source, destination in
+                        vm.moveIncompleteTasks(from: source, to: destination)
+                    },
+                    onToggleCompletion: { task in
+                        vm.toggleCompletion(task)
+                    },
+                    onEdit: { task in
+                        editingTask = task
+                    },
+                    onDelete: { task in
+                        vm.deleteTask(task)
+                    },
+                    onPreview: { task in
+                        previewingTask = task
+                    },
+                    onArchive: { task in
+                        vm.archiveTask(task)
+                    }
+                )
+
+                LinearGradient(
+                    colors: [DesignSystem.Colors.background, DesignSystem.Colors.background.opacity(0)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 12)
+                .allowsHitTesting(false)
+            }
         }
     }
 
@@ -140,14 +150,6 @@ struct TaskListView: View {
             showNewTask = true
         }
         .padding(.trailing, DesignSystem.Spacing.xl + 2)
-        .padding(.bottom, fabBottomPadding)
-    }
-
-    private var fabBottomPadding: CGFloat {
-        if #available(iOS 26.0, *) {
-            return 80
-        } else {
-            return DesignSystem.Spacing.xl - 2
-        }
+        .padding(.bottom, DesignSystem.Spacing.xl - 2)
     }
 }
