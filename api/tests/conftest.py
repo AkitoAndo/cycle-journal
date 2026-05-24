@@ -21,6 +21,7 @@ def _make_mock_firestore():
     mock_doc = MagicMock()
     mock_doc.get = AsyncMock(return_value=mock_snapshot)
     mock_doc.set = AsyncMock()
+    mock_doc.create = AsyncMock()
     mock_doc.update = AsyncMock()
     mock_doc.delete = AsyncMock()
 

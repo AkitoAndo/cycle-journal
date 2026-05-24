@@ -31,6 +31,18 @@ class Settings(BaseSettings):
     # LangGraphフローを有効にする（感情分析・Cycle要素判定・安全フィルター）
     use_langgraph: bool = False
 
+    # Apple In-App Purchase (App Store Server API / Notifications V2)
+    # - apple_iap_issuer_id / apple_iap_key_id / apple_iap_private_key は
+    #   App Store Connect → Users and Access → Integrations → In-App Purchase Keys
+    #   から発行する .p8 とそのメタ情報。Sign in with Apple 用の鍵とは別管理。
+    # - apple_iap_env は "Sandbox" / "Production"。デプロイ環境ごとに上書き。
+    # - apple_iap_app_apple_id は App Store Connect の App ID(数値)。Sandbox では None 可。  # noqa: E501
+    apple_iap_issuer_id: str = ""
+    apple_iap_key_id: str = ""
+    apple_iap_private_key: str = ""  # .p8 PEM 本体
+    apple_iap_env: str = "Sandbox"
+    apple_iap_app_apple_id: int | None = None
+
     model_config = {"env_prefix": "", "case_sensitive": False}
 
 
