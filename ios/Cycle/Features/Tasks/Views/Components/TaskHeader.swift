@@ -17,8 +17,8 @@ struct TaskHeader: View {
 
     var body: some View {
         HStack(alignment: .center) {
-            Text("Today's Focus")
-                .font(DesignSystem.Fonts.screenTitle)
+            Text("タスクリスト")
+                .font(.system(size: 28, weight: .bold))
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
 
             Spacer()
@@ -39,14 +39,15 @@ struct TaskHeader: View {
                     Label("最近削除した項目", systemImage: "trash")
                 }
             } label: {
-                Image(systemName: "ellipsis.circle")
-                    .font(DesignSystem.Fonts.headerIcon)
+                Image(systemName: "line.3.horizontal")
+                    .font(.system(size: 26))
                     .foregroundStyle(DesignSystem.Colors.textSecondary)
+                    .modifier(GlassIconModifier())
             }
-            .accessibilityIdentifier("task_menu")
         }
         .padding(.horizontal, DesignSystem.Spacing.lg)
-        .padding(.vertical, DesignSystem.Spacing.md)
-        .modifier(GlassHeaderModifier())
+        .padding(.top, DesignSystem.Spacing.md)
+        .padding(.bottom, DesignSystem.Spacing.md + DesignSystem.Spacing.sm)
+        .background(DesignSystem.Colors.background)
     }
 }

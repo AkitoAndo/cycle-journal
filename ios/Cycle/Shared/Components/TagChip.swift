@@ -32,7 +32,21 @@ struct TagChip: View {
             .foregroundStyle(DesignSystem.Colors.textSecondary)
             .padding(.horizontal, DesignSystem.Spacing.sm)
             .padding(.vertical, DesignSystem.Spacing.xs)
-            .background(DesignSystem.Colors.grey)
-            .clipShape(Capsule())
+            .modifier(TagChipBackgroundStyle())
+    }
+}
+
+private struct TagChipBackgroundStyle: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                .background(DesignSystem.Colors.grey)
+                .clipShape(Capsule())
+                .glassEffect(.regular, in: .capsule)
+        } else {
+            content
+                .background(DesignSystem.Colors.grey)
+                .clipShape(Capsule())
+        }
     }
 }

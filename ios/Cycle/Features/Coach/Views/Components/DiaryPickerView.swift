@@ -11,13 +11,6 @@ struct DiaryPickerView: View {
 
     let onSelect: (JournalEntry) -> Void
 
-    private let dateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "M月d日(E) HH:mm"
-        formatter.locale = Locale(identifier: "ja_JP")
-        return formatter
-    }()
-
     var body: some View {
         NavigationStack {
             Group {
@@ -28,37 +21,57 @@ struct DiaryPickerView: View {
                         subtitle: "日記を書くと、ここから選んでコーチに話せます"
                     )
                 } else {
-                    ScrollView {
-                        VStack(spacing: DesignSystem.Spacing.sm) {
-                            ForEach(journalViewModel.allEntries.prefix(20)) { entry in
-                                Button(action: { onSelect(entry) }) {
-                                    SurfaceCard {
-                                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
-                                            Text(dateFormatter.string(from: entry.date))
-                                                .font(DesignSystem.Fonts.caption)
-                                                .foregroundStyle(DesignSystem.Colors.textTertiary)
+                    List {
+                        ForEach(journalViewModel.allEntries.prefix(20)) { entry in
+                            Button(action: { onSelect(entry) }) {
+                                VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
+                                    Text(entry.text)
+                                        .font(DesignSystem.Fonts.body)
+                                        .foregroundStyle(DesignSystem.Colors.textPrimary)
+                                        .lineSpacing(4)
+                                        .lineLimit(3)
+                                        .multilineTextAlignment(.leading)
 
-                                            Text(entry.text)
-                                                .font(DesignSystem.Fonts.body)
-                                                .foregroundStyle(DesignSystem.Colors.textPrimary)
-                                                .lineLimit(2)
-                                                .multilineTextAlignment(.leading)
+                                    HStack(spacing: DesignSystem.Spacing.sm) {
+                                        Text(entry.date.formatted(
+                                            .dateTime
+                                                .year()
+                                                .month()
+                                                .day()
+                                                .weekday(.abbreviated)
+                                                .hour(.twoDigits(amPM: .omitted))
+                                                .minute(.twoDigits)
+                                                .locale(Locale(identifier: "ja_JP"))
+                                        ))
+                                            .font(DesignSystem.Fonts.caption)
+                                            .foregroundStyle(DesignSystem.Colors.textSecondary)
 
-                                            if !entry.tags.isEmpty {
-                                                HStack(spacing: DesignSystem.Spacing.xs) {
-                                                    ForEach(entry.tags.prefix(3), id: \.self) { tag in
-                                                        TagChip(text: tag)
-                                                    }
-                                                }
+                                        if !entry.tags.isEmpty {
+                                            ForEach(entry.tags, id: \.self) { tag in
+                                                TagChip(text: tag)
                                             }
                                         }
                                     }
                                 }
-                                .buttonStyle(.plain)
+                                .padding(DesignSystem.Spacing.lg)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .modifier(DiaryPickerCardStyle())
                             }
+                            .buttonStyle(.plain)
+                            .listRowInsets(
+                                EdgeInsets(
+                                    top: DesignSystem.Spacing.xs,
+                                    leading: DesignSystem.Spacing.lg,
+                                    bottom: DesignSystem.Spacing.xs,
+                                    trailing: DesignSystem.Spacing.lg
+                                )
+                            )
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
                         }
-                        .padding(DesignSystem.Spacing.lg)
                     }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
                 }
             }
             .background(DesignSystem.Colors.background)
@@ -73,6 +86,26 @@ struct DiaryPickerView: View {
                     .foregroundStyle(DesignSystem.Colors.accent)
                 }
             }
+        }
+    }
+}
+
+// MARK: - Card Style
+
+private struct DiaryPickerCardStyle: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: DesignSystem.Spacing.md))
+        } else {
+            content
+                .background(DesignSystem.Colors.surface)
+                .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous)
+                        .stroke(DesignSystem.Colors.grey.opacity(0.6), lineWidth: 0.5)
+                )
+                .shadow(color: DesignSystem.Colors.brownDark.opacity(0.08), radius: 4, x: 0, y: 2)
         }
     }
 }

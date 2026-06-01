@@ -92,15 +92,25 @@ struct JournalListView: View {
     }
 
     private var entriesList: some View {
-        JournalEntriesList(
-            entries: vm.todays,
-            onEdit: { entry in
-                editingEntry = entry
-            },
-            onDelete: { entry in
-                vm.deleteEntry(entry)
-            }
-        )
+        ZStack(alignment: .top) {
+            JournalEntriesList(
+                entries: vm.todays,
+                onEdit: { entry in
+                    editingEntry = entry
+                },
+                onDelete: { entry in
+                    vm.deleteEntry(entry)
+                }
+            )
+
+            LinearGradient(
+                colors: [DesignSystem.Colors.background, DesignSystem.Colors.background.opacity(0)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: 12)
+            .allowsHitTesting(false)
+        }
     }
 
     private var floatingActionButton: some View {
@@ -108,14 +118,6 @@ struct JournalListView: View {
             showNewEntry = true
         }
         .padding(.trailing, DesignSystem.Spacing.xl + 2)
-        .padding(.bottom, fabBottomPadding)
-    }
-
-    private var fabBottomPadding: CGFloat {
-        if #available(iOS 26.0, *) {
-            return 80
-        } else {
-            return DesignSystem.Spacing.xl - 2
-        }
+        .padding(.bottom, DesignSystem.Spacing.xl - 2)
     }
 }
