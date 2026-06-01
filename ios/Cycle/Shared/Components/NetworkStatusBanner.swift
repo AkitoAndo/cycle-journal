@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import Pow
 
 struct NetworkStatusBanner: View {
     @ObservedObject var networkMonitor = NetworkMonitor.shared
@@ -21,7 +22,7 @@ struct NetworkStatusBanner: View {
             .padding(.vertical, DesignSystem.Spacing.sm)
             .frame(maxWidth: .infinity)
             .background(DesignSystem.Colors.surface)
-            .transition(.move(edge: .top).combined(with: .opacity))
+            .transition(.movingParts.move(edge: .top).combined(with: .opacity))
         }
     }
 }
