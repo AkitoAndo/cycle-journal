@@ -1,12 +1,12 @@
 """Common Pydantic models for API responses."""
 
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel
 
 
-class CycleElement(str, Enum):
+class CycleElement(StrEnum):
     soil = "soil"
     water = "water"
     root = "root"

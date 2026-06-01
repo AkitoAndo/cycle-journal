@@ -45,6 +45,7 @@ export default defineConfig({
         items: [
           { text: 'Getting Started', link: '/guides/getting-started' },
           { text: '開発規約', link: '/guides/conventions' },
+          { text: 'ブランチ・デプロイ運用', link: '/guides/branching-and-deployment' },
           { text: 'App Storeリリース', link: '/guides/app-store-release' },
           {
             text: '#37 デプロイメントセットアップ',

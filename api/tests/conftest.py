@@ -34,7 +34,7 @@ def _make_mock_firestore():
 
     async def empty_stream():
         return
-        yield  # noqa: unreachable - makes this an async generator
+        yield
 
     mock_sub_query = MagicMock()
     mock_sub_query.stream.return_value = empty_stream()
@@ -67,7 +67,11 @@ def mock_auth():
     with patch(
         "app.middleware.auth_middleware.verify_access_token",
     ) as mock:
-        mock.return_value = {"sub": "test-user-123", "provider": "apple", "type": "access"}
+        mock.return_value = {
+            "sub": "test-user-123",
+            "provider": "apple",
+            "type": "access",
+        }
         yield mock
 
 
