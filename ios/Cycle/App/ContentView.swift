@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Pow
 
 struct ContentView: View {
     @State private var selectedTab = 0
@@ -131,8 +132,18 @@ struct TabBarButton: View {
     var body: some View {
         Button(action: action) {
             VStack(spacing: 4) {
-                Image(systemName: isSelected ? selectedIcon : icon)
-                    .font(.system(size: DesignSystem.FontSize.title3))
+                ZStack {
+                    if isSelected {
+                        Image(systemName: selectedIcon)
+                            .transition(.movingParts.pop(DesignSystem.Colors.accent))
+                    } else {
+                        Image(systemName: icon)
+                            .transition(.opacity)
+                    }
+                }
+                .font(.system(size: DesignSystem.FontSize.title3))
+                .frame(width: DesignSystem.ComponentSize.iconSize, height: DesignSystem.ComponentSize.iconSize)
+                .changeEffect(.jump(height: 5), value: isSelected, isEnabled: isSelected)
 
                 Text(label)
                     .font(.system(size: 10))
@@ -140,6 +151,7 @@ struct TabBarButton: View {
             .foregroundStyle(isSelected ? DesignSystem.Colors.accent : DesignSystem.Colors.textSecondary)
             .frame(maxWidth: .infinity)
         }
+        .animation(DesignSystem.Timing.easing, value: isSelected)
         .accessibilityIdentifier("tab_\(label)")
     }
 }
