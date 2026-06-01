@@ -5,7 +5,7 @@ Terraform is split by directory and state:
 | Directory | State prefix | Owns |
 | --- | --- | --- |
 | `environments/shared` | `terraform/state/shared` | Project APIs, Artifact Registry |
-| `environments/dev` | `terraform/state/dev` | `cycle-api-dev`, Firestore `dev`, dev secrets/IAM |
+| `environments/dev` | `terraform/state/dev` | `cycle-api-dev`, Firestore `dev-db`, dev secrets/IAM |
 | `environments/prod` | `terraform/state/prod` | `cycle-api-prod`, Firestore `(default)`, prod secrets/IAM |
 
 The legacy root Terraform files are retained only as the source for the first

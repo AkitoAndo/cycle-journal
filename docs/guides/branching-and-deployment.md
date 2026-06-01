@@ -17,7 +17,7 @@ only through pull requests.
 
 | Environment | Branch | Cloud Run | Firestore |
 | --- | --- | --- | --- |
-| dev | `develop` | `cycle-api-dev` | `dev` |
+| dev | `develop` | `cycle-api-dev` | `dev-db` |
 | prod | `main` | `cycle-api-prod` | `(default)` |
 
 The GCP project remains `cycle-journal`. Project-level IAM, billing, quotas, and

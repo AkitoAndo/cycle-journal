@@ -9,7 +9,7 @@ module "api" {
   project_id            = var.project_id
   region                = var.region
   environment           = "dev"
-  firestore_database_id = "dev"
+  firestore_database_id = "dev-db"
   apple_team_id         = var.apple_team_id
   apple_key_id          = var.apple_key_id
   apple_apns_key_id     = var.apple_apns_key_id
