@@ -28,3 +28,10 @@ variable "apple_iap_key_id" {
   description = "App Store Connect IAP Key ID"
   type        = string
 }
+
+
+variable "apple_apns_key_id" {
+  description = "Apple Push Notification service Auth Key ID. Empty disables APNs sending."
+  type        = string
+  default     = ""
+}
