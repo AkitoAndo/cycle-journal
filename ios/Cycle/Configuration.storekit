@@ -1,0 +1,73 @@
+{
+  "identifier" : "9343A52B",
+  "nonRenewingSubscriptions" : [],
+  "products" : [],
+  "settings" : {
+    "_applicationInternalID" : "",
+    "_developerTeamID" : "",
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 0,
+    "_locale" : "ja_JP",
+    "_storefront" : "JPN",
+    "_storeKitErrors" : []
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "CF28CEEB",
+      "localizations" : [],
+      "name" : "CycleJournal Premium",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "14400",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "044EF83F",
+          "introductoryOffer" : {
+            "internalID" : "8848E346",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1W"
+          },
+          "localizations" : [
+            {
+              "description" : "1年間のプレミアムアクセス（7日間無料トライアル付き）",
+              "displayName" : "Yearly Premium",
+              "locale" : "ja_JP"
+            }
+          ],
+          "productID" : "com.akitoando.CycleJournal.yearly_14400",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Yearly Premium",
+          "subscriptionGroupID" : "CF28CEEB",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "1800",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "4554B31C",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "1ヶ月間のプレミアムアクセス",
+              "displayName" : "Monthly Premium",
+              "locale" : "ja_JP"
+            }
+          ],
+          "productID" : "com.akitoando.CycleJournal.monthly_1800",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Monthly Premium",
+          "subscriptionGroupID" : "CF28CEEB",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

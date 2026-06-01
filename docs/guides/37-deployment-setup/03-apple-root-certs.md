@@ -21,14 +21,16 @@ App Store Server Notifications V2 / Server API のレスポンスは JWS（JSON 
 
 | ファイル名 | 用途 | URL |
 |---|---|---|
-| `AppleRootCA-G3.cer` | StoreKit 2 / ASSN V2 / Server API 検証用（ES256） | https://www.apple.com/appleca/AppleRootCA-G3.cer |
+| `AppleRootCA-G3.cer` | StoreKit 2 / ASSN V2 / Server API 検証用（ES256） | https://www.apple.com/certificateauthority/AppleRootCA-G3.cer |
 | `AppleIncRootCertificate.cer` | 旧 SHA-1 ルート（後方互換、必須ではないが推奨） | https://www.apple.com/appleca/AppleIncRootCertificate.cer |
+
+> 注: G3 は `/appleca/` パスが 404 になるため `/certificateauthority/` を使う（2026-06 時点で確認済）。Inc ルートは `/appleca/` のままで取得可。
 
 ```bash
 mkdir -p api/app/certs
 cd api/app/certs
 
-curl -fsSL -o AppleRootCA-G3.cer https://www.apple.com/appleca/AppleRootCA-G3.cer
+curl -fsSL -o AppleRootCA-G3.cer https://www.apple.com/certificateauthority/AppleRootCA-G3.cer
 curl -fsSL -o AppleIncRootCertificate.cer https://www.apple.com/appleca/AppleIncRootCertificate.cer
 ```
 
@@ -38,7 +40,7 @@ curl -fsSL -o AppleIncRootCertificate.cer https://www.apple.com/appleca/AppleInc
 
 ```bash
 shasum -a 256 AppleRootCA-G3.cer
-# 期待値: 63343abfb89a6a03ebb57e9b3f5fa7be7c4f5c756f3017b3a8c488c3653e9152
+# 期待値: 63343abfb89a6a03ebb57e9b3f5fa7be7c4f5c756f3017b3a8c488c3653e9179
 # (公式は時々入れ替えるので最新を https://www.apple.com/certificateauthority/ で確認)
 
 openssl x509 -inform DER -in AppleRootCA-G3.cer -noout -subject -issuer -dates

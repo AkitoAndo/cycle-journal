@@ -1,0 +1,4 @@
+# IAP / Sign in with Apple 秘密鍵はここに置かない (Secret Manager で管理)
+*.p8
+*.pem
+*.key
