@@ -2,12 +2,13 @@
 
 - POST /iap/apple/notifications  — App Store Server Notifications V2 受信口
 - POST /iap/apple/verify         — クライアント (StoreKit2) からの JWS 即時検証
+- POST /iap/apple/device-token   — silent push 用 APNs device token 登録
 
 Notification 処理ポリシー:
 - notificationUUID をドキュメント ID として iap_notifications コレクションに
   create() を試み、AlreadyExists なら冪等にスキップして 200 を返す。
 - 検証失敗 (JWS) は 400 を返し Apple のリトライ対象から外す。
-- 状態反映 (users/{uid}/subscription) はバックグラウンドタスクで実行し、
+- 状態反映 (users/{uid}/subscription)・GA4・silent push はバックグラウンドで実行し、
   Apple への ACK は即時 200 を返す (3〜5 秒以内の応答要件を満たすため)。
 
 ユーザー特定:
@@ -31,6 +32,9 @@ from google.cloud.firestore import SERVER_TIMESTAMP, AsyncClient
 from pydantic import BaseModel, Field
 
 from app.dependencies import get_current_user, get_firestore
+from app.services.analytics_service import send_event
+from app.services.apns_service import send_silent_push
+from app.services.iap_events import ga4_event_name, should_send_cancel_silent_push
 from app.services.iap_subscription import build_subscription_record
 from app.services.iap_verifier import get_verifier
 
@@ -57,14 +61,85 @@ async def _write_subscription_record(
     await doc.set({**record, "updated_at": SERVER_TIMESTAMP}, merge=True)
 
 
-async def _resolve_uid(db: AsyncClient, original_tx_id: str | None) -> str | None:
-    """originalTransactionId から uid を解決する (verify が記録した iap_links 経由)."""
+async def _get_iap_link(
+    db: AsyncClient,
+    original_tx_id: str | None,
+) -> dict[str, Any] | None:
+    """originalTransactionId から verify 時に保存したリンク情報を取得する."""
     if not original_tx_id:
         return None
     snap = await db.collection("iap_links").document(original_tx_id).get()
     if snap.exists:
-        return (snap.to_dict() or {}).get("uid")
+        return snap.to_dict() or {}
     return None
+
+
+async def _resolve_uid(db: AsyncClient, original_tx_id: str | None) -> str | None:
+    """originalTransactionId から uid を解決する (verify が記録した iap_links 経由)."""
+    link = await _get_iap_link(db, original_tx_id)
+    return link.get("uid") if link else None
+
+
+def _analytics_params(record: dict[str, Any], notification_uuid: str) -> dict[str, Any]:
+    return {
+        "product_id": record["product_id"],
+        "subscription_status": record["status"],
+        "is_active": record["is_active"],
+        "transaction_id": record["transaction_id"],
+        "original_transaction_id": record["original_transaction_id"],
+        "expires_date_ms": record["expires_date_ms"],
+        "notification_type": record["last_notification_type"],
+        "notification_subtype": record["last_subtype"],
+        "environment": record["environment"],
+    }
+
+
+async def _send_ga4_subscription_event(
+    *,
+    uid: str,
+    link: dict[str, Any] | None,
+    record: dict[str, Any],
+    payload: Any,
+) -> None:
+    event_name = ga4_event_name(
+        payload.notificationType,
+        payload.subtype,
+        record["status"],
+    )
+    if event_name is None:
+        return
+
+    client_id = (link or {}).get("ga4_client_id") or uid
+    await send_event(
+        client_id=client_id,
+        user_id=uid,
+        event_name=event_name,
+        params=_analytics_params(record, payload.notificationUUID),
+        event_id=payload.notificationUUID,
+    )
+
+
+async def _send_cancel_silent_pushes(
+    *,
+    db: AsyncClient,
+    uid: str,
+    record: dict[str, Any],
+) -> None:
+    token_collection = db.collection("users").document(uid).collection("apns_tokens")
+    async for snap in token_collection.stream():
+        token_data = snap.to_dict() or {}
+        token = token_data.get("device_token")
+        if not token:
+            continue
+        await send_silent_push(
+            device_token=token,
+            event="cancel_trial_notifications",
+            reason="subscription_auto_renew_disabled",
+            extra={
+                "product_id": record["product_id"],
+                "original_transaction_id": record["original_transaction_id"],
+            },
+        )
 
 
 @router.post("/apple/notifications", status_code=200)
@@ -110,7 +185,7 @@ async def _apply_notification(
     verifier: SignedDataVerifier,
     payload: Any,
 ) -> None:
-    """signedTransactionInfo をデコードして users/{uid}/subscription に状態反映する.
+    """ASSN transaction を反映し、GA4 / silent push の後続処理を実行する.
 
     - TEST 通知やトランザクションを伴わない通知は何もしない。
     - uid が未解決 (verify 未実行) の場合はスキップ。次回の verify で整合する。
@@ -123,7 +198,8 @@ async def _apply_notification(
             return
 
         txn = verifier.verify_and_decode_signed_transaction(signed_tx)
-        uid = await _resolve_uid(db, txn.originalTransactionId)
+        link = await _get_iap_link(db, txn.originalTransactionId)
+        uid = link.get("uid") if link else None
         if uid is None:
             return
 
@@ -134,6 +210,14 @@ async def _apply_notification(
             subtype=payload.subtype,
         )
         await _write_subscription_record(db, uid, record)
+        await _send_ga4_subscription_event(
+            uid=uid,
+            link=link,
+            record=record,
+            payload=payload,
+        )
+        if should_send_cancel_silent_push(payload.notificationType, payload.subtype):
+            await _send_cancel_silent_pushes(db=db, uid=uid, record=record)
     except Exception:  # noqa: BLE001 - background task, never raise to caller
         return
 
@@ -142,6 +226,7 @@ class VerifyRequest(BaseModel):
     """StoreKit2 の Transaction.jwsRepresentation を渡す."""
 
     jws_representation: str = Field(alias="jwsRepresentation")
+    ga4_client_id: str | None = Field(default=None, alias="ga4ClientId")
 
     model_config = {"populate_by_name": True}
 
@@ -168,8 +253,11 @@ async def apple_verify(
     if not original_tx_id:
         raise HTTPException(status_code=400, detail="missing originalTransactionId")
 
+    link_record: dict[str, Any] = {"uid": uid, "updated_at": SERVER_TIMESTAMP}
+    if req.ga4_client_id:
+        link_record["ga4_client_id"] = req.ga4_client_id
     await db.collection("iap_links").document(original_tx_id).set(
-        {"uid": uid, "updated_at": SERVER_TIMESTAMP},
+        link_record,
         merge=True,
     )
 
@@ -183,3 +271,40 @@ async def apple_verify(
         "productId": record["product_id"],
         "expiresDateMs": record["expires_date_ms"],
     }
+
+
+class DeviceTokenRequest(BaseModel):
+    """APNs device token registration for silent push."""
+
+    device_token: str = Field(alias="deviceToken", min_length=16, max_length=512)
+    environment: str | None = None
+
+    model_config = {"populate_by_name": True}
+
+
+@router.post("/apple/device-token", status_code=200)
+async def register_device_token(
+    req: DeviceTokenRequest,
+    uid: str = Depends(get_current_user),
+    db: AsyncClient = Depends(get_firestore),
+) -> dict[str, Any]:
+    """Register an APNs token used for subscription silent pushes."""
+    token = req.device_token.strip().replace(" ", "").lower()
+    if not token:
+        raise HTTPException(status_code=400, detail="missing deviceToken")
+
+    await (
+        db.collection("users")
+        .document(uid)
+        .collection("apns_tokens")
+        .document(token)
+        .set(
+            {
+                "device_token": token,
+                "environment": req.environment,
+                "updated_at": SERVER_TIMESTAMP,
+            },
+            merge=True,
+        )
+    )
+    return {"status": "registered"}

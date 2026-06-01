@@ -280,6 +280,7 @@ class AuthStore: NSObject, ObservableObject {
 
         currentUser = user
         APIClient.shared.setAuthToken(accessToken)
+        Task { await SubscriptionService().registerStoredAPNsDeviceTokenIfAvailable() }
         state = .authenticated(userId: user.userId)
     }
 
@@ -313,6 +314,7 @@ class AuthStore: NSObject, ObservableObject {
         saveUserToKeychain(user)
         deleteFromKeychain(key: legacyTokenKey)
         APIClient.shared.setAuthToken(accessToken)
+        Task { await SubscriptionService().registerStoredAPNsDeviceTokenIfAvailable() }
     }
 
     private func clearLocalAuth() {

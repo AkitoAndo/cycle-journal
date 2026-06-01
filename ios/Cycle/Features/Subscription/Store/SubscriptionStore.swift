@@ -84,6 +84,7 @@ final class SubscriptionStore: ObservableObject {
             switch verification {
             case .verified(let transaction):
                 await refreshEntitlements()
+                await applyTrialNotificationSideEffects(for: transaction)
                 await transaction.finish()
                 return verification.jwsRepresentation
             case .unverified:
@@ -104,8 +105,42 @@ final class SubscriptionStore: ObservableObject {
         for await result in Transaction.updates {
             guard case .verified(let transaction) = result else { continue }
             await refreshEntitlements()
+            await applyTrialNotificationSideEffects(for: transaction)
             await transaction.finish()
         }
+    }
+
+    // MARK: - Trial notification side effects
+
+    private func applyTrialNotificationSideEffects(for transaction: Transaction) async {
+        let scheduler = TrialNotificationScheduler.shared
+
+        if transaction.revocationDate != nil {
+            scheduler.cancelAllTrialNotifications()
+            return
+        }
+
+        if let expirationDate = transaction.expirationDate, expirationDate < Date() {
+            scheduler.cancelAllTrialNotifications()
+            return
+        }
+
+        guard transaction.offerType == .introductory else {
+            scheduler.cancelAllTrialNotifications()
+            return
+        }
+
+        await scheduler.scheduleTrialNotifications(
+            purchaseDate: transaction.purchaseDate,
+            goal: Self.storedOnboardingGoal()
+        )
+    }
+
+    private static func storedOnboardingGoal() -> OnboardingGoal? {
+        guard let rawValue = UserDefaults.standard.string(forKey: "userGoal") else {
+            return nil
+        }
+        return OnboardingGoal(rawValue: rawValue)
     }
 }
 

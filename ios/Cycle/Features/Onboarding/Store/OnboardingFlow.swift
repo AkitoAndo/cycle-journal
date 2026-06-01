@@ -67,6 +67,7 @@ final class OnboardingFlow: ObservableObject {
 
     func selectGoal(_ goal: OnboardingGoal) {
         selectedGoal = goal
+        UserDefaults.standard.set(goal.rawValue, forKey: "userGoal")
     }
 
     func setFirstJournalText(_ text: String) {
