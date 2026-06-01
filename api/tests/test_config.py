@@ -32,3 +32,16 @@ def test_claude_model_quick_overridable_via_env():
     with patch.dict(os.environ, {"CLAUDE_MODEL_QUICK": "claude-haiku-test@99999999"}):
         settings = Settings()
         assert settings.claude_model_quick == "claude-haiku-test@99999999"
+
+
+def test_firestore_database_id_defaults_to_default_database():
+    """Firestore DB は既存本番データ互換のため (default) を既定にする."""
+    settings = Settings()
+    assert settings.firestore_database_id == "(default)"
+
+
+def test_firestore_database_id_overridable_via_env():
+    """dev/prod Cloud Run から FIRESTORE_DATABASE_ID で DB を分離できる."""
+    with patch.dict(os.environ, {"FIRESTORE_DATABASE_ID": "dev"}):
+        settings = Settings()
+        assert settings.firestore_database_id == "dev"

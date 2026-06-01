@@ -1,0 +1,123 @@
+name: API CI/CD
+
+on:
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - api/**
+      - .github/workflows/api-ci-cd.yml
+  push:
+    branches: [develop, main]
+    paths:
+      - api/**
+      - .github/workflows/api-ci-cd.yml
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deploy target"
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: api-${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+env:
+  PROJECT_ID: cycle-journal
+  REGION: asia-northeast1
+  REPOSITORY: cycle-api
+
+jobs:
+  api-test:
+    name: API lint and test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --frozen --extra dev
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Test
+        run: uv run pytest
+
+  deploy:
+    name: Deploy API
+    needs: api-test
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'push' && (github.ref_name == 'develop' || github.ref_name == 'main')) ||
+      github.event_name == 'workflow_dispatch'
+    environment: api-${{ github.event_name == 'workflow_dispatch' && inputs.environment || (github.ref_name == 'main' && 'prod' || 'dev') }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve target
+        id: target
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            target="${{ inputs.environment }}"
+          elif [[ "${{ github.ref_name }}" == "main" ]]; then
+            target="prod"
+          else
+            target="dev"
+          fi
+
+          echo "environment=${target}" >> "$GITHUB_OUTPUT"
+          echo "service=cycle-api-${target}" >> "$GITHUB_OUTPUT"
+          echo "image=${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/api:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          echo "track_tag=${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/api:${target}" >> "$GITHUB_OUTPUT"
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker auth
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Build image
+        run: |
+          docker build \
+            --tag "${{ steps.target.outputs.image }}" \
+            --tag "${{ steps.target.outputs.track_tag }}" \
+            api
+
+      - name: Push image
+        run: |
+          docker push "${{ steps.target.outputs.image }}"
+          docker push "${{ steps.target.outputs.track_tag }}"
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy "${{ steps.target.outputs.service }}" \
+            --image "${{ steps.target.outputs.image }}" \
+            --region "${REGION}" \
+            --project "${PROJECT_ID}" \
+            --quiet

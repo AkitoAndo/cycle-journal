@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     environment: str = "dev"
     gcp_project_id: str = "cycle-journal"
     gcp_region: str = "asia-northeast1"
+    firestore_database_id: str = "(default)"
     apple_bundle_id: str = "com.akitoando.CycleJournal"
     google_client_id: str = ""  # iOS用Google OAuth Client ID
 

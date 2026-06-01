@@ -43,17 +43,23 @@ async def chat(
     # セッションが未作成の場合は作成
     session_snap = await session_doc.get()
     if not session_snap.exists:
-        cycle_element = body.context.cycle_element.value if body.context and body.context.cycle_element else None
-        await session_doc.set({
-            "user_id": user_id,
-            "title": None,
-            "cycle_element": cycle_element,
-            "has_diary_context": body.diary_content is not None,
-            "message_count": 0,
-            "last_message_at": now,
-            "created_at": now,
-            "updated_at": now,
-        })
+        cycle_element = (
+            body.context.cycle_element.value
+            if body.context and body.context.cycle_element
+            else None
+        )
+        await session_doc.set(
+            {
+                "user_id": user_id,
+                "title": None,
+                "cycle_element": cycle_element,
+                "has_diary_context": body.diary_content is not None,
+                "message_count": 0,
+                "last_message_at": now,
+                "created_at": now,
+                "updated_at": now,
+            }
+        )
 
     # 過去のメッセージ履歴を取得
     messages_ref = session_doc.collection("messages")
