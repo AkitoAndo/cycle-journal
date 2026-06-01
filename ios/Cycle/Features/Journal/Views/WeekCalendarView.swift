@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Pow
 
 /// 週単位のカレンダービューコンポーネント
 /// 横スワイプで週を切り替え、日付タップで選択可能
@@ -66,6 +67,8 @@ struct WeekCalendarView: View {
                         .fill(isSelected ? DesignSystem.Colors.accent : Color.clear)
                 )
                 .animation(DesignSystem.Timing.easing, value: isSelected)
+                .changeEffect(.jump(height: 4), value: isSelected, isEnabled: isSelected)
+                .changeEffect(.feedbackHapticSelection, value: isSelected, isEnabled: isSelected)
         }
         .frame(maxWidth: .infinity)
         .contentShape(Rectangle())
