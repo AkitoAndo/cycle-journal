@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import Pow
 
 struct ErrorBannerView: View {
     let message: String
@@ -45,6 +46,6 @@ struct ErrorBannerView: View {
         .background(DesignSystem.Colors.surface)
         .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous))
         .padding(.horizontal, DesignSystem.Spacing.lg)
-        .transition(.move(edge: .top).combined(with: .opacity))
+        .transition(.movingParts.move(edge: .top).combined(with: .opacity))
     }
 }
