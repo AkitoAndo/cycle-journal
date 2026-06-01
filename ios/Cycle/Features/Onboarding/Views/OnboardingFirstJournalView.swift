@@ -38,7 +38,7 @@ struct OnboardingFirstJournalView: View {
                 .focused($isEditorFocused)
                 .padding(8)
                 .frame(minHeight: 180)
-                .background(Color(.secondarySystemBackground))
+                .background(DesignSystem.Colors.surface)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
 
@@ -56,9 +56,9 @@ struct OnboardingFirstJournalView: View {
                     .font(.system(size: 17, weight: .semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(flow.canAdvance ? Color.green : Color.gray)
+                    .background(flow.canAdvance ? DesignSystem.Colors.accent : DesignSystem.Colors.grey)
                     .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous))
             }
             .disabled(!flow.canAdvance)
         }
