@@ -72,6 +72,57 @@ def resolve_status(
     return "active"
 
 
+_REVENUE_JPY_BY_SUFFIX = {
+    "monthly_1800": 1800,
+    "yearly_14400": 14400,
+}
+
+
+def revenue_jpy_for(product_id: str | None) -> int | None:
+    """product_id から税込相当の売上(円)を引く。未知の商品は None。"""
+    if not product_id:
+        return None
+    for suffix, amount in _REVENUE_JPY_BY_SUFFIX.items():
+        if product_id.endswith(suffix):
+            return amount
+    return None
+
+
+def select_lifecycle_event(
+    *,
+    notification_type: Any | None,
+    subtype: Any | None,
+    prior_status: str | None,
+    new_status: str,
+) -> str | None:
+    """ASSN 通知 + 直前の subscription status から GA4 サーバーイベント名を導出する.
+
+    KPI (Trial→Paid 転換率 / 継続率) 計測のため、トライアル起点の遷移を区別する:
+    - 初回購入(トライアル)         → trial_started
+    - トライアル→課金(初回更新)    → trial_converted_to_paid
+    - トライアルのまま失効         → trial_expired_without_conversion
+    送信不要な通知は None を返す。
+    """
+    nt = normalize_enum(notification_type)
+    st = normalize_enum(subtype)
+
+    if nt in {"REFUND", "REVOKE"}:
+        return "subscription_refunded"
+    if nt == "DID_CHANGE_RENEWAL_STATUS" and st == "AUTO_RENEW_DISABLED":
+        return "subscription_cancelled"
+    if nt == "EXPIRED":
+        if prior_status == "trial":
+            return "trial_expired_without_conversion"
+        return "subscription_expired"
+    if nt == "DID_RENEW":
+        if prior_status == "trial":
+            return "trial_converted_to_paid"
+        return "subscription_renewed"
+    if nt == "SUBSCRIBED":
+        return "trial_started" if new_status == "trial" else "subscription_started"
+    return None
+
+
 def build_subscription_record(
     txn: Any,
     *,

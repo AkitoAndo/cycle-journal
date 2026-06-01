@@ -8,6 +8,8 @@ from app.services.iap_subscription import (
     build_subscription_record,
     normalize_enum,
     resolve_is_active,
+    revenue_jpy_for,
+    select_lifecycle_event,
 )
 
 NOW = 1_700_000_000_000  # 固定の現在時刻 (ms)
@@ -107,3 +109,104 @@ def test_grace_period_keeps_access():
     )
     assert rec["is_active"] is True
     assert rec["status"] == "grace_period"
+
+
+# --- B3: GA4 ライフサイクルイベント導出 ---
+
+
+def test_revenue_jpy_for():
+    assert revenue_jpy_for("com.akitoando.CycleJournal.yearly_14400") == 14400
+    assert revenue_jpy_for("com.akitoando.CycleJournal.monthly_1800") == 1800
+    assert revenue_jpy_for("unknown.product") is None
+    assert revenue_jpy_for(None) is None
+
+
+def test_select_lifecycle_event_trial_started():
+    assert (
+        select_lifecycle_event(
+            notification_type="SUBSCRIBED",
+            subtype="INITIAL_BUY",
+            prior_status=None,
+            new_status="trial",
+        )
+        == "trial_started"
+    )
+
+
+def test_select_lifecycle_event_trial_converted():
+    """トライアル中の更新は転換 (KPI の肝)。"""
+    assert (
+        select_lifecycle_event(
+            notification_type="DID_RENEW",
+            subtype=None,
+            prior_status="trial",
+            new_status="active",
+        )
+        == "trial_converted_to_paid"
+    )
+
+
+def test_select_lifecycle_event_plain_renew():
+    assert (
+        select_lifecycle_event(
+            notification_type="DID_RENEW",
+            subtype=None,
+            prior_status="active",
+            new_status="active",
+        )
+        == "subscription_renewed"
+    )
+
+
+def test_select_lifecycle_event_trial_expired_vs_normal():
+    assert (
+        select_lifecycle_event(
+            notification_type="EXPIRED",
+            subtype=None,
+            prior_status="trial",
+            new_status="expired",
+        )
+        == "trial_expired_without_conversion"
+    )
+    assert (
+        select_lifecycle_event(
+            notification_type="EXPIRED",
+            subtype=None,
+            prior_status="active",
+            new_status="expired",
+        )
+        == "subscription_expired"
+    )
+
+
+def test_select_lifecycle_event_cancel_and_refund():
+    assert (
+        select_lifecycle_event(
+            notification_type="DID_CHANGE_RENEWAL_STATUS",
+            subtype="AUTO_RENEW_DISABLED",
+            prior_status="active",
+            new_status="cancelled",
+        )
+        == "subscription_cancelled"
+    )
+    assert (
+        select_lifecycle_event(
+            notification_type="REFUND",
+            subtype=None,
+            prior_status="active",
+            new_status="revoked",
+        )
+        == "subscription_refunded"
+    )
+
+
+def test_select_lifecycle_event_none_for_unmapped():
+    assert (
+        select_lifecycle_event(
+            notification_type="DID_CHANGE_RENEWAL_PREF",
+            subtype=None,
+            prior_status="active",
+            new_status="active",
+        )
+        is None
+    )

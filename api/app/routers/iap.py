@@ -31,7 +31,12 @@ from google.cloud.firestore import SERVER_TIMESTAMP, AsyncClient
 from pydantic import BaseModel, Field
 
 from app.dependencies import get_current_user, get_firestore
-from app.services.iap_subscription import build_subscription_record
+from app.services.analytics_service import send_event
+from app.services.iap_subscription import (
+    build_subscription_record,
+    revenue_jpy_for,
+    select_lifecycle_event,
+)
 from app.services.iap_verifier import get_verifier
 
 router = APIRouter(prefix="/iap", tags=["iap"])
@@ -127,15 +132,71 @@ async def _apply_notification(
         if uid is None:
             return
 
+        # 直前の状態 (trial 起点の遷移を区別して KPI イベントを出すため)
+        sub_doc = (
+            db.collection("users")
+            .document(uid)
+            .collection("subscription")
+            .document(txn.originalTransactionId)
+        )
+        prior_snap = await sub_doc.get()
+        prior = prior_snap.to_dict() or {} if prior_snap.exists else {}
+
         record = build_subscription_record(
             txn,
             now_ms=_now_ms(),
             notification_type=payload.notificationType,
             subtype=payload.subtype,
         )
+
+        await _emit_lifecycle_event(
+            uid=uid,
+            payload=payload,
+            record=record,
+            prior_status=prior.get("status"),
+        )
         await _write_subscription_record(db, uid, record)
     except Exception:  # noqa: BLE001 - background task, never raise to caller
         return
+
+
+async def _emit_lifecycle_event(
+    *,
+    uid: str,
+    payload: Any,
+    record: dict[str, Any],
+    prior_status: str | None,
+) -> None:
+    """サブスクのライフサイクル遷移を GA4 サーバーイベントとして送る (B3).
+
+    GA4 未設定なら send_event は no-op。notificationUUID を event_id にして冪等化。
+    """
+    event_name = select_lifecycle_event(
+        notification_type=payload.notificationType,
+        subtype=payload.subtype,
+        prior_status=prior_status,
+        new_status=record["status"],
+    )
+    if event_name is None:
+        return
+
+    params: dict[str, Any] = {
+        "product_id": record["product_id"],
+        "environment": record["environment"],
+        "subscription_status": record["status"],
+    }
+    if event_name in {"trial_converted_to_paid", "subscription_renewed"}:
+        revenue = revenue_jpy_for(record["product_id"])
+        if revenue is not None:
+            params["revenue_jpy"] = revenue
+
+    await send_event(
+        client_id=uid,
+        user_id=uid,
+        event_name=event_name,
+        params=params,
+        event_id=payload.notificationUUID,
+    )
 
 
 class VerifyRequest(BaseModel):

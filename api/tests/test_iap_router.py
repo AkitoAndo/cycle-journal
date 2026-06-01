@@ -226,3 +226,31 @@ def test_notification_applies_when_uid_resolved(iap_client, mock_firestore):
 
     assert response.status_code == 200
     mock_firestore.collection.assert_any_call("users")
+
+
+def test_notification_emits_ga4_event(iap_client, mock_firestore, monkeypatch):
+    """B3: uid 解決時、webhook がライフサイクル GA4 イベントを送る."""
+    import app.routers.iap as iap_mod
+
+    send_mock = AsyncMock(return_value=None)
+    monkeypatch.setattr(iap_mod, "send_event", send_mock)
+
+    client, verifier = iap_client
+    verifier.verify_and_decode_notification.return_value = _make_decoded_payload(
+        notification_type="DID_RENEW", notification_uuid="uuid-ga4"
+    )
+    verifier.verify_and_decode_signed_transaction.return_value = _make_txn()
+    mock_firestore._mock_snapshot.exists = True
+    mock_firestore._mock_snapshot.to_dict.return_value = {"uid": "user-xyz"}
+
+    response = client.post(
+        "/iap/apple/notifications",
+        json={"signedPayload": "valid-jws"},
+    )
+
+    assert response.status_code == 200
+    send_mock.assert_awaited_once()
+    kwargs = send_mock.await_args.kwargs
+    assert kwargs["event_name"] == "subscription_renewed"
+    assert kwargs["event_id"] == "uuid-ga4"
+    assert kwargs["params"]["revenue_jpy"] == 14400
