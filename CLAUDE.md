@@ -20,3 +20,5 @@
 - Do not use Terraform workspaces for environment switching.
 - Shared project-level resources live in `shared`; environment-specific Cloud Run,
   Secret Manager, IAM, and Firestore resources live in `dev` or `prod`.
+- Firestore named database IDs must be at least 4 characters. The dev database
+  is `dev-db`; production remains `(default)`.
