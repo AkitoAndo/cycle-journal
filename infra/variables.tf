@@ -36,3 +36,19 @@ variable "apple_key_id" {
   description = "Apple Sign in with Apple Key ID (.p8 と対になる)"
   type        = string
 }
+
+variable "apple_iap_issuer_id" {
+  description = "App Store Connect IAP Key Issuer ID (UUID, アカウント全体で固定)"
+  type        = string
+}
+
+variable "apple_iap_key_id" {
+  description = "App Store Connect IAP Key ID (10 文字、IAP 専用キー。Sign in with Apple の key_id とは別物)"
+  type        = string
+}
+
+variable "apple_iap_env" {
+  description = "IAP 検証先の Apple 環境。Sandbox / Production。deploy 環境(environment)とは独立。テスト中は Sandbox。"
+  type        = string
+  default     = "Sandbox"
+}
