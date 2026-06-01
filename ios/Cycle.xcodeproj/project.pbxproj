@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		0ADAFA4B2F6D952200B3ABC8 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = A1A1A1A10000000000000002 /* GoogleSignIn */; };
 		0ADAFA4C2F6D952200B3ABC8 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = A1A1A1A10000000000000003 /* GoogleSignInSwift */; };
+		B4C0DE012F90000100B3ABC8 /* Pow in Frameworks */ = {isa = PBXBuildFile; productRef = B4C0DE032F90000100B3ABC8 /* Pow */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -58,6 +59,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B4C0DE012F90000100B3ABC8 /* Pow in Frameworks */,
 				0ADAFA4C2F6D952200B3ABC8 /* GoogleSignInSwift in Frameworks */,
 				0ADAFA4B2F6D952200B3ABC8 /* GoogleSignIn in Frameworks */,
 			);
@@ -123,6 +125,7 @@
 			packageProductDependencies = (
 				A1A1A1A10000000000000002 /* GoogleSignIn */,
 				A1A1A1A10000000000000003 /* GoogleSignInSwift */,
+				B4C0DE032F90000100B3ABC8 /* Pow */,
 			);
 			productName = Cycle;
 			productReference = 2E0FCB122EBF921700B9081E /* Cycle.app */;
@@ -208,6 +211,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				A1A1A1A10000000000000001 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				B4C0DE022F90000100B3ABC8 /* XCRemoteSwiftPackageReference "Pow" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2E0FCB132EBF921700B9081E /* Products */;
@@ -598,6 +602,14 @@
 				minimumVersion = 8.0.0;
 			};
 		};
+		B4C0DE022F90000100B3ABC8 /* XCRemoteSwiftPackageReference "Pow" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/EmergeTools/Pow";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -610,6 +622,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A1A1A1A10000000000000001 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
 			productName = GoogleSignInSwift;
+		};
+		B4C0DE032F90000100B3ABC8 /* Pow */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B4C0DE022F90000100B3ABC8 /* XCRemoteSwiftPackageReference "Pow" */;
+			productName = Pow;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
