@@ -75,6 +75,23 @@ variable "apple_key_id" {
   type        = string
 }
 
+variable "apple_apns_key_id" {
+  description = "Apple Push Notification service Auth Key ID. Empty disables APNs sending."
+  type        = string
+  default     = ""
+}
+
+variable "apple_apns_env" {
+  description = "APNs environment: Sandbox or Production"
+  type        = string
+  default     = "Sandbox"
+
+  validation {
+    condition     = contains(["Sandbox", "Production"], var.apple_apns_env)
+    error_message = "apple_apns_env must be Sandbox or Production."
+  }
+}
+
 variable "apple_iap_issuer_id" {
   description = "App Store Connect IAP Key Issuer ID"
   type        = string

@@ -44,6 +44,15 @@ resource "google_secret_manager_secret" "apple_iap_private_key" {
   }
 }
 
+resource "google_secret_manager_secret" "apple_apns_private_key" {
+  secret_id = "apple-apns-private-key-${var.environment}"
+  project   = var.project_id
+
+  replication {
+    auto {}
+  }
+}
+
 resource "google_secret_manager_secret" "jwt_secret" {
   secret_id = "jwt-secret-${var.environment}"
   project   = var.project_id
@@ -181,6 +190,35 @@ resource "google_cloud_run_v2_service" "api" {
       }
 
       env {
+        name  = "APPLE_APNS_TEAM_ID"
+        value = var.apple_team_id
+      }
+
+      env {
+        name  = "APPLE_APNS_KEY_ID"
+        value = var.apple_apns_key_id
+      }
+
+      dynamic "env" {
+        for_each = var.apple_apns_key_id == "" ? [] : [1]
+
+        content {
+          name = "APPLE_APNS_PRIVATE_KEY"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.apple_apns_private_key.secret_id
+              version = "latest"
+            }
+          }
+        }
+      }
+
+      env {
+        name  = "APPLE_APNS_ENV"
+        value = var.apple_apns_env
+      }
+
+      env {
         name  = "APPLE_IAP_ISSUER_ID"
         value = var.apple_iap_issuer_id
       }
@@ -238,6 +276,7 @@ resource "google_cloud_run_v2_service" "api" {
     google_secret_manager_secret_version.jwt_secret,
     google_secret_manager_secret.apple_auth,
     google_secret_manager_secret.apple_iap_private_key,
+    google_secret_manager_secret.apple_apns_private_key,
   ]
 }
 

@@ -12,7 +12,9 @@ module "api" {
   firestore_database_id = "(default)"
   apple_team_id         = var.apple_team_id
   apple_key_id          = var.apple_key_id
+  apple_apns_key_id     = var.apple_apns_key_id
   apple_iap_issuer_id   = var.apple_iap_issuer_id
   apple_iap_key_id      = var.apple_iap_key_id
   apple_iap_env         = "Sandbox" # テスト完了後 "Production" に変更
+  apple_apns_env        = "Production"
 }
