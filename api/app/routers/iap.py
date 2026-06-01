@@ -94,17 +94,37 @@ def _analytics_params(record: dict[str, Any], notification_uuid: str) -> dict[st
     }
 
 
+async def _read_prior_status(
+    db: AsyncClient,
+    uid: str,
+    original_tx_id: str,
+) -> str | None:
+    """書き込み前の subscription status を読む (Trial→Paid 転換検出用)."""
+    snap = (
+        await db.collection("users")
+        .document(uid)
+        .collection("subscription")
+        .document(original_tx_id)
+        .get()
+    )
+    if snap.exists:
+        return (snap.to_dict() or {}).get("status")
+    return None
+
+
 async def _send_ga4_subscription_event(
     *,
     uid: str,
     link: dict[str, Any] | None,
     record: dict[str, Any],
     payload: Any,
+    prior_status: str | None = None,
 ) -> None:
     event_name = ga4_event_name(
         payload.notificationType,
         payload.subtype,
         record["status"],
+        prior_status,
     )
     if event_name is None:
         return
@@ -203,6 +223,9 @@ async def _apply_notification(
         if uid is None:
             return
 
+        # 書き込みで上書きする前に直前 status を読む (転換検出のため)
+        prior_status = await _read_prior_status(db, uid, txn.originalTransactionId)
+
         record = build_subscription_record(
             txn,
             now_ms=_now_ms(),
@@ -215,6 +238,7 @@ async def _apply_notification(
             link=link,
             record=record,
             payload=payload,
+            prior_status=prior_status,
         )
         if should_send_cancel_silent_push(payload.notificationType, payload.subtype):
             await _send_cancel_silent_pushes(db=db, uid=uid, record=record)

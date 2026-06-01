@@ -260,6 +260,34 @@ def test_notification_sends_ga4_event_when_uid_resolved(iap_client, mock_firesto
     assert kwargs["params"]["product_id"].endswith("yearly_14400")
 
 
+def test_notification_detects_trial_conversion(iap_client, mock_firestore):
+    """B3+: 直前が trial の DID_RENEW は trial_converted_to_paid として送る."""
+    from unittest.mock import patch
+
+    client, verifier = iap_client
+    verifier.verify_and_decode_notification.return_value = _make_decoded_payload(
+        notification_type="DID_RENEW", notification_uuid="uuid-conv"
+    )
+    verifier.verify_and_decode_signed_transaction.return_value = _make_txn()
+    # iap_links と直前 subscription doc は同じモック snapshot を返すため、
+    # uid と status=trial の両方を持たせる
+    mock_firestore._mock_snapshot.exists = True
+    mock_firestore._mock_snapshot.to_dict.return_value = {
+        "uid": "user-conv",
+        "status": "trial",
+    }
+
+    with patch("app.routers.iap.send_event", new_callable=AsyncMock) as send_event:
+        response = client.post(
+            "/iap/apple/notifications",
+            json={"signedPayload": "valid-jws"},
+        )
+
+    assert response.status_code == 200
+    send_event.assert_awaited_once()
+    assert send_event.await_args.kwargs["event_name"] == "trial_converted_to_paid"
+
+
 def test_notification_sends_cancel_silent_push(iap_client, mock_firestore):
     """B5: 解約予約 ASSN で登録済み端末へ silent push を送る."""
     from unittest.mock import patch

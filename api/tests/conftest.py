@@ -30,6 +30,7 @@ def _make_mock_firestore():
     mock_sub_doc = MagicMock()
     mock_sub_doc.set = AsyncMock()
     mock_sub_doc.delete = AsyncMock()
+    mock_sub_doc.get = AsyncMock(return_value=mock_snapshot)
     mock_subcollection.document.return_value = mock_sub_doc
 
     async def empty_stream():
