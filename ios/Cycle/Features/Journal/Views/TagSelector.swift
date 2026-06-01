@@ -61,10 +61,34 @@ private struct TagButton: View {
                 .font(DesignSystem.Fonts.caption)
                 .padding(.horizontal, DesignSystem.Spacing.md)
                 .padding(.vertical, DesignSystem.Spacing.xs + 2)
+                .modifier(TagButtonStyle(isSelected: isSelected))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct TagButtonStyle: ViewModifier {
+    let isSelected: Bool
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            if isSelected {
+                content
+                    .background(DesignSystem.Colors.accent)
+                    .foregroundStyle(DesignSystem.Colors.background)
+                    .clipShape(Capsule())
+                    .glassEffect(.regular.interactive(), in: .capsule)
+            } else {
+                content
+                    .background(DesignSystem.Colors.greyLight)
+                    .foregroundStyle(DesignSystem.Colors.textPrimary)
+                    .clipShape(Capsule())
+            }
+        } else {
+            content
                 .background(isSelected ? DesignSystem.Colors.accent : DesignSystem.Colors.greyLight)
                 .foregroundStyle(isSelected ? DesignSystem.Colors.background : DesignSystem.Colors.textPrimary)
                 .clipShape(Capsule())
         }
-        .buttonStyle(.plain)
     }
 }

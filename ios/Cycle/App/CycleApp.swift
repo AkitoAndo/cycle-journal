@@ -79,6 +79,7 @@ struct CycleApp: App {
     @StateObject private var journalViewModel = JournalViewModel()
     @StateObject private var taskViewModel = TaskViewModel()
     @StateObject private var coachStore = CoachStore()
+    @StateObject private var meditationStore = MeditationStore()
     @StateObject private var authStore = AuthStore()
 
     var body: some Scene {
@@ -89,9 +90,11 @@ struct CycleApp: App {
                 }
             } else {
                 ContentView()
+                    .preferredColorScheme(.light)
                     .environmentObject(journalViewModel)
                     .environmentObject(taskViewModel)
                     .environmentObject(coachStore)
+                    .environmentObject(meditationStore)
                     .environmentObject(authStore)
                     .onOpenURL { url in
                         GIDSignIn.sharedInstance.handle(url)

@@ -36,7 +36,7 @@ struct JournalSearchView: View {
                         Button(action: {
                             vm.searchViewTab = 0
                         }) {
-                            Text("検索")
+                            Text("ワード")
                                 .font(.system(size: DesignSystem.FontSize.body, weight: vm.searchViewTab == 0 ? .semibold : .regular))
                                 .foregroundStyle(vm.searchViewTab == 0 ? DesignSystem.Colors.textPrimary : DesignSystem.Colors.textSecondary)
                                 .frame(maxWidth: .infinity)
@@ -75,7 +75,7 @@ struct JournalSearchView: View {
                         HStack {
                             Image(systemName: "magnifyingglass")
                                 .foregroundStyle(DesignSystem.Colors.textSecondary)
-                            TextField("テキストで検索", text: $vm.searchText)
+                            TextField("ワードで検索", text: $vm.searchText)
                                 .textFieldStyle(.plain)
                                 .foregroundStyle(DesignSystem.Colors.textPrimary)
                                 .tint(DesignSystem.Colors.accent)
@@ -87,8 +87,7 @@ struct JournalSearchView: View {
                             }
                         }
                         .padding(DesignSystem.Spacing.md)
-                        .background(DesignSystem.Colors.surface)
-                        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md))
+                        .modifier(SearchBarStyle())
                     }
 
                     if vm.searchViewTab == 1 && !vm.allTags.isEmpty {
@@ -107,9 +106,8 @@ struct JournalSearchView: View {
                                                 .font(DesignSystem.Fonts.caption)
                                                 .padding(.horizontal, DesignSystem.Spacing.md)
                                                 .padding(.vertical, DesignSystem.Spacing.xs + 2)
-                                                .background(vm.selectedSearchTags.contains(tag) ? DesignSystem.Colors.accent : DesignSystem.Colors.greyLight)
                                                 .foregroundStyle(vm.selectedSearchTags.contains(tag) ? DesignSystem.Colors.background : DesignSystem.Colors.textPrimary)
-                                                .clipShape(Capsule())
+                                                .modifier(SearchTagStyle(isSelected: vm.selectedSearchTags.contains(tag)))
                                         }
                                     }
                                 }
@@ -205,6 +203,7 @@ struct JournalSearchView: View {
 
     @ViewBuilder
     private func entryList(entries: [JournalEntry], showEmptyMessage: String) -> some View {
+        ZStack(alignment: .top) {
         List {
             if entries.isEmpty {
                 EmptyStateView(icon: "magnifyingglass", title: "見つかりませんでした")
@@ -220,11 +219,16 @@ struct JournalSearchView: View {
                                 .lineSpacing(4)
 
                             HStack(spacing: DesignSystem.Spacing.sm) {
-                                Text(entry.date, format: .dateTime.year().month().day())
-                                    .font(DesignSystem.Fonts.caption)
-                                    .foregroundStyle(DesignSystem.Colors.textSecondary)
-
-                                Text(entry.date.timeHM)
+                                Text(entry.date.formatted(
+                                    .dateTime
+                                        .year()
+                                        .month()
+                                        .day()
+                                        .weekday(.abbreviated)
+                                        .hour(.twoDigits(amPM: .omitted))
+                                        .minute(.twoDigits)
+                                        .locale(Locale(identifier: "ja_JP"))
+                                ))
                                     .font(DesignSystem.Fonts.caption)
                                     .foregroundStyle(DesignSystem.Colors.textSecondary)
 
@@ -237,18 +241,7 @@ struct JournalSearchView: View {
                         }
                         .padding(DesignSystem.Spacing.lg)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(DesignSystem.Colors.surface)
-                        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous)
-                                .stroke(DesignSystem.Colors.grey.opacity(0.6), lineWidth: 0.5)
-                        )
-                        .shadow(
-                            color: DesignSystem.Colors.brownDark.opacity(0.08),
-                            radius: 4,
-                            x: 0,
-                            y: 2
-                        )
+                        .modifier(SearchCardStyle())
                         .listRowInsets(
                             EdgeInsets(
                                 top: DesignSystem.Spacing.xs,
@@ -266,5 +259,73 @@ struct JournalSearchView: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(DesignSystem.Colors.background)
+
+            LinearGradient(
+                colors: [DesignSystem.Colors.background, DesignSystem.Colors.background.opacity(0)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: 12)
+            .allowsHitTesting(false)
+        }
+    }
+}
+
+private struct SearchTagStyle: ViewModifier {
+    let isSelected: Bool
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            if isSelected {
+                content
+                    .background { Capsule().fill(DesignSystem.Colors.accent) }
+                    .clipShape(Capsule())
+                    .glassEffect(.regular.interactive(), in: .capsule)
+            } else {
+                content
+                    .background { Capsule().fill(DesignSystem.Colors.greyLight) }
+                    .clipShape(Capsule())
+            }
+        } else {
+            content
+                .background(isSelected ? DesignSystem.Colors.accent : DesignSystem.Colors.greyLight)
+                .clipShape(Capsule())
+        }
+    }
+}
+
+private struct SearchBarStyle: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                .glassEffect(.regular, in: .rect(cornerRadius: DesignSystem.Spacing.md))
+        } else {
+            content
+                .background(DesignSystem.Colors.surface)
+                .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md))
+        }
+    }
+}
+
+private struct SearchCardStyle: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: DesignSystem.Spacing.md))
+        } else {
+            content
+                .background(DesignSystem.Colors.surface)
+                .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous)
+                        .stroke(DesignSystem.Colors.grey.opacity(0.6), lineWidth: 0.5)
+                )
+                .shadow(
+                    color: DesignSystem.Colors.brownDark.opacity(0.08),
+                    radius: 4,
+                    x: 0,
+                    y: 2
+                )
+        }
     }
 }

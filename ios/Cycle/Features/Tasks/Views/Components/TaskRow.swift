@@ -42,6 +42,7 @@ struct TaskRow: View {
                 taskTitle
                 Spacer()
             }
+            .padding(.vertical, 2.5)
         }
     }
 
@@ -98,6 +99,6 @@ struct TaskRow: View {
             Label("アーカイブ", systemImage: "archivebox")
                 .labelStyle(.iconOnly)
         }
-        .tint(DesignSystem.Colors.accent)
+        .tint(.blue)
     }
 }
