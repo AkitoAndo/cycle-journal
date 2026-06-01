@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Pow
 
 /// タスク詳細フィールド切り替えタブ
 /// 横スクロール可能なタブで、意図・完了イメージ・注意点を切り替え
@@ -80,5 +81,15 @@ private struct FieldTabButton: View {
                 )
         }
         .animation(DesignSystem.Timing.easing, value: isSelected)
+        .changeEffect(
+            .pulse(
+                shape: Capsule(style: .continuous),
+                style: DesignSystem.Colors.accent.opacity(0.18),
+                drawingMode: .stroke
+            ),
+            value: isSelected,
+            isEnabled: isSelected
+        )
+        .changeEffect(.feedbackHapticSelection, value: isSelected, isEnabled: isSelected)
     }
 }
