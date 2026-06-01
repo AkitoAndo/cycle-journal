@@ -41,7 +41,7 @@ struct PaywallView: View {
             .padding(.horizontal, 24)
             .padding(.vertical, 32)
         }
-        .background(Color(.systemBackground))
+        .background(DesignSystem.Colors.background)
         .task {
             await store.loadProducts()
             await store.refreshEntitlements()
@@ -54,7 +54,7 @@ struct PaywallView: View {
         VStack(spacing: 12) {
             Image(systemName: "tree.fill")
                 .font(.system(size: 48))
-                .foregroundStyle(.green)
+                .foregroundStyle(DesignSystem.Colors.accent)
             Text("Cycle Premium")
                 .font(.system(size: 28, weight: .bold))
             Text("自分と向き合う時間を、もっと深く。")
@@ -68,7 +68,7 @@ struct PaywallView: View {
         VStack(alignment: .leading, spacing: 16) {
             timelineRow(
                 icon: "checkmark.circle.fill",
-                color: .green,
+                color: DesignSystem.Colors.accent,
                 title: "今すぐ",
                 subtitle: "Premium 機能をすべて開放"
             )
@@ -86,7 +86,7 @@ struct PaywallView: View {
             )
         }
         .padding(20)
-        .background(Color(.secondarySystemBackground))
+        .background(DesignSystem.Colors.surface)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
@@ -131,7 +131,7 @@ struct PaywallView: View {
             HStack(alignment: .center, spacing: 16) {
                 Image(systemName: isSelected ? "largecircle.fill.circle" : "circle")
                     .font(.system(size: 22))
-                    .foregroundStyle(isSelected ? .green : .secondary)
+                    .foregroundStyle(isSelected ? DesignSystem.Colors.accent : .secondary)
 
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 8) {
@@ -142,8 +142,8 @@ struct PaywallView: View {
                                 .font(.caption2.bold())
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 2)
-                                .background(Color.green.opacity(0.15))
-                                .foregroundStyle(.green)
+                                .background(DesignSystem.Colors.accent.opacity(0.15))
+                                .foregroundStyle(DesignSystem.Colors.accent)
                                 .clipShape(Capsule())
                         }
                     }
@@ -160,7 +160,7 @@ struct PaywallView: View {
             .padding(16)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(isSelected ? Color.green : Color(.separator), lineWidth: isSelected ? 2 : 1)
+                    .stroke(isSelected ? DesignSystem.Colors.accent : Color(.separator), lineWidth: isSelected ? 2 : 1)
             )
         }
         .buttonStyle(.plain)
@@ -177,9 +177,9 @@ struct PaywallView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
-            .background(Color.green)
+            .background(DesignSystem.Colors.accent)
             .foregroundStyle(.white)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous))
         }
         .disabled(isPurchasing || store.products.isEmpty)
     }

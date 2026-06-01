@@ -16,7 +16,7 @@ struct OnboardingNotificationPermissionView: View {
             VStack(spacing: 16) {
                 Image(systemName: "bell.badge.fill")
                     .font(.system(size: 56))
-                    .foregroundStyle(.green)
+                    .foregroundStyle(DesignSystem.Colors.accent)
                 Text("そっと背中を押させてください")
                     .font(.system(size: 24, weight: .bold))
                     .multilineTextAlignment(.center)
@@ -40,9 +40,9 @@ struct OnboardingNotificationPermissionView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(Color.green)
+                    .background(DesignSystem.Colors.accent)
                     .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous))
                 }
                 .disabled(isRequesting)
 

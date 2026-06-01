@@ -64,6 +64,32 @@ resource "google_cloud_run_v2_service" "api" {
         }
       }
 
+      # IAP (App Store Server API / ASSN V2)
+      env {
+        name  = "APPLE_IAP_ISSUER_ID"
+        value = var.apple_iap_issuer_id
+      }
+
+      env {
+        name  = "APPLE_IAP_KEY_ID"
+        value = var.apple_iap_key_id
+      }
+
+      env {
+        name = "APPLE_IAP_PRIVATE_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.apple_iap_private_key.secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name  = "APPLE_IAP_ENV"
+        value = var.apple_iap_env
+      }
+
       env {
         name  = "USE_LANGGRAPH"
         value = var.use_langgraph ? "true" : "false"
@@ -90,6 +116,7 @@ resource "google_cloud_run_v2_service" "api" {
     google_project_service.apis,
     google_secret_manager_secret_version.jwt_secret,
     google_secret_manager_secret.apple_auth,
+    google_secret_manager_secret.apple_iap_private_key,
   ]
 }
 

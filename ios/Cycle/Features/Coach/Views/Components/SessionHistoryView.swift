@@ -137,7 +137,7 @@ struct SessionHistoryView: View {
     }
 }
 
-// MARK: - Meditation Row
+// MARK: - Breathing Row
 
 struct BreathingRowView: View {
     let log: MeditationLog
