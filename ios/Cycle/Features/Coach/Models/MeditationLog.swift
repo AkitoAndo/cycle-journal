@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// 瞑想ログ
+/// 呼吸・瞑想セッションのローカルログ
 struct MeditationLog: Identifiable, Codable {
     let id: UUID
     let date: Date

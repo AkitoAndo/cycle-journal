@@ -14,23 +14,28 @@ struct CoachHomeView: View {
     @State private var showingChat = false
     @State private var showingHistory = false
     @State private var showingDiaryPicker = false
-    @State private var showingMeditation = false
+    @State private var showingBreathing = false
 
     var body: some View {
         VStack(spacing: 0) {
                 sessionHeader
                 Spacer()
 
-                // コーチのビジュアル（アプリアイコン）→タップで瞑想開始
-                Button(action: { showingMeditation = true }) {
+                Button(action: { showingBreathing = true }) {
                     Image("CycleIcon")
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(width: 120, height: 120)
                         .clipShape(Circle())
                 }
+                .accessibilityLabel("呼吸セッションを始める")
 
-                Spacer().frame(height: DesignSystem.Spacing.xxl)
+                Text("タップして、呼吸を整える")
+                    .font(DesignSystem.Fonts.caption)
+                    .foregroundStyle(DesignSystem.Colors.textSecondary)
+                    .padding(.top, DesignSystem.Spacing.md)
+
+                Spacer().frame(height: DesignSystem.Spacing.xl)
 
                 // 挨拶メッセージ
                 VStack(spacing: DesignSystem.Spacing.sm) {
@@ -79,8 +84,8 @@ struct CoachHomeView: View {
                     .environmentObject(coachStore)
                     .environmentObject(meditationStore)
             }
-            .sheet(isPresented: $showingMeditation) {
-                MeditationView()
+            .sheet(isPresented: $showingBreathing) {
+                BreathingSessionView()
                     .environmentObject(meditationStore)
             }
             .sheet(isPresented: $showingDiaryPicker) {

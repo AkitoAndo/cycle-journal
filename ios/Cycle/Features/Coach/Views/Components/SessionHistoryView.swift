@@ -27,7 +27,7 @@ struct SessionHistoryView: View {
                         }
 
                         Button(action: { selectedTab = 1 }) {
-                            Text("瞑想")
+                            Text("呼吸")
                                 .font(.system(size: DesignSystem.FontSize.body, weight: selectedTab == 1 ? .semibold : .regular))
                                 .foregroundStyle(selectedTab == 1 ? DesignSystem.Colors.textPrimary : DesignSystem.Colors.textSecondary)
                                 .frame(maxWidth: .infinity)
@@ -52,7 +52,7 @@ struct SessionHistoryView: View {
                 if selectedTab == 0 {
                     conversationList
                 } else {
-                    meditationList
+                    breathingList
                 }
             }
             .background(DesignSystem.Colors.background)
@@ -108,19 +108,19 @@ struct SessionHistoryView: View {
         }
     }
 
-    // MARK: - Meditation List
+    // MARK: - Breathing List
 
     @ViewBuilder
-    private var meditationList: some View {
+    private var breathingList: some View {
         if meditationStore.logs.isEmpty {
             EmptyStateView(
                 icon: "timer",
-                title: "瞑想履歴がありません"
+                title: "呼吸履歴がありません"
             )
         } else {
             List {
                 ForEach(meditationStore.logs) { log in
-                    MeditationRowView(log: log)
+                    BreathingRowView(log: log)
                         .customListRowStyle()
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             Button(role: .destructive) {
@@ -139,7 +139,7 @@ struct SessionHistoryView: View {
 
 // MARK: - Meditation Row
 
-struct MeditationRowView: View {
+struct BreathingRowView: View {
     let log: MeditationLog
 
     private let dateFormatter: DateFormatter = {
@@ -153,7 +153,7 @@ struct MeditationRowView: View {
         SurfaceCard {
             HStack {
                 VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
-                    Text("\(log.durationText)の瞑想")
+                    Text("\(log.durationText)の呼吸")
                         .font(DesignSystem.Fonts.body)
                         .foregroundStyle(DesignSystem.Colors.textPrimary)
 
