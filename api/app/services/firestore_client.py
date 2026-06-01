@@ -11,7 +11,10 @@ def get_db() -> AsyncClient:
     """Get or create Firestore async client."""
     global _db
     if _db is None:
-        _db = AsyncClient(project=settings.gcp_project_id)
+        _db = AsyncClient(
+            project=settings.gcp_project_id,
+            database=settings.firestore_database_id,
+        )
     return _db
 
 

@@ -34,7 +34,11 @@ def test_access_token_rejects_non_access_type():
         "iss": settings.jwt_issuer,
         "exp": 9999999999,
     }
-    token = pyjwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+    token = pyjwt.encode(
+        payload,
+        settings.jwt_secret_key,
+        algorithm=settings.jwt_algorithm,
+    )
     with pytest.raises(InvalidTokenError):
         token_service.verify_access_token(token)
 
@@ -51,7 +55,11 @@ def test_access_token_expiry(monkeypatch):
         "iss": settings.jwt_issuer,
         "exp": 1,
     }
-    token = pyjwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+    token = pyjwt.encode(
+        payload,
+        settings.jwt_secret_key,
+        algorithm=settings.jwt_algorithm,
+    )
     with pytest.raises(TokenExpiredError):
         token_service.verify_access_token(token)
 

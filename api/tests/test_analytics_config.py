@@ -33,3 +33,14 @@ def test_ga4_overridable_via_env():
         settings = Settings()
         assert settings.ga4_measurement_id == "G-TEST123"
         assert settings.ga4_api_secret == "secret-xyz"
+
+
+def test_apns_config_exists():
+    """B5: APNs silent push 設定項目."""
+    from app.config import settings
+
+    assert hasattr(settings, "apple_apns_team_id")
+    assert hasattr(settings, "apple_apns_key_id")
+    assert hasattr(settings, "apple_apns_private_key")
+    assert hasattr(settings, "apple_apns_env")
+    assert settings.apple_apns_env == "Sandbox"

@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     environment: str = "dev"
     gcp_project_id: str = "cycle-journal"
     gcp_region: str = "asia-northeast1"
+    firestore_database_id: str = "(default)"
     apple_bundle_id: str = "com.akitoando.CycleJournal"
     google_client_id: str = ""  # iOS用Google OAuth Client ID
 
@@ -55,6 +56,14 @@ class Settings(BaseSettings):
     ga4_measurement_id: str = ""
     ga4_api_secret: str = ""
     ga4_endpoint: str = "https://www.google-analytics.com/mp/collect"
+
+    # Apple Push Notification service (silent push for subscription state changes)
+    # - APNs auth key is separate from Sign in with Apple / IAP keys.
+    # - Empty credentials make APNs sending a no-op in local/test environments.
+    apple_apns_team_id: str = ""
+    apple_apns_key_id: str = ""
+    apple_apns_private_key: str = ""
+    apple_apns_env: str = "Sandbox"
 
     model_config = {"env_prefix": "", "case_sensitive": False}
 

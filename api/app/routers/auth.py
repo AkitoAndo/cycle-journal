@@ -52,8 +52,8 @@ async def verify_token(
     apple_user_id = claims.get("sub", "")
     email = claims.get("email")
 
-    # authorization_code があれば Apple refresh_token に交換してユーザードキュメントに保存する。
-    # アカウント削除時に Apple 側で revoke するために必要（App Store ガイドライン 5.1.1(v)）。
+    # authorization_code があれば Apple refresh_token に交換して保存する。
+    # アカウント削除時の revoke に必要（App Store ガイドライン 5.1.1(v)）。
     # 失敗しても識別トークン検証自体は成功しているのでサインインは続行する。
     apple_refresh_token: str | None = None
     if body.authorization_code:
@@ -141,7 +141,10 @@ async def refresh(
     if not body.refresh_token:
         raise ValidationError("refresh_token is required")
 
-    access_token, new_refresh, expires_in = await rotate_refresh_token(db, body.refresh_token)
+    access_token, new_refresh, expires_in = await rotate_refresh_token(
+        db,
+        body.refresh_token,
+    )
 
     return {
         "data": RefreshTokenData(

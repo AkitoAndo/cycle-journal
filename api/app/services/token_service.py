@@ -35,7 +35,11 @@ def create_access_token(user_id: str, provider: Provider) -> tuple[str, int]:
         "iat": int(now.timestamp()),
         "exp": int(exp.timestamp()),
     }
-    token = pyjwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+    token = pyjwt.encode(
+        payload,
+        settings.jwt_secret_key,
+        algorithm=settings.jwt_algorithm,
+    )
     return token, int(expires_delta.total_seconds())
 
 
@@ -133,7 +137,7 @@ async def revoke_all_refresh_tokens_for_user(db: AsyncClient, user_id: str) -> i
 async def rotate_refresh_token(
     db: AsyncClient, old_token: str
 ) -> tuple[str, str, int]:
-    """Verify old refresh, revoke it, issue a new pair. Returns (access, refresh, access_expires_in)."""
+    """Verify old refresh, revoke it, and issue a new token pair."""
     user_id, provider = await verify_refresh_token(db, old_token)
     await revoke_refresh_token(db, old_token)
     access_token, expires_in = create_access_token(user_id, provider)

@@ -16,7 +16,35 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         UNUserNotificationCenter.current().delegate = self
+        application.registerForRemoteNotifications()
         return true
+    }
+
+    func application(
+        _ application: UIApplication,
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+    ) {
+        let token = deviceToken.map { String(format: "%02x", $0) }.joined()
+        APNsDeviceTokenRegistry.save(token)
+        Task {
+            try? await SubscriptionService().registerAPNsDeviceToken(token)
+        }
+    }
+
+    func application(
+        _ application: UIApplication,
+        didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+        fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+    ) {
+        guard userInfo["cycle_event"] as? String == "cancel_trial_notifications" else {
+            completionHandler(.noData)
+            return
+        }
+
+        Task { @MainActor in
+            TrialNotificationScheduler.shared.cancelAllTrialNotifications()
+            completionHandler(.newData)
+        }
     }
 
     /// フォアグラウンドで通知を受信した場合にバナーとサウンドで表示
