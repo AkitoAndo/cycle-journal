@@ -18,11 +18,12 @@ def _make_decoded_payload(
     notification_type: str = "SUBSCRIBED",
     notification_uuid: str = "uuid-1",
     environment: str = "Sandbox",
+    subtype: str | None = None,
 ):
     """ResponseBodyV2DecodedPayload 風のモックを返す."""
     payload = MagicMock()
     payload.notificationType = notification_type
-    payload.subtype = None
+    payload.subtype = subtype
     payload.notificationUUID = notification_uuid
     payload.signedDate = 1700000000000
     data = MagicMock()
@@ -225,4 +226,84 @@ def test_notification_applies_when_uid_resolved(iap_client, mock_firestore):
     )
 
     assert response.status_code == 200
+    mock_firestore.collection.assert_any_call("users")
+
+
+def test_notification_sends_ga4_event_when_uid_resolved(iap_client, mock_firestore):
+    """B3: ASSN 反映後に notificationUUID を event_id として GA4 に送る."""
+    from unittest.mock import patch
+
+    client, verifier = iap_client
+    verifier.verify_and_decode_notification.return_value = _make_decoded_payload(
+        notification_type="DID_RENEW", notification_uuid="uuid-ga4"
+    )
+    verifier.verify_and_decode_signed_transaction.return_value = _make_txn()
+    mock_firestore._mock_snapshot.exists = True
+    mock_firestore._mock_snapshot.to_dict.return_value = {
+        "uid": "user-ga4",
+        "ga4_client_id": "client-123",
+    }
+
+    with patch("app.routers.iap.send_event", new_callable=AsyncMock) as send_event:
+        response = client.post(
+            "/iap/apple/notifications",
+            json={"signedPayload": "valid-jws"},
+        )
+
+    assert response.status_code == 200
+    send_event.assert_awaited_once()
+    kwargs = send_event.await_args.kwargs
+    assert kwargs["client_id"] == "client-123"
+    assert kwargs["user_id"] == "user-ga4"
+    assert kwargs["event_name"] == "subscription_renewed"
+    assert kwargs["event_id"] == "uuid-ga4"
+    assert kwargs["params"]["product_id"].endswith("yearly_14400")
+
+
+def test_notification_sends_cancel_silent_push(iap_client, mock_firestore):
+    """B5: 解約予約 ASSN で登録済み端末へ silent push を送る."""
+    from unittest.mock import patch
+
+    async def token_stream():
+        snap = MagicMock()
+        snap.to_dict.return_value = {"device_token": "abcd1234"}
+        yield snap
+
+    client, verifier = iap_client
+    verifier.verify_and_decode_notification.return_value = _make_decoded_payload(
+        notification_type="DID_CHANGE_RENEWAL_STATUS",
+        subtype="AUTO_RENEW_DISABLED",
+        notification_uuid="uuid-cancel",
+    )
+    verifier.verify_and_decode_signed_transaction.return_value = _make_txn()
+    mock_firestore._mock_snapshot.exists = True
+    mock_firestore._mock_snapshot.to_dict.return_value = {"uid": "user-cancel"}
+    mock_firestore._mock_subcollection.stream.return_value = token_stream()
+
+    with (
+        patch("app.routers.iap.send_event", new_callable=AsyncMock),
+        patch("app.routers.iap.send_silent_push", new_callable=AsyncMock) as send_push,
+    ):
+        response = client.post(
+            "/iap/apple/notifications",
+            json={"signedPayload": "valid-jws"},
+        )
+
+    assert response.status_code == 200
+    send_push.assert_awaited_once()
+    assert send_push.await_args.kwargs["device_token"] == "abcd1234"
+    assert send_push.await_args.kwargs["event"] == "cancel_trial_notifications"
+
+
+def test_register_device_token(iap_auth_client, mock_firestore):
+    """B5: 認証済みユーザーの APNs token を保存する."""
+    client, _, _ = iap_auth_client
+
+    response = client.post(
+        "/iap/apple/device-token",
+        json={"deviceToken": "ABCDEF1234567890", "environment": "Sandbox"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "registered"
     mock_firestore.collection.assert_any_call("users")
