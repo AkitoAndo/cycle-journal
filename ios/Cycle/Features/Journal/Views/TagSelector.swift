@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Pow
 
 /// タグ選択用のコンポーネント
 /// 利用可能なタグ一覧から複数選択可能
@@ -43,9 +44,6 @@ struct TagSelector: View {
             selectedTags.append(tag)
         }
 
-        // 触覚フィードバック
-        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-        impactFeedback.impactOccurred()
     }
 }
 
@@ -64,6 +62,16 @@ private struct TagButton: View {
                 .modifier(TagButtonStyle(isSelected: isSelected))
         }
         .buttonStyle(.plain)
+        .changeEffect(
+            .pulse(
+                shape: Capsule(style: .continuous),
+                style: DesignSystem.Colors.accent.opacity(0.2),
+                drawingMode: .stroke
+            ),
+            value: isSelected,
+            isEnabled: isSelected
+        )
+        .changeEffect(.feedbackHapticSelection, value: isSelected)
     }
 }
 

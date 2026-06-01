@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Pow
 
 /// タスク入力セクション切り替えタブ
 /// 基本情報と詳細情報を切り替え
@@ -71,5 +72,7 @@ private struct SectionTabButton: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, DesignSystem.Spacing.md)
         }
+        .changeEffect(.jump(height: 4), value: isSelected, isEnabled: isSelected)
+        .changeEffect(.feedbackHapticSelection, value: isSelected, isEnabled: isSelected)
     }
 }

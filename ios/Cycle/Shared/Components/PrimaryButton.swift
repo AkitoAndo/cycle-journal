@@ -8,6 +8,7 @@
 //
 
 import SwiftUI
+import Pow
 
 /// 全幅のプライマリボタン
 ///
@@ -21,6 +22,7 @@ struct PrimaryButton: View {
     var icon: String? = nil
     var color: Color = DesignSystem.Colors.accent
     let action: () -> Void
+    @State private var tapCount = 0
 
     init(_ title: String, icon: String? = nil, color: Color = DesignSystem.Colors.accent, action: @escaping () -> Void) {
         self.title = title
@@ -30,10 +32,15 @@ struct PrimaryButton: View {
     }
 
     var body: some View {
-        Button(action: action) {
+        Button {
+            tapCount += 1
+            action()
+        } label: {
             buttonContent
         }
         .modifier(PrimaryButtonStyle(color: color))
+        .changeEffect(.shine(angle: .degrees(24), duration: DesignSystem.Timing.slow), value: tapCount)
+        .changeEffect(.feedback(hapticImpact: .light), value: tapCount)
     }
 
     private var buttonContent: some View {
@@ -60,6 +67,7 @@ struct SecondaryButton: View {
     var icon: String? = nil
     var color: Color = DesignSystem.Colors.accent
     let action: () -> Void
+    @State private var tapCount = 0
 
     init(_ title: String, icon: String? = nil, color: Color = DesignSystem.Colors.accent, action: @escaping () -> Void) {
         self.title = title
@@ -69,10 +77,22 @@ struct SecondaryButton: View {
     }
 
     var body: some View {
-        Button(action: action) {
+        Button {
+            tapCount += 1
+            action()
+        } label: {
             buttonContent
         }
         .modifier(SecondaryButtonStyle(color: color))
+        .changeEffect(
+            .pulse(
+                shape: RoundedRectangle(cornerRadius: 12, style: .continuous),
+                style: color.opacity(0.24),
+                drawingMode: .stroke
+            ),
+            value: tapCount
+        )
+        .changeEffect(.feedbackHapticSelection, value: tapCount)
     }
 
     private var buttonContent: some View {

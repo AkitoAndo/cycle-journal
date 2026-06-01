@@ -8,6 +8,7 @@
 //
 
 import SwiftUI
+import Pow
 import UIKit
 
 /// フローティングアクションボタン（FAB）
@@ -16,22 +17,23 @@ struct FloatingActionButton: View {
     let icon: String
     let action: () -> Void
 
-    @State private var isPressed = false
+    @State private var tapCount = 0
 
     var body: some View {
         Button(action: {
-            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
-            impactFeedback.impactOccurred()
+            tapCount += 1
             action()
         }) {
             Image(systemName: icon)
                 .font(DesignSystem.Fonts.title2)
                 .foregroundStyle(fabForeground)
                 .frame(width: 56, height: 56)
-                .modifier(FABBackgroundStyle(isPressed: isPressed))
+                .modifier(FABBackgroundStyle())
                 .contentShape(Circle())
         }
         .buttonStyle(ScaleButtonStyle())
+        .changeEffect(.jump(height: 10), value: tapCount)
+        .changeEffect(.feedback(hapticImpact: .medium), value: tapCount)
         .accessibilityIdentifier("fab_\(icon)")
     }
 
@@ -54,8 +56,6 @@ struct FloatingActionButton: View {
 }
 
 private struct FABBackgroundStyle: ViewModifier {
-    let isPressed: Bool
-
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *), FloatingActionButton.useLiquidGlass {
             content
@@ -65,20 +65,19 @@ private struct FABBackgroundStyle: ViewModifier {
                 .background(DesignSystem.Colors.accent)
                 .clipShape(Circle())
                 .shadow(
-                    color: Color.black.opacity(isPressed ? 0.1 : 0.2),
-                    radius: isPressed ? 4 : 8,
+                    color: Color.black.opacity(0.2),
+                    radius: 8,
                     x: 0,
-                    y: isPressed ? 2 : 4
+                    y: 4
                 )
         }
     }
 }
 
-/// ボタン押下時のスケールエフェクト
+/// ボタン押下時のPowプレスエフェクト
 private struct ScaleButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.92 : 1.0)
-            .animation(DesignSystem.Timing.fastEasing, value: configuration.isPressed)
+            .conditionalEffect(.pushDown, condition: configuration.isPressed)
     }
 }

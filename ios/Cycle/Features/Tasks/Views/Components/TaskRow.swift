@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Pow
 
 /// タスク行のコンポーネント
 /// チェックボックス、タイトル、スワイプアクションを含む
@@ -56,6 +57,16 @@ struct TaskRow: View {
                         : DesignSystem.Colors.textTertiary
                 )
         }
+        .changeEffect(
+            .spray(origin: .center) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(DesignSystem.Colors.accent)
+                    .font(.system(size: 12))
+            },
+            value: task.isCompleted,
+            isEnabled: task.isCompleted
+        )
+        .changeEffect(.feedback(hapticNotification: .success), value: task.isCompleted, isEnabled: task.isCompleted)
     }
 
     private var taskTitle: some View {
