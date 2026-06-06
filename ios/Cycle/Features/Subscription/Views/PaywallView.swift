@@ -21,8 +21,8 @@ struct PaywallView: View {
     @State private var isPurchasing = false
 
     /// 規約・プライバシーポリシー URL (App Store Connect と同一の URL を入れること)
-    let termsURL = URL(string: "https://cycle-journal.example.com/terms")!
-    let privacyURL = URL(string: "https://cycle-journal.example.com/privacy")!
+    let termsURL = URL(string: "https://akitoando.github.io/cycle-journal/legal/TERMS_OF_SERVICE.html")!
+    let privacyURL = URL(string: "https://akitoando.github.io/cycle-journal/legal/PRIVACY_POLICY.html")!
 
     /// フェーズ1で Paywall に表示するプロダクト。yearly は除外。
     private var visibleProducts: [Product] {
