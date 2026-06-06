@@ -49,10 +49,14 @@
           "familyShareable" : false,
           "groupNumber" : 2,
           "internalID" : "4554B31C",
-          "introductoryOffer" : null,
+          "introductoryOffer" : {
+            "internalID" : "B82D7A11",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P3D"
+          },
           "localizations" : [
             {
-              "description" : "1ヶ月間のプレミアムアクセス",
+              "description" : "1ヶ月間のプレミアムアクセス（3日間無料トライアル付き）",
               "displayName" : "Monthly Premium",
               "locale" : "ja_JP"
             }

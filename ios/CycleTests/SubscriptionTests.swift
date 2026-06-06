@@ -29,10 +29,15 @@ struct SubscriptionProductTests {
         #expect(all.count == 2)
     }
 
-    @Test func yearlyIsTrialEligible() {
-        // A-1 決定: yearly のみ 7-day Free Trial Intro Offer を設定
+    @Test func bothProductsAreTrialEligible() {
+        // #54 決定 (フェーズ制): monthly は3日、yearly は7日 (フェーズ2で復活時)
+        #expect(SubscriptionProductID.monthly.supportsIntroductoryOffer == true)
         #expect(SubscriptionProductID.yearly.supportsIntroductoryOffer == true)
-        #expect(SubscriptionProductID.monthly.supportsIntroductoryOffer == false)
+    }
+
+    @Test func monthlyIsFirstInPhase1() {
+        // フェーズ1の Paywall は monthly のみ表示。displayOrder で先頭に。
+        #expect(SubscriptionProductID.monthly.displayOrder < SubscriptionProductID.yearly.displayOrder)
     }
 }
 
