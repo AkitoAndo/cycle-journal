@@ -25,8 +25,12 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 30
 
     # Vertex AI Claude
-    # NOTE: Vertex AI モデル ID は asia-northeast1 の Model Garden で
-    # 提供状況を確認のうえ実環境向けに上書きすること。
+    # NOTE: Sonnet 4.5 / Haiku 4.5 はリージョンエンドポイント (asia-northeast1 等) で
+    # 未提供のため global エンドポイントを使う。global は dynamic routing で可用性が
+    # 高く、Sonnet 4.5 以降のリージョン pricing premium (10%) も避けられる。
+    # quota はベースモデル単位で `aiplatform.googleapis.com/global_online_prediction_requests_per_base_model`
+    # が制御。初期値は 0 のため Cloud Console → IAM & Admin → Quotas で増枠申請が必要。
+    claude_region: str = "global"
     claude_model_coach: str = "claude-sonnet-4-5@20250929"
     claude_model_quick: str = "claude-haiku-4-5@20251001"
     # 後方互換: 既存環境変数 CLAUDE_MODEL を coach 用のエイリアスとして残す
