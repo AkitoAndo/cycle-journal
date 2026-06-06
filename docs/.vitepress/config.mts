@@ -158,8 +158,9 @@ export default defineConfig({
         ],
       },
       {
-        text: 'その他',
+        text: '法的情報',
         items: [
+          { text: '利用規約', link: '/legal/TERMS_OF_SERVICE' },
           { text: 'プライバシーポリシー', link: '/legal/PRIVACY_POLICY' },
         ],
       },
