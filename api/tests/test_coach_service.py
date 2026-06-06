@@ -34,7 +34,7 @@ def test_system_prompt_keeps_core_metaphor():
 
 @pytest.mark.asyncio
 async def test_chat_uses_coach_model_in_claude_mode(monkeypatch):
-    """Claude モード (use_gemini_fallback=False) では claude_model_coach (Sonnet) を使う."""
+    """Claude モード (use_gemini_fallback=False) では Sonnet を使う."""
     monkeypatch.setattr(settings, "use_gemini_fallback", False)
 
     with patch("app.services.coach_service._get_claude_client") as mock_get:
