@@ -38,6 +38,14 @@ class Settings(BaseSettings):
     claude_max_tokens: int = 500
     claude_temperature: float = 0.7
 
+    # Gemini fallback（Vertex AI Claude の quota 申請待ち中の暫定）
+    # use_gemini_fallback=True のとき chat() は Gemini を呼ぶ。
+    # Claude quota が下りたら False にして Claude に戻す（追跡: 別 issue）。
+    use_gemini_fallback: bool = True
+    gemini_region: str = "global"
+    gemini_model_coach: str = "gemini-2.5-pro"  # Sonnet 相当
+    gemini_model_quick: str = "gemini-2.5-flash"  # Haiku 相当
+
     # LangGraphフローを有効にする（感情分析・Cycle要素判定・安全フィルター）
     use_langgraph: bool = False
 
