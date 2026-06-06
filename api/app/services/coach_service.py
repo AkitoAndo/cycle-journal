@@ -1,12 +1,15 @@
 # ruff: noqa: E501
-"""Coach service - System prompt (大樹メタファー) + Vertex AI Claude.
+"""Coach service - System prompt (大樹メタファー) + Vertex AI モデル呼び出し.
 
-Ported from api/src/handlers/coach.py (Lambda + Bedrock version).
+通常は Vertex AI Claude (Sonnet) を呼ぶが、quota 申請が下りるまでの暫定で
+settings.use_gemini_fallback=True のとき Vertex AI Gemini に切り替わる。
 
 注: SYSTEM_PROMPT は日本語多行文字列のため行長制限(E501)を本ファイルで無効化している。
 """
 
 import anthropic
+from google import genai
+from google.genai import types as genai_types
 
 from app.config import settings
 
@@ -95,11 +98,20 @@ SYSTEM_PROMPT = """あなたは「Cycle」というアプリの中で、大き�
 急かさず、競わせず、ただそばに在ってください。"""
 
 
-def _get_client() -> anthropic.AnthropicVertex:
+def _get_claude_client() -> anthropic.AnthropicVertex:
     """Vertex AI Claude client (ADC自動認証)."""
     return anthropic.AnthropicVertex(
         region=settings.claude_region,
         project_id=settings.gcp_project_id,
+    )
+
+
+def _get_gemini_client() -> genai.Client:
+    """Vertex AI Gemini client (ADC自動認証)."""
+    return genai.Client(
+        vertexai=True,
+        project=settings.gcp_project_id,
+        location=settings.gemini_region,
     )
 
 
@@ -110,30 +122,25 @@ async def chat(
 ) -> str:
     """コーチの応答を取得.
 
-    Args:
-        user_message: ユーザーのメッセージ
-        history: 過去のメッセージ履歴 [{"role": "user"|"assistant", "content": "..."}]
-        diary_content: 日記の内容（オプション）
-
-    Returns:
-        コーチの応答テキスト
+    settings.use_gemini_fallback=True のとき Gemini を呼ぶ。
+    Claude quota が下りたら False に戻す。
     """
-    client = _get_client()
-
-    # メッセージ履歴を構築
-    messages: list[dict] = []
-    if history:
-        messages.extend(history)
-
-    # ユーザーメッセージを構築
     content = user_message
     if diary_content:
         content = f"【日記の内容】\n{diary_content}\n\n【ユーザーのメッセージ】\n{user_message}"
 
+    if settings.use_gemini_fallback:
+        return _chat_gemini(content, history)
+    return _chat_claude(content, history)
+
+
+def _chat_claude(content: str, history: list[dict] | None) -> str:
+    client = _get_claude_client()
+    messages: list[dict] = []
+    if history:
+        messages.extend(history)
     messages.append({"role": "user", "content": content})
 
-    # SYSTEM_PROMPT を cache_control ephemeral でマークし、連続リクエスト時の
-    # input token コストを削減する (Sonnet caching の最小 prefix を満たす長さで運用)
     response = client.messages.create(
         model=settings.claude_model_coach,
         max_tokens=settings.claude_max_tokens,
@@ -147,5 +154,29 @@ async def chat(
         messages=messages,
         temperature=settings.claude_temperature,
     )
-
     return response.content[0].text
+
+
+def _chat_gemini(content: str, history: list[dict] | None) -> str:
+    client = _get_gemini_client()
+    contents: list[genai_types.Content] = []
+    if history:
+        for m in history:
+            role = "user" if m.get("role") == "user" else "model"
+            contents.append(
+                genai_types.Content(role=role, parts=[genai_types.Part(text=m["content"])])
+            )
+    contents.append(
+        genai_types.Content(role="user", parts=[genai_types.Part(text=content)])
+    )
+
+    response = client.models.generate_content(
+        model=settings.gemini_model_coach,
+        contents=contents,
+        config=genai_types.GenerateContentConfig(
+            system_instruction=SYSTEM_PROMPT,
+            max_output_tokens=settings.claude_max_tokens,
+            temperature=settings.claude_temperature,
+        ),
+    )
+    return response.text or ""
