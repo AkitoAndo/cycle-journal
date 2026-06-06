@@ -37,7 +37,7 @@ class CoachState:
 
 def _get_client() -> anthropic.AnthropicVertex:
     return anthropic.AnthropicVertex(
-        region=settings.gcp_region,
+        region=settings.claude_region,
         project_id=settings.gcp_project_id,
     )
 

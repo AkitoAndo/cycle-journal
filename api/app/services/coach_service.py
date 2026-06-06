@@ -98,7 +98,7 @@ SYSTEM_PROMPT = """あなたは「Cycle」というアプリの中で、大き�
 def _get_client() -> anthropic.AnthropicVertex:
     """Vertex AI Claude client (ADC自動認証)."""
     return anthropic.AnthropicVertex(
-        region=settings.gcp_region,
+        region=settings.claude_region,
         project_id=settings.gcp_project_id,
     )
 
