@@ -16,6 +16,19 @@ struct IAPDeviceTokenResponse: Decodable {
     let status: String
 }
 
+struct IAPVerifyRequest: Encodable {
+    let jwsRepresentation: String
+    let ga4ClientId: String?
+}
+
+struct IAPVerifyResponse: Decodable {
+    let status: String
+    let isActive: Bool
+    let subscriptionStatus: String
+    let productId: String
+    let expiresDateMs: Int64
+}
+
 enum APNsDeviceTokenRegistry {
     private static let key = "apnsDeviceToken"
 
@@ -33,6 +46,23 @@ final class SubscriptionService {
 
     init(apiClient: APIClient = .shared) {
         self.apiClient = apiClient
+    }
+
+    /// StoreKit2 で購入完了した jwsRepresentation をサーバーで検証し、
+    /// originalTransactionId と uid を紐付ける。
+    func verifyPurchase(
+        jwsRepresentation: String,
+        ga4ClientId: String? = nil
+    ) async throws -> IAPVerifyResponse {
+        let request = IAPVerifyRequest(
+            jwsRepresentation: jwsRepresentation,
+            ga4ClientId: ga4ClientId
+        )
+        return try await apiClient.post(
+            path: "/iap/apple/verify",
+            body: request,
+            requiresAuth: true
+        )
     }
 
     func registerAPNsDeviceToken(_ token: String) async throws {
