@@ -74,8 +74,12 @@ final class SubscriptionStore: ObservableObject {
 
     // MARK: - Purchase
 
-    /// プロダクトを購入。成功時にエンタイトルメント反映、jwsRepresentation を返す
-    /// (バックエンド検証用; 呼び出し側で API 送信)。
+    /// プロダクトを購入。成功時にエンタイトルメント反映 + サーバー側 verify を実行。
+    ///
+    /// サーバー verify は originalTransactionId を uid に紐付け、ASSN V2 webhook が
+    /// 更新・解約イベントで uid を解決できるようにするために必須。失敗してもクライアント
+    /// 側のエンタイトルメントは StoreKit の `Transaction.currentEntitlements` を信頼
+    /// するため、UX は止めない（ログに残してリトライは後続実装）。
     @discardableResult
     func purchase(_ product: Product) async throws -> String? {
         let result = try await product.purchase()
@@ -83,10 +87,12 @@ final class SubscriptionStore: ObservableObject {
         case .success(let verification):
             switch verification {
             case .verified(let transaction):
+                let jws = verification.jwsRepresentation
+                await sendVerifyToBackend(jws: jws)
                 await refreshEntitlements()
                 await applyTrialNotificationSideEffects(for: transaction)
                 await transaction.finish()
-                return verification.jwsRepresentation
+                return jws
             case .unverified:
                 throw SubscriptionError.unverifiedTransaction
             }
@@ -96,6 +102,18 @@ final class SubscriptionStore: ObservableObject {
             return nil
         @unknown default:
             return nil
+        }
+    }
+
+    private func sendVerifyToBackend(jws: String) async {
+        do {
+            _ = try await SubscriptionService().verifyPurchase(
+                jwsRepresentation: jws
+            )
+        } catch {
+            // verify 失敗はエンタイトルメント反映を止めない（StoreKit が一次情報）。
+            // 後続: pending jws を UserDefaults に積んで起動時リトライする等。
+            print("[SubscriptionStore] verifyPurchase failed: \(error)")
         }
     }
 

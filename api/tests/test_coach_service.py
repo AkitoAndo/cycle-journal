@@ -1,7 +1,7 @@
-"""Coach service tests (B-3: prompt caching + SYSTEM_PROMPT expansion).
+"""Coach service tests.
 
-SYSTEM_PROMPT を Sonnet caching 最小要件(1024 tokens相当)に達するよう拡充し、
-messages.create の system パラメータに cache_control を付与することを確認する。
+通常は Claude path (use_gemini_fallback=False) の動作を検証する。
+Gemini fallback の動作（use_gemini_fallback=True がデフォルト）は別テストで確認。
 """
 
 from unittest.mock import MagicMock, patch
@@ -27,17 +27,17 @@ def test_system_prompt_is_long_enough_for_caching():
 def test_system_prompt_keeps_core_metaphor():
     """B-3: 拡張後も大樹メタファーの核となるキーワードを維持する."""
     prompt = coach_service.SYSTEM_PROMPT
-    # Cycle 8 要素
     for element in ["Soil", "Water", "Root", "Trunk", "Branch", "Leaf", "Fruit", "Sky"]:
         assert element in prompt, f"{element} が SYSTEM_PROMPT に含まれていない"
-    # 一人称
     assert "わたし" in prompt
 
 
 @pytest.mark.asyncio
-async def test_chat_uses_coach_model():
-    """B-2 + B-3: chat() は claude_model_coach (Sonnet) を使う."""
-    with patch("app.services.coach_service._get_client") as mock_get:
+async def test_chat_uses_coach_model_in_claude_mode(monkeypatch):
+    """Claude モード (use_gemini_fallback=False) では claude_model_coach (Sonnet) を使う."""
+    monkeypatch.setattr(settings, "use_gemini_fallback", False)
+
+    with patch("app.services.coach_service._get_claude_client") as mock_get:
         client = MagicMock()
         block = MagicMock()
         block.text = "そう感じたんだね。"
@@ -53,9 +53,11 @@ async def test_chat_uses_coach_model():
 
 
 @pytest.mark.asyncio
-async def test_chat_passes_system_with_cache_control():
-    """B-3: chat() は system を list 形式で渡し cache_control ephemeral を付ける."""
-    with patch("app.services.coach_service._get_client") as mock_get:
+async def test_chat_passes_system_with_cache_control_in_claude_mode(monkeypatch):
+    """Claude モードでは system を list 形式で渡し cache_control ephemeral を付ける."""
+    monkeypatch.setattr(settings, "use_gemini_fallback", False)
+
+    with patch("app.services.coach_service._get_claude_client") as mock_get:
         client = MagicMock()
         block = MagicMock()
         block.text = "ok"
@@ -68,10 +70,31 @@ async def test_chat_passes_system_with_cache_control():
 
         call_kwargs = client.messages.create.call_args.kwargs
         system = call_kwargs["system"]
-        # list 形式 (str ではなく構造化された system block)
         assert isinstance(system, list), "system は list で渡されるべき"
         assert len(system) >= 1
         first = system[0]
         assert first["type"] == "text"
         assert first["text"] == coach_service.SYSTEM_PROMPT
         assert first["cache_control"] == {"type": "ephemeral"}
+
+
+@pytest.mark.asyncio
+async def test_chat_uses_gemini_when_fallback_enabled(monkeypatch):
+    """Gemini fallback モードでは Gemini モデルを呼ぶ."""
+    monkeypatch.setattr(settings, "use_gemini_fallback", True)
+
+    with patch("app.services.coach_service._get_gemini_client") as mock_get:
+        client = MagicMock()
+        response = MagicMock()
+        response.text = "そう感じたんだね。"
+        client.models.generate_content.return_value = response
+        mock_get.return_value = client
+
+        result = await coach_service.chat(user_message="今日は疲れた")
+
+        assert result == "そう感じたんだね。"
+        call_kwargs = client.models.generate_content.call_args.kwargs
+        assert call_kwargs["model"] == settings.gemini_model_coach
+        # system_instruction は config 経由で渡される
+        cfg = call_kwargs["config"]
+        assert cfg.system_instruction == coach_service.SYSTEM_PROMPT

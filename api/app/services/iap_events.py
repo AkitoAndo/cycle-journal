@@ -11,8 +11,14 @@ def ga4_event_name(
     notification_type: Any | None,
     subtype: Any | None,
     status: str,
+    prior_status: str | None = None,
 ) -> str | None:
-    """Map App Store Server Notifications V2 to GA4 event names."""
+    """Map App Store Server Notifications V2 to GA4 event names.
+
+    `prior_status` は直前に保存していた subscription status。トライアル起点の
+    遷移 (Trial→Paid 転換 / トライアルのまま失効) を区別するために使う。
+    #37 の主要 KPI「Trial→Paid 転換率」計測に必要。
+    """
     nt = normalize_enum(notification_type)
     st = normalize_enum(subtype)
 
@@ -23,7 +29,12 @@ def ga4_event_name(
             else "subscription_started"
         )
     if nt == "DID_RENEW":
-        return "subscription_renewed"
+        # トライアル中の初回更新 = 課金転換 (KPI の肝)
+        return (
+            "trial_converted_to_paid"
+            if prior_status == "trial"
+            else "subscription_renewed"
+        )
     if nt == "DID_CHANGE_RENEWAL_STATUS":
         if st == "AUTO_RENEW_DISABLED":
             return "subscription_cancelled"
@@ -36,9 +47,10 @@ def ga4_event_name(
             else "subscription_refunded"
         )
     if nt == "EXPIRED":
+        # トライアルのまま失効したか、課金後に失効したかを直前状態で区別する
         return (
             "trial_expired_without_conversion"
-            if status == "expired"
+            if prior_status == "trial"
             else "subscription_expired"
         )
     if nt == "DID_FAIL_TO_RENEW":

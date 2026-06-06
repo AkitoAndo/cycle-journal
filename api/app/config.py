@@ -25,14 +25,26 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 30
 
     # Vertex AI Claude
-    # NOTE: Vertex AI モデル ID は asia-northeast1 の Model Garden で
-    # 提供状況を確認のうえ実環境向けに上書きすること。
+    # NOTE: Sonnet 4.5 / Haiku 4.5 はリージョンエンドポイント (asia-northeast1 等) で
+    # 未提供のため global エンドポイントを使う。global は dynamic routing で可用性が
+    # 高く、Sonnet 4.5 以降のリージョン pricing premium (10%) も避けられる。
+    # quota はベースモデル単位で `aiplatform.googleapis.com/global_online_prediction_requests_per_base_model`
+    # が制御。初期値は 0 のため Cloud Console → IAM & Admin → Quotas で増枠申請が必要。
+    claude_region: str = "global"
     claude_model_coach: str = "claude-sonnet-4-5@20250929"
     claude_model_quick: str = "claude-haiku-4-5@20251001"
     # 後方互換: 既存環境変数 CLAUDE_MODEL を coach 用のエイリアスとして残す
     claude_model: str = "claude-sonnet-4-5@20250929"
     claude_max_tokens: int = 500
     claude_temperature: float = 0.7
+
+    # Gemini fallback（Vertex AI Claude の quota 申請待ち中の暫定）
+    # use_gemini_fallback=True のとき chat() は Gemini を呼ぶ。
+    # Claude quota が下りたら False にして Claude に戻す（追跡: 別 issue）。
+    use_gemini_fallback: bool = True
+    gemini_region: str = "global"
+    gemini_model_coach: str = "gemini-2.5-pro"  # Sonnet 相当
+    gemini_model_quick: str = "gemini-2.5-flash"  # Haiku 相当
 
     # LangGraphフローを有効にする（感情分析・Cycle要素判定・安全フィルター）
     use_langgraph: bool = False

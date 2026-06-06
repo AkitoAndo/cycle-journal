@@ -2,18 +2,13 @@
 //  PaywallView.swift
 //  CycleJournal
 //
-//  Issue #37 A-1 / C-1 決定: Apple Introductory Offer (yearly 7日無料) を提示する
-//  Timeline 型 Paywall。
+//  Issue #54 決定: フェーズ1は月額¥1,800の3日無料トライアルのみ。
+//  年額¥14,400はフェーズ2で追加（App Store Connect で「配信から削除」中）。
 //
+//  Timeline 型 Paywall:
 //  - Day 0「今すぐ全機能」
-//  - Day 5「リマインド」
-//  - Day 7「自動課金」
-//
-//  Review Guideline 2026 強化下の必須要件:
-//  - 価格・課金周期 16pt 以上
-//  - "first 7 days free, then ¥14,400/year" を価格直下
-//  - Restore Purchases / Terms / Privacy リンク
-//  - Toggle UI は使わない
+//  - Day 2「リマインド」
+//  - Day 3「自動課金開始」
 //
 
 import StoreKit
@@ -22,12 +17,17 @@ import SwiftUI
 struct PaywallView: View {
     @StateObject private var store = SubscriptionStore()
     @Environment(\.dismiss) private var dismiss
-    @State private var selectedProductID: String = SubscriptionProductID.yearly.rawValue
+    @State private var selectedProductID: String = SubscriptionProductID.monthly.rawValue
     @State private var isPurchasing = false
 
     /// 規約・プライバシーポリシー URL (App Store Connect と同一の URL を入れること)
-    let termsURL = URL(string: "https://cycle-journal.example.com/terms")!
-    let privacyURL = URL(string: "https://cycle-journal.example.com/privacy")!
+    let termsURL = URL(string: "https://akitoando.github.io/cycle-journal/legal/TERMS_OF_SERVICE.html")!
+    let privacyURL = URL(string: "https://akitoando.github.io/cycle-journal/legal/PRIVACY_POLICY.html")!
+
+    /// フェーズ1で Paywall に表示するプロダクト。yearly は除外。
+    private var visibleProducts: [Product] {
+        store.products.filter { SubscriptionProductID(rawValue: $0.id) == .monthly }
+    }
 
     var body: some View {
         ScrollView {
@@ -75,14 +75,14 @@ struct PaywallView: View {
             timelineRow(
                 icon: "bell.fill",
                 color: .orange,
-                title: "Day 5",
-                subtitle: "トライアル終了 2 日前にお知らせ"
+                title: "Day 2",
+                subtitle: "トライアル終了 1 日前にお知らせ"
             )
             timelineRow(
                 icon: "creditcard.fill",
                 color: .blue,
-                title: "Day 7",
-                subtitle: "¥14,400 自動課金 (いつでも解約可)"
+                title: "Day 3",
+                subtitle: "¥1,800 自動課金 (いつでも解約可)"
             )
         }
         .padding(20)
@@ -107,13 +107,13 @@ struct PaywallView: View {
     private var planList: some View {
         if store.isLoading {
             ProgressView().padding(.vertical, 24)
-        } else if store.products.isEmpty {
+        } else if visibleProducts.isEmpty {
             Text("プロダクト情報を取得できませんでした")
                 .foregroundStyle(.secondary)
                 .padding(.vertical, 24)
         } else {
             VStack(spacing: 12) {
-                ForEach(store.products, id: \.id) { product in
+                ForEach(visibleProducts, id: \.id) { product in
                     planRow(product)
                 }
             }
@@ -121,9 +121,7 @@ struct PaywallView: View {
     }
 
     private func planRow(_ product: Product) -> some View {
-        let id = SubscriptionProductID(rawValue: product.id)
         let isSelected = product.id == selectedProductID
-        let isYearly = id == .yearly
 
         return Button {
             selectedProductID = product.id
@@ -134,26 +132,13 @@ struct PaywallView: View {
                     .foregroundStyle(isSelected ? DesignSystem.Colors.accent : .secondary)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 8) {
-                        Text(isYearly ? "年額プラン" : "月額プラン")
-                            .font(.system(size: 18, weight: .semibold))
-                        if isYearly {
-                            Text("おすすめ")
-                                .font(.caption2.bold())
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 2)
-                                .background(DesignSystem.Colors.accent.opacity(0.15))
-                                .foregroundStyle(DesignSystem.Colors.accent)
-                                .clipShape(Capsule())
-                        }
-                    }
-                    Text(product.displayPrice + (isYearly ? "/年" : "/月"))
+                    Text("月額プラン")
+                        .font(.system(size: 18, weight: .semibold))
+                    Text(product.displayPrice + "/月")
                         .font(.system(size: 16, weight: .semibold))
-                    if isYearly {
-                        Text("最初の 7 日間無料、その後 \(product.displayPrice)/年")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                    Text("最初の 3 日間無料、その後 \(product.displayPrice)/月")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 Spacer()
             }
@@ -172,7 +157,7 @@ struct PaywallView: View {
         } label: {
             HStack {
                 if isPurchasing { ProgressView().tint(.white).padding(.trailing, 8) }
-                Text(selectedProductID == SubscriptionProductID.yearly.rawValue ? "7日間無料で始める" : "購入する")
+                Text("3日間無料で始める")
                     .font(.system(size: 18, weight: .semibold))
             }
             .frame(maxWidth: .infinity)
@@ -181,7 +166,7 @@ struct PaywallView: View {
             .foregroundStyle(.white)
             .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous))
         }
-        .disabled(isPurchasing || store.products.isEmpty)
+        .disabled(isPurchasing || visibleProducts.isEmpty)
     }
 
     private var footer: some View {
@@ -210,12 +195,11 @@ struct PaywallView: View {
     // MARK: - Purchase
 
     private func beginPurchase() async {
-        guard let product = store.products.first(where: { $0.id == selectedProductID }) else { return }
+        guard let product = visibleProducts.first(where: { $0.id == selectedProductID }) else { return }
         isPurchasing = true
         defer { isPurchasing = false }
         do {
             if let _ = try await store.purchase(product) {
-                // 購入成功 → エンタイトルメント反映済、ここで Paywall を閉じる
                 dismiss()
             }
         } catch {
