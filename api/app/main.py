@@ -5,7 +5,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.exceptions import AppError, app_error_handler
+from app.logging_config import setup_logging
+from app.middleware.request_id import RequestIdMiddleware
 from app.routers import auth, coach, health, iap, sessions, tasks, users
+
+setup_logging(project_id=settings.gcp_project_id)
 
 app = FastAPI(
     title="CycleJournal API",
@@ -13,6 +17,7 @@ app = FastAPI(
     docs_url="/docs" if settings.environment == "dev" else None,
 )
 
+app.add_middleware(RequestIdMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
