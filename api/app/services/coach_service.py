@@ -7,11 +7,17 @@ settings.use_gemini_fallback=True のとき Vertex AI Gemini に切り替わる�
 注: SYSTEM_PROMPT は日本語多行文字列のため行長制限(E501)を本ファイルで無効化している。
 """
 
+from collections.abc import AsyncIterator
+
 import anthropic
 from google import genai
 from google.genai import types as genai_types
 
 from app.config import settings
+
+
+def _capped_max_tokens() -> int:
+    return min(settings.claude_max_tokens, settings.coach_output_max_tokens_cap)
 
 # ベースプロンプト（Cycleの大樹スタイル）
 # NOTE: prompt caching を有効化するため、Sonnet の最小 cacheable prefix
@@ -159,6 +165,23 @@ def _chat_claude(content: str, history: list[dict] | None) -> str:
 
 def _chat_gemini(content: str, history: list[dict] | None) -> str:
     client = _get_gemini_client()
+    contents = _build_gemini_contents(content, history)
+    response = client.models.generate_content(
+        model=settings.gemini_model_coach,
+        contents=contents,
+        config=genai_types.GenerateContentConfig(
+            system_instruction=SYSTEM_PROMPT,
+            max_output_tokens=_capped_max_tokens(),
+            temperature=settings.claude_temperature,
+        ),
+    )
+    return response.text or ""
+
+
+def _build_gemini_contents(
+    content: str,
+    history: list[dict] | None,
+) -> list[genai_types.Content]:
     contents: list[genai_types.Content] = []
     if history:
         for m in history:
@@ -166,17 +189,35 @@ def _chat_gemini(content: str, history: list[dict] | None) -> str:
             contents.append(
                 genai_types.Content(role=role, parts=[genai_types.Part(text=m["content"])])
             )
-    contents.append(
-        genai_types.Content(role="user", parts=[genai_types.Part(text=content)])
-    )
+    contents.append(genai_types.Content(role="user", parts=[genai_types.Part(text=content)]))
+    return contents
 
-    response = client.models.generate_content(
+
+async def chat_stream(
+    user_message: str,
+    history: list[dict] | None = None,
+    diary_content: str | None = None,
+) -> AsyncIterator[str]:
+    """ストリーミングでテキスト chunk を yield する.
+
+    現状は Gemini fallback 経路のみ対応。Claude 復帰時に \\_stream_claude を追加する。
+    """
+    content = user_message
+    if diary_content:
+        content = f"【日記の内容】\n{diary_content}\n\n【ユーザーのメッセージ】\n{user_message}"
+
+    client = _get_gemini_client()
+    contents = _build_gemini_contents(content, history)
+    stream = client.models.generate_content_stream(
         model=settings.gemini_model_coach,
         contents=contents,
         config=genai_types.GenerateContentConfig(
             system_instruction=SYSTEM_PROMPT,
-            max_output_tokens=settings.claude_max_tokens,
+            max_output_tokens=_capped_max_tokens(),
             temperature=settings.claude_temperature,
         ),
     )
-    return response.text or ""
+    for chunk in stream:
+        text = getattr(chunk, "text", None)
+        if text:
+            yield text
