@@ -11,16 +11,20 @@ struct SettingsView: View {
     @EnvironmentObject var taskViewModel: TaskViewModel
     @EnvironmentObject var coachStore: CoachStore
 
+    @StateObject private var subscriptionStore = SubscriptionStore()
+
     @State private var notificationSettings = NotificationSettingsStore.load()
     @State private var systemPermissionGranted = false
-    @State private var showingPrivacyPolicy = false
-    @State private var showingTerms = false
+    @State private var showingPaywall = false
     @State private var showingDataExport = false
     @State private var showingSignOutAlert = false
     @State private var showingClearDataAlert = false
     @State private var showingComponentCatalog = false
     @State private var showingDeleteAccountAlert = false
     @State private var isDeletingAccount = false
+
+    private let privacyURL = "https://akitoando.github.io/cycle-journal/legal/PRIVACY_POLICY.html"
+    private let termsURL = "https://akitoando.github.io/cycle-journal/legal/TERMS_OF_SERVICE.html"
 
     var body: some View {
         NavigationStack {
@@ -123,6 +127,11 @@ struct SettingsView: View {
                     }
                 }
 
+                // Premium セクション
+                Section("Premium") {
+                    premiumRow
+                }
+
                 // 通知セクション
                 Section("通知") {
                     if !systemPermissionGranted {
@@ -179,25 +188,29 @@ struct SettingsView: View {
 
                 // サポートセクション
                 Section("サポート") {
-                    Button(action: { showingPrivacyPolicy = true }) {
-                        HStack {
-                            Text("プライバシーポリシー")
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .foregroundColor(.secondary)
+                    if let url = URL(string: privacyURL) {
+                        Link(destination: url) {
+                            HStack {
+                                Text("プライバシーポリシー")
+                                Spacer()
+                                Image(systemName: "arrow.up.right.square")
+                                    .foregroundColor(.secondary)
+                            }
                         }
+                        .foregroundColor(.primary)
                     }
-                    .foregroundColor(.primary)
 
-                    Button(action: { showingTerms = true }) {
-                        HStack {
-                            Text("利用規約")
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .foregroundColor(.secondary)
+                    if let url = URL(string: termsURL) {
+                        Link(destination: url) {
+                            HStack {
+                                Text("利用規約")
+                                Spacer()
+                                Image(systemName: "arrow.up.right.square")
+                                    .foregroundColor(.secondary)
+                            }
                         }
+                        .foregroundColor(.primary)
                     }
-                    .foregroundColor(.primary)
 
                     HStack {
                         Text("バージョン")
@@ -246,11 +259,8 @@ struct SettingsView: View {
             }
             .navigationTitle("設定")
             .modifier(GlassNavBarModifier())
-            .sheet(isPresented: $showingPrivacyPolicy) {
-                WebDocumentView(title: "プライバシーポリシー", urlString: "https://example.com/privacy")
-            }
-            .sheet(isPresented: $showingTerms) {
-                WebDocumentView(title: "利用規約", urlString: "https://example.com/terms")
+            .sheet(isPresented: $showingPaywall) {
+                PaywallView()
             }
             .sheet(isPresented: $showingDataExport) {
                 DataExportView()
@@ -289,7 +299,50 @@ struct SettingsView: View {
             }
             .task {
                 await checkNotificationPermission()
+                await subscriptionStore.loadProducts()
+                await subscriptionStore.refreshEntitlements()
             }
+        }
+    }
+
+    // MARK: - Premium Row
+
+    @ViewBuilder
+    private var premiumRow: some View {
+        switch subscriptionStore.state {
+        case .active(_, let expiresAt), .trial(_, let expiresAt):
+            HStack {
+                Image(systemName: "checkmark.seal.fill")
+                    .foregroundColor(.green)
+                VStack(alignment: .leading) {
+                    Text("Cycle Premium")
+                        .font(DesignSystem.Fonts.button)
+                    Text(premiumStatusText(expiresAt: expiresAt))
+                        .font(DesignSystem.Fonts.caption)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+            }
+            .padding(.vertical, 4)
+        default:
+            Button(action: { showingPaywall = true }) {
+                HStack {
+                    Image(systemName: "sparkles")
+                        .foregroundColor(.orange)
+                    VStack(alignment: .leading) {
+                        Text("Cycle Premium にアップグレード")
+                            .font(DesignSystem.Fonts.button)
+                        Text("3日間無料で始める")
+                            .font(DesignSystem.Fonts.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 4)
+            }
+            .foregroundColor(.primary)
         }
     }
 
@@ -352,6 +405,18 @@ struct SettingsView: View {
     }
 
     // MARK: - Helpers
+
+    private func premiumStatusText(expiresAt: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        let prefix: String
+        if case .trial = subscriptionStore.state {
+            prefix = "トライアル中・"
+        } else {
+            prefix = ""
+        }
+        return prefix + "次回更新 \(formatter.string(from: expiresAt))"
+    }
 
     private var appVersion: String {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
