@@ -122,9 +122,28 @@ class CoachStore: ObservableObject {
         updateSession(session)
     }
 
+    /// streaming 開始時に空のコーチメッセージを挿入する
+    private func addEmptyCoachMessage() {
+        guard var session = currentSession else { return }
+        session.messages.append(CoachMessage(role: .coach, content: ""))
+        session.updatedAt = Date()
+        currentSession = session
+    }
+
+    /// streaming 中、最後のコーチメッセージの content を差し替える
+    private func setLastCoachMessageContent(_ content: String) {
+        guard var session = currentSession,
+              let last = session.messages.last,
+              last.role == .coach
+        else { return }
+        session.messages[session.messages.count - 1].content = content
+        session.updatedAt = Date()
+        currentSession = session
+    }
+
     // MARK: - API Integration
 
-    /// コーチに問いかける（API呼び出し）
+    /// コーチに問いかける（API呼び出し、SSE streaming）
     func sendMessage(_ content: String) async {
         addUserMessage(content)
 
@@ -135,28 +154,39 @@ class CoachStore: ObservableObject {
 
         do {
             if useAPI {
-                // API呼び出し
-                let response = try await coachService.sendMessage(
+                await MainActor.run { addEmptyCoachMessage() }
+
+                let stream = coachService.sendMessageStream(
                     message: content,
                     sessionId: currentSession?.serverId ?? currentSession?.id.uuidString
                 )
 
-                let metadata = MessageMetadata(
-                    cycleElement: response.metadata?.cycleElement,
-                    emotionDetected: response.metadata?.detectedEmotion,
-                    suggestedAction: nil
-                )
+                var accumulated = ""
+                var receivedError: String?
+                for try await event in stream {
+                    switch event {
+                    case .session(let sid):
+                        await MainActor.run {
+                            if currentSession?.serverId == nil {
+                                currentSession?.serverId = sid
+                                if let current = currentSession { updateSession(current) }
+                            }
+                        }
+                    case .chunk(let text):
+                        accumulated += text
+                        await MainActor.run { setLastCoachMessageContent(accumulated) }
+                    case .error(let reason):
+                        receivedError = reason
+                    case .done:
+                        break
+                    }
+                }
 
                 await MainActor.run {
-                    // サーバーから返されたsessionIdを保持
-                    if let serverSessionId = response.sessionId,
-                       currentSession?.serverId == nil {
-                        currentSession?.serverId = serverSessionId
-                        if let current = currentSession {
-                            updateSession(current)
-                        }
+                    if let session = currentSession { updateSession(session) }
+                    if let reason = receivedError {
+                        self.error = "コーチ応答が中断されました (\(reason))"
                     }
-                    addCoachMessage(response.message, metadata: metadata)
                     isLoading = false
                 }
             } else {

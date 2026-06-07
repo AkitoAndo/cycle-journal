@@ -282,6 +282,27 @@ class APIClient {
         }
     }
 
+    /// SSE 用に POST URLRequest を組み立てる。リトライ・レスポンス処理は呼び出し側に委譲。
+    func makeStreamingPostRequest<U: Encodable>(
+        path: String,
+        body: U,
+        requiresAuth: Bool = true
+    ) throws -> URLRequest {
+        let url = try buildURL(path: path)
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        encoder.dateEncodingStrategy = .iso8601
+        let bodyData = try encoder.encode(body)
+        var request = buildRequest(
+            url: url,
+            method: "POST",
+            body: bodyData,
+            requiresAuth: requiresAuth
+        )
+        request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        return request
+    }
+
     func post<T: Decodable, U: Encodable>(
         path: String,
         body: U,
