@@ -1,11 +1,6 @@
 /**
- * App Store Connect REST API クライアント。
- * Secret Manager から API Key を取得し ES256 JWT を生成して fetch する。
- *
- * 必要な Secrets (project=cycle-journal):
- *   app-store-connect-api-key     ← .p8 PEM
- *   app-store-connect-key-id
- *   app-store-connect-issuer-id
+ * App Store Connect REST API クライアント。GET / POST / PATCH に対応。
+ * Secret Manager の API Key で ES256 JWT を生成。
  */
 import { execSync } from "node:child_process";
 import * as jose from "jose";
@@ -31,7 +26,7 @@ async function buildJwt(): Promise<string> {
   const p8 = fetchSecret("app-store-connect-api-key");
 
   const privateKey = await jose.importPKCS8(p8, "ES256");
-  const exp = Math.floor(Date.now() / 1000) + 1140; // 19m, ASC は max 20m
+  const exp = Math.floor(Date.now() / 1000) + 1140;
   const token = await new jose.SignJWT({})
     .setProtectedHeader({ alg: "ES256", kid: keyId, typ: "JWT" })
     .setIssuer(issuerId)
@@ -45,6 +40,8 @@ async function buildJwt(): Promise<string> {
 
 export interface AscApiOptions {
   query?: Record<string, string | number | string[]>;
+  method?: "GET" | "POST" | "PATCH" | "DELETE";
+  body?: unknown;
 }
 
 export async function ascApi<T>(path: string, opts: AscApiOptions = {}): Promise<T> {
@@ -57,15 +54,24 @@ export async function ascApi<T>(path: string, opts: AscApiOptions = {}): Promise
     }
   }
   const token = await buildJwt();
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/json",
+  };
+  let bodyStr: string | undefined;
+  if (opts.body !== undefined) {
+    headers["Content-Type"] = "application/json";
+    bodyStr = JSON.stringify(opts.body);
+  }
   const res = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/json",
-    },
+    method: opts.method ?? "GET",
+    headers,
+    body: bodyStr,
   });
   if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`ASC API ${res.status} ${path}: ${body.slice(0, 500)}`);
+    const text = await res.text();
+    throw new Error(`ASC API ${res.status} ${opts.method ?? "GET"} ${path}: ${text.slice(0, 1000)}`);
   }
+  if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
