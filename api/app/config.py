@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     claude_max_tokens: int = 2000
     claude_temperature: float = 0.7
 
+    # Coach API ガードレール
+    coach_input_max_chars: int = 10_000
+    coach_output_max_tokens_cap: int = 4_000  # 暴走時の hard cap
+    coach_stream_timeout_seconds: int = 60
+
     # Gemini fallback（Vertex AI Claude の quota 申請待ち中の暫定）
     # use_gemini_fallback=True のとき chat() は Gemini を呼ぶ。
     # Claude quota が下りたら False にして Claude に戻す（追跡: 別 issue）。
