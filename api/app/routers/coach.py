@@ -1,9 +1,13 @@
 """Coach endpoint - AI coaching with Vertex AI Claude."""
 
+import asyncio
+import json
+import logging
 import uuid
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from google.cloud.firestore import AsyncClient
 
 from app.config import settings
@@ -14,6 +18,18 @@ from app.services.coach_graph import run_coach_flow
 from app.services.firestore_client import sessions_ref
 
 router = APIRouter(tags=["Coach"])
+logger = logging.getLogger("app.coach")
+
+
+def _validate_input_size(message: str) -> None:
+    if len(message) > settings.coach_input_max_chars:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"message too long: {len(message)} chars "
+                f"(limit {settings.coach_input_max_chars})"
+            ),
+        )
 
 
 @router.post("/coach")
@@ -23,6 +39,7 @@ async def chat(
     db: AsyncClient = Depends(get_firestore),
 ):
     """ユーザーのメッセージに対してAIコーチが応答."""
+    _validate_input_size(body.message)
     now = datetime.now(UTC)
     ref = sessions_ref(db)
 
@@ -137,3 +154,146 @@ async def chat(
             ),
         )
     }
+
+
+async def _ensure_session(
+    db: AsyncClient,
+    user_id: str,
+    body: CoachRequest,
+    now: datetime,
+) -> tuple[str, object]:
+    ref = sessions_ref(db)
+    session_id = body.session_id or str(uuid.uuid4())
+    session_doc = ref.document(session_id)
+    snap = await session_doc.get()
+    if snap.exists and snap.get("user_id") != user_id:
+        session_id = str(uuid.uuid4())
+        session_doc = ref.document(session_id)
+        snap = await session_doc.get()
+    if not snap.exists:
+        cycle_element = (
+            body.context.cycle_element.value
+            if body.context and body.context.cycle_element
+            else None
+        )
+        await session_doc.set(
+            {
+                "user_id": user_id,
+                "title": None,
+                "cycle_element": cycle_element,
+                "has_diary_context": body.diary_content is not None,
+                "message_count": 0,
+                "last_message_at": now,
+                "created_at": now,
+                "updated_at": now,
+            }
+        )
+    return session_id, session_doc
+
+
+@router.post("/coach/stream")
+async def chat_stream(
+    body: CoachRequest,
+    user_id: str = Depends(get_current_user),
+    db: AsyncClient = Depends(get_firestore),
+):
+    """Server-Sent Events で chunk 単位に応答を返す."""
+    _validate_input_size(body.message)
+    now = datetime.now(UTC)
+    session_id, session_doc = await _ensure_session(db, user_id, body, now)
+
+    messages_ref = session_doc.collection("messages")
+    history_query = messages_ref.order_by("created_at").limit(50)
+    history_docs = [doc async for doc in history_query.stream()]
+    history = [
+        {"role": doc.get("role"), "content": doc.get("content")} for doc in history_docs
+    ]
+
+    # ユーザーメッセージは streaming 開始前に保存（途中で失敗しても残す）
+    user_msg_id = str(uuid.uuid4())
+    await messages_ref.document(user_msg_id).set(
+        {"role": "user", "content": body.message, "metadata": None, "created_at": now}
+    )
+
+    async def event_source():
+        # SSE 起動メッセージ
+        yield f"event: session\ndata: {json.dumps({'session_id': session_id})}\n\n"
+        accumulated = ""
+        try:
+            async def consume():
+                nonlocal accumulated
+                async for chunk in coach_service.chat_stream(
+                    user_message=body.message,
+                    history=history,
+                    diary_content=body.diary_content,
+                ):
+                    accumulated += chunk
+                    yield chunk
+
+            async for chunk in _with_timeout(
+                consume(), settings.coach_stream_timeout_seconds
+            ):
+                yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+        except TimeoutError:
+            logger.warning("coach stream timeout", extra={"session_id": session_id})
+            yield f"event: error\ndata: {json.dumps({'reason': 'timeout'})}\n\n"
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("coach stream failed", extra={"session_id": session_id})
+            yield (
+                "event: error\ndata: "
+                + json.dumps({"reason": "internal", "detail": str(exc)[:200]})
+                + "\n\n"
+            )
+        finally:
+            # 完了後に assistant メッセージを保存（部分応答でも残す）
+            if accumulated:
+                assistant_now = datetime.now(UTC)
+                assistant_msg_id = str(uuid.uuid4())
+                await messages_ref.document(assistant_msg_id).set(
+                    {
+                        "role": "assistant",
+                        "content": accumulated,
+                        "metadata": {
+                            "model": settings.claude_model,
+                            "streamed": True,
+                        },
+                        "created_at": assistant_now,
+                    }
+                )
+                snap = await session_doc.get()
+                data = snap.to_dict() or {}
+                await session_doc.update(
+                    {
+                        "message_count": data.get("message_count", 0) + 2,
+                        "last_message_at": assistant_now,
+                        "updated_at": assistant_now,
+                    }
+                )
+            yield "event: done\ndata: {}\n\n"
+
+    return StreamingResponse(event_source(), media_type="text/event-stream")
+
+
+async def _with_timeout(agen, seconds: int):
+    """async generator に総時間タイムアウトをかける."""
+    queue: asyncio.Queue = asyncio.Queue()
+    sentinel = object()
+
+    async def pump():
+        try:
+            async for item in agen:
+                await queue.put(item)
+        finally:
+            await queue.put(sentinel)
+
+    task = asyncio.create_task(pump())
+    try:
+        async with asyncio.timeout(seconds):
+            while True:
+                item = await queue.get()
+                if item is sentinel:
+                    return
+                yield item
+    finally:
+        if not task.done():
+            task.cancel()
