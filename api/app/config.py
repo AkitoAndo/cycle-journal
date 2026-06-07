@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     claude_model_quick: str = "claude-haiku-4-5@20251001"
     # 後方互換: 既存環境変数 CLAUDE_MODEL を coach 用のエイリアスとして残す
     claude_model: str = "claude-sonnet-4-5@20250929"
-    claude_max_tokens: int = 500
+    claude_max_tokens: int = 2000
     claude_temperature: float = 0.7
 
     # Gemini fallback（Vertex AI Claude の quota 申請待ち中の暫定）
