@@ -36,7 +36,7 @@ struct SettingsView: View {
                         HStack {
                             Image(systemName: "person.circle.fill")
                                 .font(DesignSystem.Fonts.screenTitle)
-                                .foregroundColor(.green)
+                                .foregroundColor(DesignSystem.Colors.accent)
 
                             VStack(alignment: .leading) {
                                 if let user = authStore.currentUser {
@@ -259,6 +259,9 @@ struct SettingsView: View {
             }
             .navigationTitle("設定")
             .modifier(GlassNavBarModifier())
+            .scrollContentBackground(.hidden)
+            .background(DesignSystem.Colors.backgroundGradient)
+            .tint(DesignSystem.Colors.accent)
             .sheet(isPresented: $showingPaywall) {
                 PaywallView()
                     .softSheet()
@@ -316,7 +319,7 @@ struct SettingsView: View {
         case .active(_, let expiresAt), .trial(_, let expiresAt):
             HStack {
                 Image(systemName: "checkmark.seal.fill")
-                    .foregroundColor(.green)
+                    .foregroundColor(DesignSystem.Colors.accent)
                 VStack(alignment: .leading) {
                     Text("Cycle Premium")
                         .font(DesignSystem.Fonts.button)
@@ -476,7 +479,7 @@ struct DataExportView: View {
 
                 Image(systemName: "square.and.arrow.up")
                     .font(DesignSystem.Fonts.heroIcon)
-                    .foregroundColor(.blue)
+                    .foregroundColor(DesignSystem.Colors.accent)
 
                 VStack(spacing: DesignSystem.Spacing.sm) {
                     Text("データエクスポート")
@@ -527,7 +530,7 @@ struct DataExportView: View {
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(Color.blue)
+                .background(DesignSystem.Colors.accentGradient)
                 .cornerRadius(12)
                 .disabled(isExporting)
                 .padding(.horizontal)

@@ -89,17 +89,28 @@ struct CoachChatView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: DesignSystem.Spacing.md) {
-                    ForEach(currentMessages) { message in
+                    // ストリーミング開始直後の空メッセージは表示しない
+                    // （タイピングインジケーターが代わりに出る）
+                    ForEach(visibleMessages) { message in
                         messageBubble(message)
                             .id(message.id)
+                            .transition(
+                                .scale(
+                                    scale: 0.9,
+                                    anchor: message.role == .user ? .bottomTrailing : .bottomLeading
+                                )
+                                .combined(with: .opacity)
+                            )
                     }
 
                     if coachStore.isLoading {
                         typingIndicator
                             .id("loading")
+                            .transition(.opacity)
                     }
                 }
                 .padding(DesignSystem.Spacing.lg)
+                .animation(DesignSystem.Timing.spring, value: visibleMessages.count)
             }
             .onChange(of: currentMessages.count) { _, _ in
                 scrollToBottom(proxy: proxy)
@@ -141,15 +152,24 @@ struct CoachChatView: View {
             VStack(alignment: message.role == .user ? .trailing : .leading, spacing: DesignSystem.Spacing.xs) {
                 Text(message.content)
                     .font(DesignSystem.Fonts.body)
+                    .lineSpacing(3)
                     .foregroundStyle(message.role == .user ? .white : DesignSystem.Colors.textPrimary)
                     .padding(.horizontal, DesignSystem.Spacing.mlg)
                     .padding(.vertical, DesignSystem.Spacing.md)
-                    .background(
-                        message.role == .user
-                            ? DesignSystem.Colors.accent
-                            : DesignSystem.Colors.surface
+                    .background {
+                        if message.role == .user {
+                            DesignSystem.Colors.accentGradient
+                        } else {
+                            DesignSystem.Colors.surface
+                        }
+                    }
+                    .clipShape(bubbleShape(isUser: message.role == .user))
+                    .shadow(
+                        color: DesignSystem.Colors.brownDark.opacity(message.role == .user ? 0.15 : 0.05),
+                        radius: 4,
+                        x: 0,
+                        y: 2
                     )
-                    .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.lg, style: .continuous))
 
                 Text(timeFormatter.string(from: message.createdAt))
                     .font(DesignSystem.Fonts.caption2)
@@ -160,6 +180,19 @@ struct CoachChatView: View {
                 Spacer(minLength: 60)
             }
         }
+    }
+
+    /// 発話者側の下角だけ小さくした「しっぽ」付きの吹き出し形状
+    private func bubbleShape(isUser: Bool) -> UnevenRoundedRectangle {
+        let radius: CGFloat = 18
+        let tail: CGFloat = 6
+        return UnevenRoundedRectangle(
+            topLeadingRadius: radius,
+            bottomLeadingRadius: isUser ? radius : tail,
+            bottomTrailingRadius: isUser ? tail : radius,
+            topTrailingRadius: radius,
+            style: .continuous
+        )
     }
 
     // MARK: - Coach Avatar
@@ -184,19 +217,22 @@ struct CoachChatView: View {
                         .fill(DesignSystem.Colors.textTertiary)
                         .frame(width: 8, height: 8)
                         .opacity(typingDotOpacity(for: index))
+                        .offset(y: typingDotOffset(for: index))
                 }
             }
             .padding(.horizontal, DesignSystem.Spacing.lg)
             .padding(.vertical, DesignSystem.Spacing.md)
             .background(DesignSystem.Colors.surface)
-            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.lg, style: .continuous))
+            .clipShape(bubbleShape(isUser: false))
 
             Spacer(minLength: 60)
         }
         .onAppear { startTypingAnimation() }
+        .onDisappear { stopTypingAnimation() }
     }
 
     @State private var typingPhase: Int = 0
+    @State private var typingTimer: Timer?
 
     private func typingDotOpacity(for index: Int) -> Double {
         let phase = (typingPhase + index) % 3
@@ -207,12 +243,22 @@ struct CoachChatView: View {
         }
     }
 
+    private func typingDotOffset(for index: Int) -> CGFloat {
+        (typingPhase + index) % 3 == 0 ? -3 : 0
+    }
+
     private func startTypingAnimation() {
-        Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { _ in
-            withAnimation(DesignSystem.Timing.fastEasing) {
+        stopTypingAnimation()
+        typingTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { _ in
+            withAnimation(DesignSystem.Timing.spring) {
                 typingPhase = (typingPhase + 1) % 3
             }
         }
+    }
+
+    private func stopTypingAnimation() {
+        typingTimer?.invalidate()
+        typingTimer = nil
     }
 
     // MARK: - Input Area
@@ -232,6 +278,15 @@ struct CoachChatView: View {
                     .padding(.vertical, DesignSystem.Spacing.md)
                     .background(DesignSystem.Colors.surface)
                     .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.xxl, style: .continuous))
+                    .overlay(
+                        // フォーカス時にアクセント色のリングを表示
+                        RoundedRectangle(cornerRadius: DesignSystem.Spacing.xxl, style: .continuous)
+                            .stroke(
+                                DesignSystem.Colors.accent.opacity(isTextFieldFocused ? 0.45 : 0),
+                                lineWidth: 1.5
+                            )
+                    )
+                    .animation(DesignSystem.Timing.fastEasing, value: isTextFieldFocused)
                     .onSubmit {
                         sendMessage()
                     }
@@ -240,8 +295,12 @@ struct CoachChatView: View {
                     Image(systemName: "arrow.up.circle.fill")
                         .font(.system(size: 32))
                         .foregroundStyle(canSend ? DesignSystem.Colors.accent : DesignSystem.Colors.greyDark)
+                        .scaleEffect(canSend ? 1.0 : 0.92)
+                        .animation(DesignSystem.Timing.spring, value: canSend)
                 }
+                .buttonStyle(PressableButtonStyle(scale: 0.9))
                 .disabled(!canSend)
+                .accessibilityLabel("送信")
             }
             .padding(.horizontal, DesignSystem.Spacing.lg)
             .padding(.vertical, DesignSystem.Spacing.sm)
@@ -269,6 +328,12 @@ struct CoachChatView: View {
 
     private var currentMessages: [CoachMessage] {
         coachStore.currentSession?.messages ?? []
+    }
+
+    /// 表示対象のメッセージ。ストリーミング開始直後の空のコーチメッセージは
+    /// タイピングインジケーターで代替するため除外する
+    private var visibleMessages: [CoachMessage] {
+        currentMessages.filter { !($0.role == .coach && $0.content.isEmpty) }
     }
 
     private var canSend: Bool {

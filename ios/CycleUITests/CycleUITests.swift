@@ -154,6 +154,31 @@ final class CycleUITests: XCTestCase {
         takeScreenshot("coach-home")
     }
 
+    @MainActor
+    func testScreenshots_Coach_02_Chat() {
+        tapTab("Coach")
+        waitAndTap(app.buttons["話しかける"])
+
+        // 初回のコーチメッセージが出るのを待つ
+        _ = app.staticTexts
+            .matching(NSPredicate(format: "label CONTAINS 'こんにちは'"))
+            .firstMatch
+            .waitForExistence(timeout: 5)
+
+        // モック応答も1往復させてユーザー/コーチ両方の吹き出しを写す
+        let field = app.textFields.firstMatch
+        if field.waitForExistence(timeout: 3) {
+            field.tap()
+            field.typeText("今日は少し疲れた")
+            app.buttons["送信"].tap()
+            _ = app.staticTexts
+                .matching(NSPredicate(format: "label CONTAINS '？'"))
+                .firstMatch
+                .waitForExistence(timeout: 5)
+        }
+        takeScreenshot("coach-chat")
+    }
+
     // MARK: - Settings Screenshots
 
     @MainActor
