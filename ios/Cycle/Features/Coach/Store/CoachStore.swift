@@ -141,6 +141,20 @@ class CoachStore: ObservableObject {
         currentSession = session
     }
 
+    /// streaming が失敗した（または1文字も届かなかった）場合に、
+    /// 空のままのコーチメッセージを会話から取り除く
+    private func removeLastCoachMessageIfEmpty() {
+        guard var session = currentSession,
+              let last = session.messages.last,
+              last.role == .coach,
+              last.content.isEmpty
+        else { return }
+        session.messages.removeLast()
+        session.updatedAt = Date()
+        currentSession = session
+        updateSession(session)
+    }
+
     // MARK: - API Integration
 
     /// コーチに問いかける（API呼び出し、SSE streaming）
@@ -183,6 +197,13 @@ class CoachStore: ObservableObject {
                 }
 
                 await MainActor.run {
+                    // 1文字も届かずに終わった場合は空の吹き出しを残さない
+                    if accumulated.isEmpty {
+                        removeLastCoachMessageIfEmpty()
+                        if receivedError == nil {
+                            self.error = "コーチからの応答を受け取れませんでした。もう一度お試しください。"
+                        }
+                    }
                     if let session = currentSession { updateSession(session) }
                     if let reason = receivedError {
                         self.error = "コーチ応答が中断されました (\(reason))"
@@ -201,6 +222,8 @@ class CoachStore: ObservableObject {
             }
         } catch {
             await MainActor.run {
+                // 失敗時は空のままのコーチ吹き出しを会話に残さない
+                removeLastCoachMessageIfEmpty()
                 let apiError = (error as? APIError) ?? .networkError(error)
                 self.lastAPIError = apiError
                 self.error = apiError.errorDescription
