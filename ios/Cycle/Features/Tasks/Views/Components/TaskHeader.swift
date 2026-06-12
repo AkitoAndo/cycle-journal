@@ -18,7 +18,7 @@ struct TaskHeader: View {
     var body: some View {
         HStack(alignment: .center) {
             Text("タスクリスト")
-                .font(.system(size: 28, weight: .bold))
+                .font(DesignSystem.Fonts.screenTitle)
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
 
             Spacer()

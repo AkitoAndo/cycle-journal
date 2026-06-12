@@ -31,7 +31,7 @@ struct JournalHeader: View {
 
     private var monthYearTitle: some View {
         Text(selectedDate.formatted(.dateTime.year().month(.wide).locale(Locale(identifier: "ja_JP"))))
-            .font(.system(size: 28, weight: .bold))
+            .font(DesignSystem.Fonts.screenTitle)
             .foregroundStyle(DesignSystem.Colors.textPrimary)
     }
 

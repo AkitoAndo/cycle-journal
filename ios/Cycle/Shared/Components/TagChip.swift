@@ -41,8 +41,8 @@ struct TagChip: View {
 
     private var chipContent: some View {
         Text(text)
-            .font(.system(size: DesignSystem.FontSize.caption - 1))
-            .foregroundStyle(DesignSystem.Colors.textSecondary)
+            .font(.system(size: DesignSystem.FontSize.caption - 1, weight: .medium, design: .rounded))
+            .foregroundStyle(DesignSystem.Colors.accent)
             .padding(.horizontal, DesignSystem.Spacing.sm)
             .padding(.vertical, DesignSystem.Spacing.xs)
             .modifier(TagChipBackgroundStyle())
@@ -53,12 +53,12 @@ private struct TagChipBackgroundStyle: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
             content
-                .background(DesignSystem.Colors.grey)
+                .background(DesignSystem.Colors.accent.opacity(0.10))
                 .clipShape(Capsule())
                 .glassEffect(.regular, in: .capsule)
         } else {
             content
-                .background(DesignSystem.Colors.grey)
+                .background(DesignSystem.Colors.accent.opacity(0.10))
                 .clipShape(Capsule())
         }
     }

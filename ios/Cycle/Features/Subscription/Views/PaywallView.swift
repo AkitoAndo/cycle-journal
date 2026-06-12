@@ -56,7 +56,7 @@ struct PaywallView: View {
                 .font(.system(size: 48))
                 .foregroundStyle(DesignSystem.Colors.accent)
             Text("Cycle Premium")
-                .font(.system(size: 28, weight: .bold))
+                .font(DesignSystem.Fonts.screenTitle)
             Text("自分と向き合う時間を、もっと深く。")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)

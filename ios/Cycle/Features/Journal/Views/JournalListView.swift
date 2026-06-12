@@ -30,21 +30,27 @@ struct JournalListView: View {
             .navigationBarHidden(true)
             .sheet(isPresented: $showDatePicker) {
                 DatePickerSheet(vm: vm, isPresented: $showDatePicker)
+                    .softSheet()
             }
             .sheet(isPresented: $showNewEntry) {
                 JournalNewEntryView(vm: vm)
+                    .softSheet()
             }
             .sheet(isPresented: $vm.isSearching) {
                 JournalSearchView(vm: vm)
+                    .softSheet()
             }
             .sheet(item: $editingEntry) { entry in
                 JournalEditView(vm: vm, entry: entry)
+                    .softSheet()
             }
             .sheet(isPresented: $showTagManagement) {
                 TagManagementView(vm: vm)
+                    .softSheet()
             }
             .sheet(isPresented: $showDeleted) {
                 JournalDeletedView(vm: vm)
+                    .softSheet()
             }
     }
 
@@ -63,7 +69,7 @@ struct JournalListView: View {
             weekCalendar
             entriesList
         }
-        .background(DesignSystem.Colors.background)
+        .background(DesignSystem.Colors.backgroundGradient)
     }
 
     // MARK: - Components
@@ -91,25 +97,36 @@ struct JournalListView: View {
             .padding(.bottom, DesignSystem.Spacing.sm)
     }
 
+    @ViewBuilder
     private var entriesList: some View {
-        ZStack(alignment: .top) {
-            JournalEntriesList(
-                entries: vm.todays,
-                onEdit: { entry in
-                    editingEntry = entry
-                },
-                onDelete: { entry in
-                    vm.deleteEntry(entry)
-                }
+        if vm.todays.isEmpty {
+            EmptyStateView(
+                icon: "leaf",
+                title: "この日はまだ記録がありません",
+                subtitle: "短い一行からでも残してみましょう",
+                actionTitle: "日記を書く",
+                action: { showNewEntry = true }
             )
+        } else {
+            ZStack(alignment: .top) {
+                JournalEntriesList(
+                    entries: vm.todays,
+                    onEdit: { entry in
+                        editingEntry = entry
+                    },
+                    onDelete: { entry in
+                        vm.deleteEntry(entry)
+                    }
+                )
 
-            LinearGradient(
-                colors: [DesignSystem.Colors.background, DesignSystem.Colors.background.opacity(0)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .frame(height: 12)
-            .allowsHitTesting(false)
+                LinearGradient(
+                    colors: [DesignSystem.Colors.background, DesignSystem.Colors.background.opacity(0)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 12)
+                .allowsHitTesting(false)
+            }
         }
     }
 

@@ -16,16 +16,17 @@ struct JournalEntriesList: View {
 
     var body: some View {
         List {
-            ForEach(entries) { entry in
+            ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
                 JournalEntryRow(
                     entry: entry,
                     onEdit: { onEdit(entry) },
                     onDelete: { onDelete(entry) }
                 )
+                .staggeredAppear(index: index)
             }
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .background(DesignSystem.Colors.background)
+        .animation(DesignSystem.Timing.spring, value: entries.map(\.id))
     }
 }

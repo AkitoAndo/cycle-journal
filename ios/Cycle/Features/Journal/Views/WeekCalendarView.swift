@@ -12,6 +12,7 @@ import Pow
 /// 横スワイプで週を切り替え、日付タップで選択可能
 struct WeekCalendarView: View {
     @ObservedObject var vm: JournalViewModel
+    @Namespace private var selectionNamespace
 
     var body: some View {
         TabView(selection: $vm.currentWeekOffset) {
@@ -62,18 +63,22 @@ struct WeekCalendarView: View {
                     width: DesignSystem.ComponentSize.dateCircle,
                     height: DesignSystem.ComponentSize.dateCircle
                 )
-                .background(
-                    Circle()
-                        .fill(isSelected ? DesignSystem.Colors.accent : Color.clear)
-                )
+                .background {
+                    if isSelected {
+                        Circle()
+                            .fill(DesignSystem.Colors.accent)
+                            .matchedGeometryEffect(id: "daySelection", in: selectionNamespace)
+                    }
+                }
                 .animation(DesignSystem.Timing.easing, value: isSelected)
-                .changeEffect(.jump(height: 4), value: isSelected, isEnabled: isSelected)
                 .changeEffect(.feedbackHapticSelection, value: isSelected, isEnabled: isSelected)
         }
         .frame(maxWidth: .infinity)
         .contentShape(Rectangle())
         .onTapGesture {
-            vm.selectedDate = date
+            withAnimation(DesignSystem.Timing.bouncySpring) {
+                vm.selectedDate = date
+            }
         }
     }
 }

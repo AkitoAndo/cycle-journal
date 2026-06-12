@@ -15,6 +15,8 @@ struct CoachHomeView: View {
     @State private var showingHistory = false
     @State private var showingDiaryPicker = false
     @State private var showingBreathing = false
+    @State private var isBreathing = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 0) {
@@ -27,13 +29,32 @@ struct CoachHomeView: View {
                         .aspectRatio(contentMode: .fit)
                         .frame(width: 120, height: 120)
                         .clipShape(Circle())
+                        .background {
+                            // 呼吸に合わせて広がる淡いハロー
+                            Circle()
+                                .fill(DesignSystem.Colors.accent.opacity(0.12))
+                                .scaleEffect(isBreathing ? 1.35 : 1.05)
+                            Circle()
+                                .fill(DesignSystem.Colors.accent.opacity(0.08))
+                                .scaleEffect(isBreathing ? 1.6 : 1.1)
+                        }
+                        .scaleEffect(isBreathing ? 1.04 : 1.0)
                 }
+                .buttonStyle(PressableButtonStyle(scale: 0.94))
                 .accessibilityLabel("呼吸セッションを始める")
+                .onAppear {
+                    guard !reduceMotion else { return }
+                    withAnimation(.easeInOut(duration: 3.2).repeatForever(autoreverses: true)) {
+                        isBreathing = true
+                    }
+                }
+                .staggeredAppear(index: 0)
 
                 Text("タップして、呼吸を整える")
                     .font(DesignSystem.Fonts.caption)
                     .foregroundStyle(DesignSystem.Colors.textSecondary)
                     .padding(.top, DesignSystem.Spacing.md)
+                    .staggeredAppear(index: 1)
 
                 Spacer().frame(height: DesignSystem.Spacing.xl)
 
@@ -50,6 +71,7 @@ struct CoachHomeView: View {
                         .multilineTextAlignment(.center)
                 }
                 .padding(.horizontal, DesignSystem.Spacing.lg)
+                .staggeredAppear(index: 2)
 
                 Spacer()
 
@@ -65,8 +87,9 @@ struct CoachHomeView: View {
                 }
                 .padding(.horizontal, DesignSystem.Spacing.lg)
                 .padding(.bottom, DesignSystem.Spacing.xxl * 2)
+                .staggeredAppear(index: 3)
             }
-            .background(DesignSystem.Colors.background)
+            .background(DesignSystem.Colors.backgroundGradient)
             .navigationBarHidden(true)
             .fullScreenCover(isPresented: $showingChat) {
                 CoachChatView()
@@ -83,10 +106,12 @@ struct CoachHomeView: View {
                 SessionHistoryView()
                     .environmentObject(coachStore)
                     .environmentObject(meditationStore)
+                    .softSheet()
             }
             .sheet(isPresented: $showingBreathing) {
                 BreathingSessionView()
                     .environmentObject(meditationStore)
+                    .softSheet()
             }
             .sheet(isPresented: $showingDiaryPicker) {
                 DiaryPickerView(onSelect: { entry in
@@ -101,6 +126,7 @@ struct CoachHomeView: View {
                     }
                 })
                 .environmentObject(journalViewModel)
+                .softSheet()
             }
     }
 
@@ -109,7 +135,7 @@ struct CoachHomeView: View {
     private var sessionHeader: some View {
         HStack(alignment: .center) {
             Text("セッション")
-                .font(.system(size: 28, weight: .bold))
+                .font(DesignSystem.Fonts.screenTitle)
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
 
             Spacer()

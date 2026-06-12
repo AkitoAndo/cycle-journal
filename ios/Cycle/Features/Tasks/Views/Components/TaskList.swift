@@ -34,14 +34,14 @@ struct TaskList: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .background(DesignSystem.Colors.background)
+        .animation(DesignSystem.Timing.spring, value: incompleteTasks.map(\.id) + completedTasks.map(\.id))
     }
 
     // MARK: - Sections
 
     private var incompleteSection: some View {
         Section {
-            ForEach(incompleteTasks) { task in
+            ForEach(Array(incompleteTasks.enumerated()), id: \.element.id) { index, task in
                 TaskRow(
                     task: task,
                     isReorderMode: isReorderMode,
@@ -53,6 +53,7 @@ struct TaskList: View {
                 )
                 .deleteDisabled(true)
                 .moveDisabled(!isReorderMode)
+                .staggeredAppear(index: index)
             }
             .onMove { source, destination in
                 if isReorderMode {

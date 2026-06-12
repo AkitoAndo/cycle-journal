@@ -30,36 +30,34 @@ struct ContentView: View {
     }
 
     private var splashView: some View {
-        ZStack {
-            DesignSystem.Colors.background.ignoresSafeArea()
-            ProgressView()
-        }
+        SplashView()
     }
 
     private var mainContent: some View {
         ZStack(alignment: .bottom) {
-            Group {
-                switch selectedTab {
-                case 0:
-                    NavigationStack {
-                        JournalListView()
-                    }
-                case 1:
-                    NavigationStack {
-                        CoachHomeView()
-                    }
-                case 2:
-                    NavigationStack {
-                        TaskListView()
-                    }
-                case 3:
-                    SettingsView()
-                default:
-                    NavigationStack {
-                        JournalListView()
-                    }
+            // 全タブを保持して opacity で切り替える。
+            // タブを行き来してもスクロール位置・入力中の状態・出現アニメーションの
+            // 再生済み状態が失われない。
+            ZStack {
+                NavigationStack {
+                    JournalListView()
                 }
+                .modifier(TabPaneStyle(isActive: selectedTab == 0))
+
+                NavigationStack {
+                    CoachHomeView()
+                }
+                .modifier(TabPaneStyle(isActive: selectedTab == 1))
+
+                NavigationStack {
+                    TaskListView()
+                }
+                .modifier(TabPaneStyle(isActive: selectedTab == 2))
+
+                SettingsView()
+                    .modifier(TabPaneStyle(isActive: selectedTab == 3))
             }
+            .animation(DesignSystem.Timing.gentleSpring, value: selectedTab)
             .padding(.bottom, 55)
 
             CustomTabBar(selectedTab: $selectedTab)
@@ -76,12 +74,56 @@ struct ContentView: View {
             }
         }
     }
+
+}
+
+/// タブの表示/非表示スタイル
+/// クロスフェード + わずかなスケールで切り替え、非表示中は操作と VoiceOver の対象外にする
+private struct TabPaneStyle: ViewModifier {
+    let isActive: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(isActive ? 1 : 0)
+            .scaleEffect(isActive ? 1 : 0.98)
+            .allowsHitTesting(isActive)
+            .accessibilityHidden(!isActive)
+    }
+}
+
+// MARK: - Splash
+
+/// 起動直後（認証状態の確認中）に表示するスプラッシュ
+/// ロゴがゆっくり呼吸するアニメーション付き
+private struct SplashView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isBreathing = false
+
+    var body: some View {
+        ZStack {
+            DesignSystem.Colors.backgroundGradient.ignoresSafeArea()
+
+            Image("CycleIcon")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 96, height: 96)
+                .clipShape(Circle())
+                .scaleEffect(isBreathing ? 1.06 : 0.98)
+                .onAppear {
+                    guard !reduceMotion else { return }
+                    withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) {
+                        isBreathing = true
+                    }
+                }
+        }
+    }
 }
 
 // MARK: - Custom Tab Bar
 
 struct CustomTabBar: View {
     @Binding var selectedTab: Int
+    @Namespace private var indicatorNamespace
 
     var body: some View {
         HStack(spacing: 0) {
@@ -90,7 +132,8 @@ struct CustomTabBar: View {
                 selectedIcon: "leaf.fill",
                 label: "ジャーナル",
                 isSelected: selectedTab == 0,
-                action: { selectedTab = 0 }
+                namespace: indicatorNamespace,
+                action: { select(0) }
             )
 
             TabBarButton(
@@ -98,7 +141,8 @@ struct CustomTabBar: View {
                 selectedIcon: "bubble.left.and.bubble.right.fill",
                 label: "セッション",
                 isSelected: selectedTab == 1,
-                action: { selectedTab = 1 }
+                namespace: indicatorNamespace,
+                action: { select(1) }
             )
 
             TabBarButton(
@@ -106,7 +150,8 @@ struct CustomTabBar: View {
                 selectedIcon: "checklist.checked",
                 label: "タスクリスト",
                 isSelected: selectedTab == 2,
-                action: { selectedTab = 2 }
+                namespace: indicatorNamespace,
+                action: { select(2) }
             )
 
             TabBarButton(
@@ -114,11 +159,22 @@ struct CustomTabBar: View {
                 selectedIcon: "gearshape.fill",
                 label: "設定",
                 isSelected: selectedTab == 3,
-                action: { selectedTab = 3 }
+                namespace: indicatorNamespace,
+                action: { select(3) }
             )
         }
         .frame(height: 55)
         .background(DesignSystem.Colors.background)
+        .overlay(alignment: .top) {
+            Divider()
+                .background(DesignSystem.Colors.grey.opacity(0.4))
+        }
+    }
+
+    private func select(_ tab: Int) {
+        withAnimation(DesignSystem.Timing.bouncySpring) {
+            selectedTab = tab
+        }
     }
 }
 
@@ -127,6 +183,7 @@ struct TabBarButton: View {
     let selectedIcon: String
     let label: String
     let isSelected: Bool
+    let namespace: Namespace.ID
     let action: () -> Void
 
     var body: some View {
@@ -149,7 +206,16 @@ struct TabBarButton: View {
                     .font(.system(size: 10))
             }
             .foregroundStyle(isSelected ? DesignSystem.Colors.accent : DesignSystem.Colors.textSecondary)
+            .padding(.vertical, 6)
             .frame(maxWidth: .infinity)
+            .background {
+                if isSelected {
+                    Capsule()
+                        .fill(DesignSystem.Colors.accent.opacity(0.10))
+                        .matchedGeometryEffect(id: "tabIndicator", in: namespace)
+                        .padding(.horizontal, DesignSystem.Spacing.md)
+                }
+            }
         }
         .animation(DesignSystem.Timing.easing, value: isSelected)
         .accessibilityIdentifier("tab_\(label)")

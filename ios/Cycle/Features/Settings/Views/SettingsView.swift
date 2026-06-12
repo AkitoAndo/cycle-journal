@@ -261,12 +261,14 @@ struct SettingsView: View {
             .modifier(GlassNavBarModifier())
             .sheet(isPresented: $showingPaywall) {
                 PaywallView()
+                    .softSheet()
             }
             .sheet(isPresented: $showingDataExport) {
                 DataExportView()
                     .environmentObject(journalViewModel)
                     .environmentObject(taskViewModel)
                     .environmentObject(coachStore)
+                    .softSheet()
             }
             .alert("サインアウト", isPresented: $showingSignOutAlert) {
                 Button("キャンセル", role: .cancel) {}
@@ -278,6 +280,7 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showingComponentCatalog) {
                 ComponentCatalogView()
+                    .softSheet()
             }
             .alert("全データを削除", isPresented: $showingClearDataAlert) {
                 Button("キャンセル", role: .cancel) {}
