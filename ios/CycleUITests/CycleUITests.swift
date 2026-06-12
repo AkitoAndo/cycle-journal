@@ -165,6 +165,13 @@ final class CycleUITests: XCTestCase {
             .firstMatch
             .waitForExistence(timeout: 5)
 
+        // 会話スターターが表示されている
+        XCTAssertTrue(
+            app.buttons["今日あったことを話したい"].waitForExistence(timeout: 3),
+            "会話スターターが表示されない"
+        )
+        takeScreenshot("coach-chat-start")
+
         // モック応答も1往復させてユーザー/コーチ両方の吹き出しを写す
         let field = app.textFields.firstMatch
         if field.waitForExistence(timeout: 3) {

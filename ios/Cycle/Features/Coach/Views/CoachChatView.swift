@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import Pow
 
 struct CoachChatView: View {
     @EnvironmentObject var coachStore: CoachStore
@@ -12,7 +13,16 @@ struct CoachChatView: View {
 
     @State private var messageText = ""
     @State private var showingEndSessionAlert = false
+    @State private var sendCount = 0
     @FocusState private var isTextFieldFocused: Bool
+
+    /// 会話の書き出しを助ける提案。初回挨拶だけの状態で表示する
+    private static let starterSuggestions = [
+        "今日あったことを話したい",
+        "ちょっとモヤモヤしている",
+        "嬉しかったことがあった",
+        "考えを整理したい",
+    ]
 
     private var isLoggedIn: Bool {
         authStore.state.isAuthenticated
@@ -108,17 +118,68 @@ struct CoachChatView: View {
                             .id("loading")
                             .transition(.opacity)
                     }
+
+                    if showsConversationStarters {
+                        conversationStarters
+                            .transition(.opacity.combined(with: .offset(y: 8)))
+                    }
                 }
                 .padding(DesignSystem.Spacing.lg)
                 .animation(DesignSystem.Timing.spring, value: visibleMessages.count)
+                .animation(DesignSystem.Timing.spring, value: showsConversationStarters)
             }
             .onChange(of: currentMessages.count) { _, _ in
+                scrollToBottom(proxy: proxy)
+            }
+            // ストリーミングで最後のメッセージが伸びている間もスクロールを追従させる
+            .onChange(of: currentMessages.last?.content) { _, _ in
                 scrollToBottom(proxy: proxy)
             }
             .onChange(of: coachStore.isLoading) { _, _ in
                 scrollToBottom(proxy: proxy)
             }
+            // キーボードが開いたら最新メッセージまでスクロール
+            .onChange(of: isTextFieldFocused) { _, focused in
+                if focused {
+                    scrollToBottom(proxy: proxy)
+                }
+            }
         }
+    }
+
+    // MARK: - Conversation Starters
+
+    /// 初回挨拶だけの状態（ユーザーがまだ発言していない）かどうか
+    private var showsConversationStarters: Bool {
+        !coachStore.isLoading && !visibleMessages.contains { $0.role == .user }
+    }
+
+    private var conversationStarters: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
+            ForEach(Self.starterSuggestions, id: \.self) { starter in
+                Button {
+                    sendCount += 1
+                    isTextFieldFocused = false
+                    Task { await coachStore.sendMessage(starter) }
+                } label: {
+                    Text(starter)
+                        .font(DesignSystem.Fonts.subheadline)
+                        .foregroundStyle(DesignSystem.Colors.accent)
+                        .padding(.horizontal, DesignSystem.Spacing.mlg)
+                        .padding(.vertical, DesignSystem.Spacing.sm + 2)
+                        .background(DesignSystem.Colors.accent.opacity(0.08))
+                        .clipShape(Capsule())
+                        .overlay(
+                            Capsule()
+                                .stroke(DesignSystem.Colors.accent.opacity(0.25), lineWidth: 1)
+                        )
+                }
+                .buttonStyle(PressableButtonStyle())
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.leading, 40) // コーチの吹き出しに揃える
+        .padding(.top, DesignSystem.Spacing.sm)
     }
 
     private func scrollToBottom(proxy: ScrollViewProxy) {
@@ -170,6 +231,13 @@ struct CoachChatView: View {
                         x: 0,
                         y: 2
                     )
+                    .contextMenu {
+                        Button {
+                            UIPasteboard.general.string = message.content
+                        } label: {
+                            Label("コピー", systemImage: "doc.on.doc")
+                        }
+                    }
 
                 Text(timeFormatter.string(from: message.createdAt))
                     .font(DesignSystem.Fonts.caption2)
@@ -300,6 +368,7 @@ struct CoachChatView: View {
                 }
                 .buttonStyle(PressableButtonStyle(scale: 0.9))
                 .disabled(!canSend)
+                .changeEffect(.feedback(hapticImpact: .light), value: sendCount)
                 .accessibilityLabel("送信")
             }
             .padding(.horizontal, DesignSystem.Spacing.lg)
@@ -346,6 +415,7 @@ struct CoachChatView: View {
         let text = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
         messageText = ""
         isTextFieldFocused = false
+        sendCount += 1
 
         Task {
             await coachStore.sendMessage(text)
