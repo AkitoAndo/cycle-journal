@@ -22,7 +22,7 @@ struct JournalEntriesList: View {
                     onEdit: { onEdit(entry) },
                     onDelete: { onDelete(entry) }
                 )
-                .staggeredAppear(index: index)
+                .staggeredAppear(index: index, group: "journal_list")
             }
         }
         .listStyle(.plain)

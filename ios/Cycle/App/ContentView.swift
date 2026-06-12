@@ -35,27 +35,36 @@ struct ContentView: View {
 
     private var mainContent: some View {
         ZStack(alignment: .bottom) {
-            // 全タブを保持して opacity で切り替える。
-            // タブを行き来してもスクロール位置・入力中の状態・出現アニメーションの
-            // 再生済み状態が失われない。
+            // タブは switch で出し分ける（非表示タブをビュー階層に残すと
+            // NavigationStack 境界で accessibilityHidden が効かず、
+            // VoiceOver / UI テストに非表示タブの要素が漏れるため）。
+            // 出現アニメーションの再発火は StaggeredAppear のセッションメモリで防ぐ。
             ZStack {
-                NavigationStack {
-                    JournalListView()
+                switch selectedTab {
+                case 0:
+                    NavigationStack {
+                        JournalListView()
+                    }
+                    .transition(tabTransition)
+                case 1:
+                    NavigationStack {
+                        CoachHomeView()
+                    }
+                    .transition(tabTransition)
+                case 2:
+                    NavigationStack {
+                        TaskListView()
+                    }
+                    .transition(tabTransition)
+                case 3:
+                    SettingsView()
+                        .transition(tabTransition)
+                default:
+                    NavigationStack {
+                        JournalListView()
+                    }
+                    .transition(tabTransition)
                 }
-                .modifier(TabPaneStyle(isActive: selectedTab == 0))
-
-                NavigationStack {
-                    CoachHomeView()
-                }
-                .modifier(TabPaneStyle(isActive: selectedTab == 1))
-
-                NavigationStack {
-                    TaskListView()
-                }
-                .modifier(TabPaneStyle(isActive: selectedTab == 2))
-
-                SettingsView()
-                    .modifier(TabPaneStyle(isActive: selectedTab == 3))
             }
             .animation(DesignSystem.Timing.gentleSpring, value: selectedTab)
             .padding(.bottom, 55)
@@ -75,19 +84,10 @@ struct ContentView: View {
         }
     }
 
-}
 
-/// タブの表示/非表示スタイル
-/// クロスフェード + わずかなスケールで切り替え、非表示中は操作と VoiceOver の対象外にする
-private struct TabPaneStyle: ViewModifier {
-    let isActive: Bool
-
-    func body(content: Content) -> some View {
-        content
-            .opacity(isActive ? 1 : 0)
-            .scaleEffect(isActive ? 1 : 0.98)
-            .allowsHitTesting(isActive)
-            .accessibilityHidden(!isActive)
+    /// タブ切替時のクロスフェード + わずかなスケール
+    private var tabTransition: AnyTransition {
+        .opacity.combined(with: .scale(scale: 0.98))
     }
 }
 
@@ -131,6 +131,7 @@ struct CustomTabBar: View {
                 icon: "leaf",
                 selectedIcon: "leaf.fill",
                 label: "ジャーナル",
+                identifier: "tab_Journal",
                 isSelected: selectedTab == 0,
                 namespace: indicatorNamespace,
                 action: { select(0) }
@@ -140,6 +141,7 @@ struct CustomTabBar: View {
                 icon: "bubble.left.and.bubble.right",
                 selectedIcon: "bubble.left.and.bubble.right.fill",
                 label: "セッション",
+                identifier: "tab_Coach",
                 isSelected: selectedTab == 1,
                 namespace: indicatorNamespace,
                 action: { select(1) }
@@ -149,6 +151,7 @@ struct CustomTabBar: View {
                 icon: "checklist",
                 selectedIcon: "checklist.checked",
                 label: "タスクリスト",
+                identifier: "tab_Tasks",
                 isSelected: selectedTab == 2,
                 namespace: indicatorNamespace,
                 action: { select(2) }
@@ -158,6 +161,7 @@ struct CustomTabBar: View {
                 icon: "gearshape",
                 selectedIcon: "gearshape.fill",
                 label: "設定",
+                identifier: "tab_Settings",
                 isSelected: selectedTab == 3,
                 namespace: indicatorNamespace,
                 action: { select(3) }
@@ -182,6 +186,8 @@ struct TabBarButton: View {
     let icon: String
     let selectedIcon: String
     let label: String
+    /// 表示ラベルと独立した UI テスト用の安定 ID（例: "tab_Journal"）
+    let identifier: String
     let isSelected: Bool
     let namespace: Namespace.ID
     let action: () -> Void
@@ -218,7 +224,7 @@ struct TabBarButton: View {
             }
         }
         .animation(DesignSystem.Timing.easing, value: isSelected)
-        .accessibilityIdentifier("tab_\(label)")
+        .accessibilityIdentifier(identifier)
     }
 }
 

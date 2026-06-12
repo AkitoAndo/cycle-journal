@@ -24,37 +24,44 @@ struct CoachHomeView: View {
                 Spacer()
 
                 Button(action: { showingBreathing = true }) {
-                    Image("CycleIcon")
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 120, height: 120)
-                        .clipShape(Circle())
-                        .background {
-                            // 呼吸に合わせて広がる淡いハロー
-                            Circle()
-                                .fill(DesignSystem.Colors.accent.opacity(0.12))
-                                .scaleEffect(isBreathing ? 1.35 : 1.05)
-                            Circle()
-                                .fill(DesignSystem.Colors.accent.opacity(0.08))
-                                .scaleEffect(isBreathing ? 1.6 : 1.1)
-                        }
-                        .scaleEffect(isBreathing ? 1.04 : 1.0)
+                    ZStack {
+                        // 呼吸に合わせて広がる淡いハロー
+                        Circle()
+                            .fill(DesignSystem.Colors.accent.opacity(0.08))
+                            .frame(width: 120, height: 120)
+                            .scaleEffect(isBreathing ? 1.6 : 1.1)
+                        Circle()
+                            .fill(DesignSystem.Colors.accent.opacity(0.12))
+                            .frame(width: 120, height: 120)
+                            .scaleEffect(isBreathing ? 1.35 : 1.05)
+
+                        Image("CycleIcon")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 120, height: 120)
+                            .clipShape(Circle())
+                            .scaleEffect(isBreathing ? 1.04 : 1.0)
+                    }
+                    // ハローの見た目いっぱいまでタップ可能にする
+                    .frame(width: 200, height: 200)
+                    .contentShape(Circle())
                 }
                 .buttonStyle(PressableButtonStyle(scale: 0.94))
                 .accessibilityLabel("呼吸セッションを始める")
+                .accessibilityIdentifier("coach_breathing_button")
                 .onAppear {
                     guard !reduceMotion else { return }
                     withAnimation(.easeInOut(duration: 3.2).repeatForever(autoreverses: true)) {
                         isBreathing = true
                     }
                 }
-                .staggeredAppear(index: 0)
+                .staggeredAppear(index: 0, group: "coach_home")
 
                 Text("タップして、呼吸を整える")
                     .font(DesignSystem.Fonts.caption)
                     .foregroundStyle(DesignSystem.Colors.textSecondary)
                     .padding(.top, DesignSystem.Spacing.md)
-                    .staggeredAppear(index: 1)
+                    .staggeredAppear(index: 1, group: "coach_home")
 
                 Spacer().frame(height: DesignSystem.Spacing.xl)
 
@@ -71,7 +78,7 @@ struct CoachHomeView: View {
                         .multilineTextAlignment(.center)
                 }
                 .padding(.horizontal, DesignSystem.Spacing.lg)
-                .staggeredAppear(index: 2)
+                .staggeredAppear(index: 2, group: "coach_home")
 
                 Spacer()
 
@@ -87,7 +94,7 @@ struct CoachHomeView: View {
                 }
                 .padding(.horizontal, DesignSystem.Spacing.lg)
                 .padding(.bottom, DesignSystem.Spacing.xxl * 2)
-                .staggeredAppear(index: 3)
+                .staggeredAppear(index: 3, group: "coach_home")
             }
             .background(DesignSystem.Colors.backgroundGradient)
             .navigationBarHidden(true)
@@ -146,6 +153,8 @@ struct CoachHomeView: View {
                     .foregroundStyle(DesignSystem.Colors.textSecondary)
                     .modifier(GlassIconModifier())
             }
+            .accessibilityLabel("セッション履歴")
+            .accessibilityIdentifier("coach_history_button")
         }
         .padding(.horizontal, DesignSystem.Spacing.lg)
         .padding(.vertical, DesignSystem.Spacing.md)

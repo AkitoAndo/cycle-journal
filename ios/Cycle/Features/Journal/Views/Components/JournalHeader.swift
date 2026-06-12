@@ -58,5 +58,7 @@ struct JournalHeader: View {
                 .foregroundStyle(DesignSystem.Colors.textSecondary)
                 .modifier(GlassIconModifier())
         }
+        .accessibilityLabel("メニュー")
+        .accessibilityIdentifier("journal_menu")
     }
 }

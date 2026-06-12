@@ -53,7 +53,7 @@ struct TaskList: View {
                 )
                 .deleteDisabled(true)
                 .moveDisabled(!isReorderMode)
-                .staggeredAppear(index: index)
+                .staggeredAppear(index: index, group: "task_list")
             }
             .onMove { source, destination in
                 if isReorderMode {

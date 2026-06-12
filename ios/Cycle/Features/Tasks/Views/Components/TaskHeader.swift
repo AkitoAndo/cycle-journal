@@ -44,6 +44,8 @@ struct TaskHeader: View {
                     .foregroundStyle(DesignSystem.Colors.textSecondary)
                     .modifier(GlassIconModifier())
             }
+            .accessibilityLabel("メニュー")
+            .accessibilityIdentifier("task_menu")
         }
         .padding(.horizontal, DesignSystem.Spacing.lg)
         .padding(.top, DesignSystem.Spacing.md)

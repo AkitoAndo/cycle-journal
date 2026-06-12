@@ -222,7 +222,11 @@ final class CycleUITests: XCTestCase {
         titleField.typeText("UIテストから作成したタスク")
         app.buttons["保存"].tap()
 
+        // 新規タスクはリスト末尾に追加されるため、画面外ならスクロールして探す
         let newTask = app.staticTexts["UIテストから作成したタスク"]
+        for _ in 0..<3 where !newTask.waitForExistence(timeout: 2) {
+            app.swipeUp()
+        }
         XCTAssertTrue(newTask.waitForExistence(timeout: 3))
     }
 

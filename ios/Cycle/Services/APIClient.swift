@@ -192,6 +192,30 @@ class APIClient {
         self.tokenRefresher = refresher
     }
 
+    // MARK: - Transient Error Retry
+
+    /// 一時的な通信エラー（QUIC/HTTP3 の接続断 -1017, -1005 等）かどうか
+    private static func isTransient(_ error: URLError) -> Bool {
+        error.code == .cannotParseResponse || error.code == .networkConnectionLost
+    }
+
+    /// リトライしても安全なリクエストかどうか。
+    /// GET は冪等なので常に可。POST は二重実行の副作用がない認証系のみ可。
+    private static func isSafeToRetry(_ request: URLRequest) -> Bool {
+        if request.httpMethod == "GET" { return true }
+        return request.url?.path.hasPrefix("/auth/") == true
+    }
+
+    /// 一時的なネットワークエラーを短い待機を挟んで1回だけリトライする
+    private func sendWithTransientRetry(_ request: URLRequest) async throws -> (Data, URLResponse) {
+        do {
+            return try await session.data(for: request)
+        } catch let error as URLError where Self.isTransient(error) && Self.isSafeToRetry(request) {
+            try await Task.sleep(nanoseconds: 600_000_000)
+            return try await session.data(for: request)
+        }
+    }
+
     // MARK: - 401 Retry
 
     /// 401時に refresh → 1回だけリトライ。
@@ -200,7 +224,7 @@ class APIClient {
         _ request: URLRequest,
         requiresAuth: Bool
     ) async throws -> (Data, URLResponse) {
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await sendWithTransientRetry(request)
 
         guard requiresAuth,
               let http = response as? HTTPURLResponse,
