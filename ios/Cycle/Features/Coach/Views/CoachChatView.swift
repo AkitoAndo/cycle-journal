@@ -14,6 +14,11 @@ struct CoachChatView: View {
     @State private var messageText = ""
     @State private var showingEndSessionAlert = false
     @State private var sendCount = 0
+    /// 進行中の送信タスク。停止ボタンでキャンセルする
+    @State private var sendTask: Task<Void, Never>?
+    /// スクロール位置が最下部付近かどうか。
+    /// ユーザーが上にスクロールして読み返している間は自動追従を止める
+    @State private var isNearBottom = true
     @FocusState private var isTextFieldFocused: Bool
 
     /// 会話の書き出しを助ける提案。初回挨拶だけの状態で表示する
@@ -101,8 +106,8 @@ struct CoachChatView: View {
                 LazyVStack(spacing: DesignSystem.Spacing.md) {
                     // ストリーミング開始直後の空メッセージは表示しない
                     // （タイピングインジケーターが代わりに出る）
-                    ForEach(visibleMessages) { message in
-                        messageBubble(message)
+                    ForEach(Array(visibleMessages.enumerated()), id: \.element.id) { index, message in
+                        messageBubble(message, showsTimestamp: shouldShowTimestamp(at: index))
                             .id(message.id)
                             .transition(
                                 .scale(
@@ -123,10 +128,27 @@ struct CoachChatView: View {
                         conversationStarters
                             .transition(.opacity.combined(with: .offset(y: 8)))
                     }
+
+                    // 最下部マーカー。画面外に出たら「読み返し中」とみなして
+                    // 自動追従を止める
+                    Color.clear
+                        .frame(height: 1)
+                        .onAppear { isNearBottom = true }
+                        .onDisappear { isNearBottom = false }
                 }
                 .padding(DesignSystem.Spacing.lg)
                 .animation(DesignSystem.Timing.spring, value: visibleMessages.count)
                 .animation(DesignSystem.Timing.spring, value: showsConversationStarters)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .overlay(alignment: .bottomTrailing) {
+                if !isNearBottom {
+                    scrollToBottomButton(proxy: proxy)
+                }
+            }
+            // 自分の送信では必ず最下部へ
+            .onChange(of: sendCount) { _, _ in
+                scrollToBottom(proxy: proxy, force: true)
             }
             .onChange(of: currentMessages.count) { _, _ in
                 scrollToBottom(proxy: proxy)
@@ -147,6 +169,29 @@ struct CoachChatView: View {
         }
     }
 
+    /// 読み返し中に新着へ戻るためのフローティングボタン
+    private func scrollToBottomButton(proxy: ScrollViewProxy) -> some View {
+        Button {
+            scrollToBottom(proxy: proxy, force: true)
+        } label: {
+            Image(systemName: "arrow.down")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(DesignSystem.Colors.accent)
+                .frame(width: 36, height: 36)
+                .background(DesignSystem.Colors.surface)
+                .clipShape(Circle())
+                .overlay(
+                    Circle().stroke(DesignSystem.Colors.grey.opacity(0.5), lineWidth: 0.5)
+                )
+                .shadow(color: DesignSystem.Colors.brownDark.opacity(0.18), radius: 6, x: 0, y: 3)
+        }
+        .buttonStyle(PressableButtonStyle(scale: 0.9))
+        .padding(.trailing, DesignSystem.Spacing.lg)
+        .padding(.bottom, DesignSystem.Spacing.md)
+        .transition(.scale(scale: 0.6).combined(with: .opacity))
+        .accessibilityLabel("最新のメッセージへ")
+    }
+
     // MARK: - Conversation Starters
 
     /// 初回挨拶だけの状態（ユーザーがまだ発言していない）かどうか
@@ -160,7 +205,7 @@ struct CoachChatView: View {
                 Button {
                     sendCount += 1
                     isTextFieldFocused = false
-                    Task { await coachStore.sendMessage(starter) }
+                    sendTask = Task { await coachStore.sendMessage(starter) }
                 } label: {
                     Text(starter)
                         .font(DesignSystem.Fonts.subheadline)
@@ -182,7 +227,11 @@ struct CoachChatView: View {
         .padding(.top, DesignSystem.Spacing.sm)
     }
 
-    private func scrollToBottom(proxy: ScrollViewProxy) {
+    private func scrollToBottom(proxy: ScrollViewProxy, force: Bool = false) {
+        // 読み返し中（最下部から離れている）は自動追従しない。
+        // 自分の送信や「最新へ」ボタンでは force で必ず移動する
+        guard force || isNearBottom else { return }
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             withAnimation(DesignSystem.Timing.easing) {
                 if coachStore.isLoading {
@@ -202,7 +251,18 @@ struct CoachChatView: View {
         return formatter
     }()
 
-    private func messageBubble(_ message: CoachMessage) -> some View {
+    /// 連続するメッセージのタイムスタンプは集約する。
+    /// 話者が変わる直前・3分以上空く直前・最後のメッセージにだけ表示する
+    private func shouldShowTimestamp(at index: Int) -> Bool {
+        let messages = visibleMessages
+        guard index < messages.count - 1 else { return true }
+        let current = messages[index]
+        let next = messages[index + 1]
+        return next.role != current.role
+            || next.createdAt.timeIntervalSince(current.createdAt) >= 180
+    }
+
+    private func messageBubble(_ message: CoachMessage, showsTimestamp: Bool = true) -> some View {
         HStack(alignment: .bottom, spacing: DesignSystem.Spacing.sm) {
             if message.role == .user {
                 Spacer(minLength: 60)
@@ -239,9 +299,11 @@ struct CoachChatView: View {
                         }
                     }
 
-                Text(timeFormatter.string(from: message.createdAt))
-                    .font(DesignSystem.Fonts.caption2)
-                    .foregroundStyle(DesignSystem.Colors.textTertiary)
+                if showsTimestamp {
+                    Text(timeFormatter.string(from: message.createdAt))
+                        .font(DesignSystem.Fonts.caption2)
+                        .foregroundStyle(DesignSystem.Colors.textTertiary)
+                }
             }
 
             if message.role == .coach {
@@ -359,21 +421,36 @@ struct CoachChatView: View {
                         sendMessage()
                     }
 
-                Button(action: sendMessage) {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.system(size: 32))
-                        .foregroundStyle(canSend ? DesignSystem.Colors.accent : DesignSystem.Colors.greyDark)
-                        .scaleEffect(canSend ? 1.0 : 0.92)
-                        .animation(DesignSystem.Timing.spring, value: canSend)
+                if coachStore.isLoading {
+                    // 生成中は停止ボタンに切り替える
+                    Button {
+                        sendTask?.cancel()
+                    } label: {
+                        Image(systemName: "stop.circle.fill")
+                            .font(.system(size: 32))
+                            .foregroundStyle(DesignSystem.Colors.accent)
+                    }
+                    .buttonStyle(PressableButtonStyle(scale: 0.9))
+                    .transition(.scale(scale: 0.8).combined(with: .opacity))
+                    .accessibilityLabel("生成を停止")
+                } else {
+                    Button(action: sendMessage) {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: 32))
+                            .foregroundStyle(canSend ? DesignSystem.Colors.accent : DesignSystem.Colors.greyDark)
+                            .scaleEffect(canSend ? 1.0 : 0.92)
+                            .animation(DesignSystem.Timing.spring, value: canSend)
+                    }
+                    .buttonStyle(PressableButtonStyle(scale: 0.9))
+                    .disabled(!canSend)
+                    .changeEffect(.feedback(hapticImpact: .light), value: sendCount)
+                    .accessibilityLabel("送信")
                 }
-                .buttonStyle(PressableButtonStyle(scale: 0.9))
-                .disabled(!canSend)
-                .changeEffect(.feedback(hapticImpact: .light), value: sendCount)
-                .accessibilityLabel("送信")
             }
             .padding(.horizontal, DesignSystem.Spacing.lg)
             .padding(.vertical, DesignSystem.Spacing.sm)
             .background(DesignSystem.Colors.background)
+            .animation(DesignSystem.Timing.fastEasing, value: coachStore.isLoading)
         }
     }
 
@@ -417,7 +494,7 @@ struct CoachChatView: View {
         isTextFieldFocused = false
         sendCount += 1
 
-        Task {
+        sendTask = Task {
             await coachStore.sendMessage(text)
         }
     }

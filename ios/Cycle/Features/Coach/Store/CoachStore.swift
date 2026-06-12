@@ -221,14 +221,20 @@ class CoachStore: ObservableObject {
                 }
             }
         } catch {
+            let isUserCancelled = error is CancellationError || (error as? URLError)?.code == .cancelled
             await MainActor.run {
                 // 失敗時は空のままのコーチ吹き出しを会話に残さない
                 removeLastCoachMessageIfEmpty()
-                let apiError = (error as? APIError) ?? .networkError(error)
-                self.lastAPIError = apiError
-                self.error = apiError.errorDescription
-                if apiError.requiresReauth {
-                    self.showReauthPrompt = true
+                if isUserCancelled {
+                    // ユーザーによる停止: 途中までの応答は残し、エラーにはしない
+                    if let session = currentSession { updateSession(session) }
+                } else {
+                    let apiError = (error as? APIError) ?? .networkError(error)
+                    self.lastAPIError = apiError
+                    self.error = apiError.errorDescription
+                    if apiError.requiresReauth {
+                        self.showReauthPrompt = true
+                    }
                 }
                 isLoading = false
             }
