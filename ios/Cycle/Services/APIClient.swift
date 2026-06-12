@@ -118,6 +118,37 @@ actor TokenRefreshCoordinator {
     }
 }
 
+// MARK: - Date Decoding
+
+/// サーバは datetime を小数秒付き ISO8601（例: `2026-06-12T13:31:22.342544+00:00`）で
+/// 返すことがあるが、`JSONDecoder.DateDecodingStrategy.iso8601` は小数秒を解析できない。
+/// 小数秒あり/なし両方を受け付けるカスタム戦略を使う。
+enum APIDateDecoding {
+    private static let iso8601Fractional: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    private static let iso8601: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
+    static let strategy: JSONDecoder.DateDecodingStrategy = .custom { decoder in
+        let container = try decoder.singleValueContainer()
+        let string = try container.decode(String.self)
+        if let date = iso8601Fractional.date(from: string) ?? iso8601.date(from: string) {
+            return date
+        }
+        throw DecodingError.dataCorruptedError(
+            in: container,
+            debugDescription: "ISO8601 として解析できない日時: \(string)"
+        )
+    }
+}
+
 // MARK: - API Client
 
 class APIClient {
@@ -235,7 +266,7 @@ class APIClient {
             do {
                 let decoder = JSONDecoder()
                 decoder.keyDecodingStrategy = .convertFromSnakeCase
-                decoder.dateDecodingStrategy = .iso8601
+                decoder.dateDecodingStrategy = APIDateDecoding.strategy
                 return try decoder.decode(T.self, from: data)
             } catch {
                 throw APIError.decodingError(error)
