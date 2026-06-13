@@ -16,7 +16,7 @@ struct OnboardingFirstJournalView: View {
         VStack(alignment: .leading, spacing: 24) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("はじめの一歩")
-                    .font(.system(size: 28, weight: .bold))
+                    .font(DesignSystem.Fonts.screenTitle)
                 Text("いま感じていることを、3 行でいいので書いてみましょう。短くて大丈夫。")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)

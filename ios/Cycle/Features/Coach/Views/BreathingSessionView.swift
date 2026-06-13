@@ -5,10 +5,12 @@
 
 import SwiftUI
 import UIKit
+import StoreKit
 
 struct BreathingSessionView: View {
     @EnvironmentObject var meditationStore: MeditationStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.requestReview) private var requestReview
 
     @State private var selectedDuration = 300
     @State private var isRunning = false
@@ -121,6 +123,22 @@ struct BreathingSessionView: View {
                 .multilineTextAlignment(.center)
         }
         .padding(.horizontal, DesignSystem.Spacing.lg)
+        .onAppear { maybeRequestReview() }
+    }
+
+    /// セッション完了というポジティブな瞬間にだけ、控えめにレビューを依頼する。
+    /// 2回目と10回目の完了時のみ（OS 側でも年3回までに制限される）
+    private func maybeRequestReview() {
+        guard !TestDataProvider.isUITesting else { return }
+
+        let key = "breathingCompletedCount"
+        let count = UserDefaults.standard.integer(forKey: key) + 1
+        UserDefaults.standard.set(count, forKey: key)
+
+        guard count == 2 || count == 10 else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            requestReview()
+        }
     }
 
     @ViewBuilder

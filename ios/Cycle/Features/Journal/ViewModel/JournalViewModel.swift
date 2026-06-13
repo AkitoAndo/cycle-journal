@@ -99,6 +99,34 @@ final class JournalViewModel: ObservableObject {
                .sorted { $0.deletedAt! > $1.deletedAt! }
     }
 
+    /// 連続記録日数。
+    /// 今日を起点に、エントリのある日が何日連続しているかを数える。
+    /// 今日まだ書いていない場合は昨日を起点にする（書く前にストリークが
+    /// 0 に見えてしまわないように）。
+    var streakDays: Int {
+        let calendar = Calendar.current
+        let activeDays = Set(
+            entries.filter { $0.deletedAt == nil }
+                .map { calendar.startOfDay(for: $0.date) }
+        )
+        guard !activeDays.isEmpty else { return 0 }
+
+        var day = calendar.startOfDay(for: Date())
+        if !activeDays.contains(day) {
+            guard let yesterday = calendar.date(byAdding: .day, value: -1, to: day),
+                  activeDays.contains(yesterday) else { return 0 }
+            day = yesterday
+        }
+
+        var streak = 0
+        while activeDays.contains(day) {
+            streak += 1
+            guard let previous = calendar.date(byAdding: .day, value: -1, to: day) else { break }
+            day = previous
+        }
+        return streak
+    }
+
     /// 利用可能な全てのタグ（作成済み + エントリで使用中）
     var allTags: [String] {
         let entryTags = entries.flatMap { $0.tags }

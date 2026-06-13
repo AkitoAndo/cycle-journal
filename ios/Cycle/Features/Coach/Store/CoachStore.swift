@@ -141,6 +141,20 @@ class CoachStore: ObservableObject {
         currentSession = session
     }
 
+    /// streaming が失敗した（または1文字も届かなかった）場合に、
+    /// 空のままのコーチメッセージを会話から取り除く
+    private func removeLastCoachMessageIfEmpty() {
+        guard var session = currentSession,
+              let last = session.messages.last,
+              last.role == .coach,
+              last.content.isEmpty
+        else { return }
+        session.messages.removeLast()
+        session.updatedAt = Date()
+        currentSession = session
+        updateSession(session)
+    }
+
     // MARK: - API Integration
 
     /// コーチに問いかける（API呼び出し、SSE streaming）
@@ -183,6 +197,13 @@ class CoachStore: ObservableObject {
                 }
 
                 await MainActor.run {
+                    // 1文字も届かずに終わった場合は空の吹き出しを残さない
+                    if accumulated.isEmpty {
+                        removeLastCoachMessageIfEmpty()
+                        if receivedError == nil {
+                            self.error = "コーチからの応答を受け取れませんでした。もう一度お試しください。"
+                        }
+                    }
                     if let session = currentSession { updateSession(session) }
                     if let reason = receivedError {
                         self.error = "コーチ応答が中断されました (\(reason))"
@@ -200,12 +221,20 @@ class CoachStore: ObservableObject {
                 }
             }
         } catch {
+            let isUserCancelled = error is CancellationError || (error as? URLError)?.code == .cancelled
             await MainActor.run {
-                let apiError = (error as? APIError) ?? .networkError(error)
-                self.lastAPIError = apiError
-                self.error = apiError.errorDescription
-                if apiError.requiresReauth {
-                    self.showReauthPrompt = true
+                // 失敗時は空のままのコーチ吹き出しを会話に残さない
+                removeLastCoachMessageIfEmpty()
+                if isUserCancelled {
+                    // ユーザーによる停止: 途中までの応答は残し、エラーにはしない
+                    if let session = currentSession { updateSession(session) }
+                } else {
+                    let apiError = (error as? APIError) ?? .networkError(error)
+                    self.lastAPIError = apiError
+                    self.error = apiError.errorDescription
+                    if apiError.requiresReauth {
+                        self.showReauthPrompt = true
+                    }
                 }
                 isLoading = false
             }
@@ -293,8 +322,28 @@ class CoachStore: ObservableObject {
 
     // MARK: - Server Sync
 
+    /// 自動同期の最小間隔。履歴シートを開くたびに `.task` が発火するため、
+    /// これがないと毎回サーバを叩いてしまう
+    private static let serverSyncMinInterval: TimeInterval = 300
+    private var lastSessionsSyncAt: Date?
+
     /// サーバーからセッション履歴を取得してマージ
-    func fetchServerSessions() async {
+    /// - Parameter force: true なら鮮度チェックを無視して必ず同期する
+    ///   （Pull-to-refresh などユーザーの明示操作用）
+    func fetchServerSessions(force: Bool = false) async {
+        #if DEBUG
+        if CommandLine.arguments.contains("--uitesting") {
+            return // UI テスト時はネットワーク同期しない（auth 状態を壊さないため）
+        }
+        #endif
+
+        // 直近に同期済みなら自動同期はスキップ（サーバ負荷とバッテリーの節約）
+        if !force,
+           let last = lastSessionsSyncAt,
+           Date().timeIntervalSince(last) < Self.serverSyncMinInterval {
+            return
+        }
+
         await MainActor.run {
             isLoading = true
         }
@@ -314,6 +363,7 @@ class CoachStore: ObservableObject {
                     sessions.sort { $0.updatedAt > $1.updatedAt }
                     saveSessions()
                 }
+                lastSessionsSyncAt = Date()
                 isLoading = false
             }
         } catch {

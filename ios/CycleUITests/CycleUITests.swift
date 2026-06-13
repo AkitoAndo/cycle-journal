@@ -154,6 +154,38 @@ final class CycleUITests: XCTestCase {
         takeScreenshot("coach-home")
     }
 
+    @MainActor
+    func testScreenshots_Coach_02_Chat() {
+        tapTab("Coach")
+        waitAndTap(app.buttons["話しかける"])
+
+        // 初回のコーチメッセージが出るのを待つ
+        _ = app.staticTexts
+            .matching(NSPredicate(format: "label CONTAINS 'こんにちは'"))
+            .firstMatch
+            .waitForExistence(timeout: 5)
+
+        // 会話スターターが表示されている
+        XCTAssertTrue(
+            app.buttons["今日あったことを話したい"].waitForExistence(timeout: 3),
+            "会話スターターが表示されない"
+        )
+        takeScreenshot("coach-chat-start")
+
+        // モック応答も1往復させてユーザー/コーチ両方の吹き出しを写す
+        let field = app.textFields.firstMatch
+        if field.waitForExistence(timeout: 3) {
+            field.tap()
+            field.typeText("今日は少し疲れた")
+            app.buttons["送信"].tap()
+            _ = app.staticTexts
+                .matching(NSPredicate(format: "label CONTAINS '？'"))
+                .firstMatch
+                .waitForExistence(timeout: 5)
+        }
+        takeScreenshot("coach-chat")
+    }
+
     // MARK: - Settings Screenshots
 
     @MainActor
@@ -222,7 +254,11 @@ final class CycleUITests: XCTestCase {
         titleField.typeText("UIテストから作成したタスク")
         app.buttons["保存"].tap()
 
+        // 新規タスクはリスト末尾に追加されるため、画面外ならスクロールして探す
         let newTask = app.staticTexts["UIテストから作成したタスク"]
+        for _ in 0..<3 where !newTask.waitForExistence(timeout: 2) {
+            app.swipeUp()
+        }
         XCTAssertTrue(newTask.waitForExistence(timeout: 3))
     }
 

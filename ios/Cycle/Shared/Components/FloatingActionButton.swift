@@ -62,13 +62,14 @@ private struct FABBackgroundStyle: ViewModifier {
                 .glassEffect(.regular.interactive(), in: .circle)
         } else {
             content
-                .background(DesignSystem.Colors.accent)
+                .background(DesignSystem.Colors.accentGradient)
                 .clipShape(Circle())
+                // アクセント色のソフトシャドウで背景に馴染む浮遊感を出す
                 .shadow(
-                    color: Color.black.opacity(0.2),
-                    radius: 8,
+                    color: DesignSystem.Colors.brownDark.opacity(0.30),
+                    radius: 10,
                     x: 0,
-                    y: 4
+                    y: 5
                 )
         }
     }
