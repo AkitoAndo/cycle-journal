@@ -38,6 +38,7 @@ struct PrimaryButton: View {
         } label: {
             buttonContent
         }
+        .buttonStyle(PressableButtonStyle())
         .modifier(PrimaryButtonStyle(color: color))
         .changeEffect(.shine(angle: .degrees(24), duration: DesignSystem.Timing.slow), value: tapCount)
         .changeEffect(.feedback(hapticImpact: .light), value: tapCount)
@@ -83,6 +84,7 @@ struct SecondaryButton: View {
         } label: {
             buttonContent
         }
+        .buttonStyle(PressableButtonStyle())
         .modifier(SecondaryButtonStyle(color: color))
         .changeEffect(
             .pulse(
@@ -123,8 +125,19 @@ private struct PrimaryButtonStyle: ViewModifier {
         } else {
             content
                 .foregroundStyle(.white)
-                .background(color)
+                .background(
+                    // 単色の上に上端ハイライトを重ねて奥行きを出す
+                    ZStack {
+                        color
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.16), .clear],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    }
+                )
                 .clipShape(RoundedRectangle(cornerRadius: 12))
+                .shadow(color: color.opacity(0.25), radius: 8, x: 0, y: 4)
         }
     }
 }

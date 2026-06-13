@@ -14,52 +14,89 @@ struct ContentView: View {
     @EnvironmentObject private var journalViewModel: JournalViewModel
     @EnvironmentObject private var authStore: AuthStore
     @EnvironmentObject private var taskViewModel: TaskViewModel
+    @EnvironmentObject private var subscriptionStore: SubscriptionStore
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
 
+    /// アプリ起動時のフロー:
+    ///
+    ///   1. Onboarding 体験 (登録なし・カード不要) ← user spec ステップ1
+    ///   2. SignIn (Apple/Google) — 課金主体を identify
+    ///   3. Paywall (Apple 標準 Introductory Offer = 3日間無料トライアル) ← user spec ステップ2
+    ///   4. Main (全機能)
+    ///
+    /// 全機能は有料パッケージなので Paywall はハードゲート。
+    /// オンボーディングだけは認証もカードも不要で循環の触り体験を提供する。
     var body: some View {
         Group {
-            switch authStore.state {
-            case .unknown:
-                splashView
-            case .unauthenticated:
-                SignInView()
-            case .authenticated:
-                mainContent
+            if !hasCompletedOnboarding {
+                OnboardingView()
+            } else {
+                switch authStore.state {
+                case .unknown:
+                    splashView
+                case .unauthenticated:
+                    SignInView()
+                case .authenticated:
+                    authenticatedContent
+                }
             }
         }
     }
 
-    private var splashView: some View {
-        ZStack {
-            DesignSystem.Colors.background.ignoresSafeArea()
-            ProgressView()
+    @ViewBuilder
+    private var authenticatedContent: some View {
+        switch subscriptionStore.state {
+        case .unknown:
+            splashView
+                .task {
+                    await subscriptionStore.loadProducts()
+                    await subscriptionStore.refreshEntitlements()
+                }
+        case .notSubscribed, .expired:
+            PaywallView()
+        case .trial, .active:
+            mainContent
         }
+    }
+
+    private var splashView: some View {
+        SplashView()
     }
 
     private var mainContent: some View {
         ZStack(alignment: .bottom) {
-            Group {
+            // タブは switch で出し分ける（非表示タブをビュー階層に残すと
+            // NavigationStack 境界で accessibilityHidden が効かず、
+            // VoiceOver / UI テストに非表示タブの要素が漏れるため）。
+            // 出現アニメーションの再発火は StaggeredAppear のセッションメモリで防ぐ。
+            ZStack {
                 switch selectedTab {
                 case 0:
                     NavigationStack {
                         JournalListView()
                     }
+                    .transition(tabTransition)
                 case 1:
                     NavigationStack {
                         CoachHomeView()
                     }
+                    .transition(tabTransition)
                 case 2:
                     NavigationStack {
                         TaskListView()
                     }
+                    .transition(tabTransition)
                 case 3:
                     SettingsView()
+                        .transition(tabTransition)
                 default:
                     NavigationStack {
                         JournalListView()
                     }
+                    .transition(tabTransition)
                 }
             }
+            .animation(DesignSystem.Timing.gentleSpring, value: selectedTab)
             .padding(.bottom, 55)
 
             CustomTabBar(selectedTab: $selectedTab)
@@ -69,11 +106,39 @@ struct ContentView: View {
             coachStore.shouldOpenChat = true
         }
         .ignoresSafeArea(.keyboard)
-        .overlay {
-            if !hasCompletedOnboarding {
-                OnboardingView()
-                    .transition(.opacity)
-            }
+    }
+
+
+    /// タブ切替時のクロスフェード + わずかなスケール
+    private var tabTransition: AnyTransition {
+        .opacity.combined(with: .scale(scale: 0.98))
+    }
+}
+
+// MARK: - Splash
+
+/// 起動直後（認証状態の確認中）に表示するスプラッシュ
+/// ロゴがゆっくり呼吸するアニメーション付き
+private struct SplashView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isBreathing = false
+
+    var body: some View {
+        ZStack {
+            DesignSystem.Colors.backgroundGradient.ignoresSafeArea()
+
+            Image("CycleIcon")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 96, height: 96)
+                .clipShape(Circle())
+                .scaleEffect(isBreathing ? 1.06 : 0.98)
+                .onAppear {
+                    guard !reduceMotion else { return }
+                    withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) {
+                        isBreathing = true
+                    }
+                }
         }
     }
 }
@@ -82,6 +147,7 @@ struct ContentView: View {
 
 struct CustomTabBar: View {
     @Binding var selectedTab: Int
+    @Namespace private var indicatorNamespace
 
     var body: some View {
         HStack(spacing: 0) {
@@ -89,36 +155,54 @@ struct CustomTabBar: View {
                 icon: "leaf",
                 selectedIcon: "leaf.fill",
                 label: "ジャーナル",
+                identifier: "tab_Journal",
                 isSelected: selectedTab == 0,
-                action: { selectedTab = 0 }
+                namespace: indicatorNamespace,
+                action: { select(0) }
             )
 
             TabBarButton(
                 icon: "bubble.left.and.bubble.right",
                 selectedIcon: "bubble.left.and.bubble.right.fill",
                 label: "セッション",
+                identifier: "tab_Coach",
                 isSelected: selectedTab == 1,
-                action: { selectedTab = 1 }
+                namespace: indicatorNamespace,
+                action: { select(1) }
             )
 
             TabBarButton(
                 icon: "checklist",
                 selectedIcon: "checklist.checked",
                 label: "タスクリスト",
+                identifier: "tab_Tasks",
                 isSelected: selectedTab == 2,
-                action: { selectedTab = 2 }
+                namespace: indicatorNamespace,
+                action: { select(2) }
             )
 
             TabBarButton(
                 icon: "gearshape",
                 selectedIcon: "gearshape.fill",
                 label: "設定",
+                identifier: "tab_Settings",
                 isSelected: selectedTab == 3,
-                action: { selectedTab = 3 }
+                namespace: indicatorNamespace,
+                action: { select(3) }
             )
         }
         .frame(height: 55)
         .background(DesignSystem.Colors.background)
+        .overlay(alignment: .top) {
+            Divider()
+                .background(DesignSystem.Colors.grey.opacity(0.4))
+        }
+    }
+
+    private func select(_ tab: Int) {
+        withAnimation(DesignSystem.Timing.bouncySpring) {
+            selectedTab = tab
+        }
     }
 }
 
@@ -126,7 +210,10 @@ struct TabBarButton: View {
     let icon: String
     let selectedIcon: String
     let label: String
+    /// 表示ラベルと独立した UI テスト用の安定 ID（例: "tab_Journal"）
+    let identifier: String
     let isSelected: Bool
+    let namespace: Namespace.ID
     let action: () -> Void
 
     var body: some View {
@@ -149,10 +236,19 @@ struct TabBarButton: View {
                     .font(.system(size: 10))
             }
             .foregroundStyle(isSelected ? DesignSystem.Colors.accent : DesignSystem.Colors.textSecondary)
+            .padding(.vertical, 6)
             .frame(maxWidth: .infinity)
+            .background {
+                if isSelected {
+                    Capsule()
+                        .fill(DesignSystem.Colors.accent.opacity(0.10))
+                        .matchedGeometryEffect(id: "tabIndicator", in: namespace)
+                        .padding(.horizontal, DesignSystem.Spacing.md)
+                }
+            }
         }
         .animation(DesignSystem.Timing.easing, value: isSelected)
-        .accessibilityIdentifier("tab_\(label)")
+        .accessibilityIdentifier(identifier)
     }
 }
 

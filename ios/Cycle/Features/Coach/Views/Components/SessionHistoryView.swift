@@ -70,6 +70,9 @@ struct SessionHistoryView: View {
             .task {
                 await coachStore.fetchServerSessions()
             }
+            .refreshable {
+                await coachStore.fetchServerSessions(force: true)
+            }
             .sheet(item: $selectedSession) { session in
                 SessionDetailView(session: session)
                     .environmentObject(coachStore)

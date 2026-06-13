@@ -67,8 +67,8 @@ struct CycleApp: App {
             clientID: "1031235624127-6fgcbv1khltu4snpktpdd0cab025coab.apps.googleusercontent.com"
         )
 
-        let backgroundColor = UIColor(red: 0.99, green: 0.99, blue: 0.98, alpha: 1.0)
-        let titleColor = UIColor(red: 0.15, green: 0.15, blue: 0.15, alpha: 1.0)
+        let backgroundColor = DesignSystem.Colors.backgroundUIColor
+        let titleColor = DesignSystem.Colors.textPrimaryUIColor
 
         // iOS 26+: 透明ナビバー（Liquid Glass はSwiftUI側で適用）
         if #available(iOS 26.0, *) {
@@ -95,7 +95,7 @@ struct CycleApp: App {
             UINavigationBar.appearance().scrollEdgeAppearance = appearance
         }
 
-        UIView.appearance(whenContainedInInstancesOf: [UIAlertController.self]).tintColor = UIColor(red: 0.55, green: 0.45, blue: 0.35, alpha: 1.0)
+        UIView.appearance(whenContainedInInstancesOf: [UIAlertController.self]).tintColor = DesignSystem.Colors.accentUIColor
 
         UITableView.appearance().backgroundColor = backgroundColor
         UICollectionView.appearance().backgroundColor = backgroundColor
@@ -109,6 +109,7 @@ struct CycleApp: App {
     @StateObject private var coachStore = CoachStore()
     @StateObject private var meditationStore = MeditationStore()
     @StateObject private var authStore = AuthStore()
+    @StateObject private var subscriptionStore = SubscriptionStore()
 
     var body: some Scene {
         WindowGroup {
@@ -118,12 +119,12 @@ struct CycleApp: App {
                 }
             } else {
                 ContentView()
-                    .preferredColorScheme(.light)
                     .environmentObject(journalViewModel)
                     .environmentObject(taskViewModel)
                     .environmentObject(coachStore)
                     .environmentObject(meditationStore)
                     .environmentObject(authStore)
+                    .environmentObject(subscriptionStore)
                     .onOpenURL { url in
                         GIDSignIn.sharedInstance.handle(url)
                     }

@@ -247,6 +247,11 @@ class AuthStore: NSObject, ObservableObject {
     func checkAuthState() async {
         #if DEBUG
         if CommandLine.arguments.contains("--uitesting") {
+            // 過去の実サインインで残った Keychain 資格情報を無視し、
+            // 常に決定的なモック認証状態にする。
+            // ネットワークは APIClient 側がオフライン化するため、
+            // ここでは API トークンを設定しない（useAPI を false に保ち、
+            // コーチがモック応答を返すようにする）。
             currentUser = AuthUser(
                 userId: "ui-test-user",
                 appleUserId: nil,

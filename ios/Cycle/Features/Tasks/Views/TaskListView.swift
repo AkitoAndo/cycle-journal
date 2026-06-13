@@ -31,18 +31,23 @@ struct TaskListView: View {
             }
             .sheet(isPresented: $showNewTask) {
                 TaskNewEntryView(vm: vm)
+                    .softSheet()
             }
             .sheet(item: $editingTask) { task in
                 TaskEditView(vm: vm, task: task)
+                    .softSheet()
             }
             .sheet(item: $previewingTask) { task in
                 TaskPreviewView(task: task)
+                    .softSheet()
             }
             .sheet(isPresented: $showArchive) {
                 TaskArchiveView(vm: vm)
+                    .softSheet()
             }
             .sheet(isPresented: $showDeleted) {
                 TaskDeletedView(vm: vm)
+                    .softSheet()
             }
     }
 
@@ -67,7 +72,7 @@ struct TaskListView: View {
                     isRetryable: error.isRetryable,
                     onRetry: {
                         vm.clearSyncError()
-                        Task { await vm.fetchServerTasks() }
+                        Task { await vm.fetchServerTasks(force: true) }
                     },
                     onDismiss: { vm.clearSyncError() }
                 )
@@ -75,7 +80,7 @@ struct TaskListView: View {
 
             taskListOrEmptyState
         }
-        .background(DesignSystem.Colors.background)
+        .background(DesignSystem.Colors.backgroundGradient)
         .alert("再ログインが必要です", isPresented: $vm.showReauthPrompt) {
             Button("OK") {
                 vm.showReauthPrompt = false
@@ -107,7 +112,13 @@ struct TaskListView: View {
     @ViewBuilder
     private var taskListOrEmptyState: some View {
         if vm.tasks.isEmpty {
-            EmptyStateView(icon: "checkmark.circle", title: "タスクがまだありません", subtitle: "＋ボタンから新しいタスクを追加しましょう")
+            EmptyStateView(
+                icon: "checkmark.circle",
+                title: "タスクがまだありません",
+                subtitle: "小さなタスクから始めてみましょう",
+                actionTitle: "タスクを追加",
+                action: { showNewTask = true }
+            )
         } else {
             ZStack(alignment: .top) {
                 TaskList(
@@ -133,6 +144,9 @@ struct TaskListView: View {
                         vm.archiveTask(task)
                     }
                 )
+                .refreshable {
+                    await vm.fetchServerTasks(force: true)
+                }
 
                 LinearGradient(
                     colors: [DesignSystem.Colors.background, DesignSystem.Colors.background.opacity(0)],

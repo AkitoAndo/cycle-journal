@@ -61,6 +61,8 @@ enum TestDataProvider {
         JSONFileStore.save([TaskArchive](), to: "task_archives.json")
         // タグ
         UserDefaults.standard.removeObject(forKey: "availableTags")
+        // コーチセッション（過去セッションが残っていると表示が不定になる）
+        UserDefaults.standard.removeObject(forKey: "CoachSessions")
     }
 
     // MARK: - Journal

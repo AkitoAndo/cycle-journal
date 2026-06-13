@@ -36,7 +36,7 @@ struct SettingsView: View {
                         HStack {
                             Image(systemName: "person.circle.fill")
                                 .font(DesignSystem.Fonts.screenTitle)
-                                .foregroundColor(.green)
+                                .foregroundColor(DesignSystem.Colors.accent)
 
                             VStack(alignment: .leading) {
                                 if let user = authStore.currentUser {
@@ -259,14 +259,19 @@ struct SettingsView: View {
             }
             .navigationTitle("設定")
             .modifier(GlassNavBarModifier())
+            .scrollContentBackground(.hidden)
+            .background(DesignSystem.Colors.backgroundGradient)
+            .tint(DesignSystem.Colors.accent)
             .sheet(isPresented: $showingPaywall) {
                 PaywallView()
+                    .softSheet()
             }
             .sheet(isPresented: $showingDataExport) {
                 DataExportView()
                     .environmentObject(journalViewModel)
                     .environmentObject(taskViewModel)
                     .environmentObject(coachStore)
+                    .softSheet()
             }
             .alert("サインアウト", isPresented: $showingSignOutAlert) {
                 Button("キャンセル", role: .cancel) {}
@@ -278,6 +283,7 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showingComponentCatalog) {
                 ComponentCatalogView()
+                    .softSheet()
             }
             .alert("全データを削除", isPresented: $showingClearDataAlert) {
                 Button("キャンセル", role: .cancel) {}
@@ -299,7 +305,10 @@ struct SettingsView: View {
             }
             .task {
                 await checkNotificationPermission()
-                await subscriptionStore.loadProducts()
+                // 商品情報はほぼ不変なので取得済みなら再取得しない
+                if subscriptionStore.products.isEmpty {
+                    await subscriptionStore.loadProducts()
+                }
                 await subscriptionStore.refreshEntitlements()
             }
         }
@@ -313,7 +322,7 @@ struct SettingsView: View {
         case .active(_, let expiresAt), .trial(_, let expiresAt):
             HStack {
                 Image(systemName: "checkmark.seal.fill")
-                    .foregroundColor(.green)
+                    .foregroundColor(DesignSystem.Colors.accent)
                 VStack(alignment: .leading) {
                     Text("Cycle Premium")
                         .font(DesignSystem.Fonts.button)
@@ -473,7 +482,7 @@ struct DataExportView: View {
 
                 Image(systemName: "square.and.arrow.up")
                     .font(DesignSystem.Fonts.heroIcon)
-                    .foregroundColor(.blue)
+                    .foregroundColor(DesignSystem.Colors.accent)
 
                 VStack(spacing: DesignSystem.Spacing.sm) {
                     Text("データエクスポート")
@@ -524,7 +533,7 @@ struct DataExportView: View {
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(Color.blue)
+                .background(DesignSystem.Colors.accentGradient)
                 .cornerRadius(12)
                 .disabled(isExporting)
                 .padding(.horizontal)

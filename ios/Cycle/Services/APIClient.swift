@@ -118,6 +118,37 @@ actor TokenRefreshCoordinator {
     }
 }
 
+// MARK: - Date Decoding
+
+/// サーバは datetime を小数秒付き ISO8601（例: `2026-06-12T13:31:22.342544+00:00`）で
+/// 返すことがあるが、`JSONDecoder.DateDecodingStrategy.iso8601` は小数秒を解析できない。
+/// 小数秒あり/なし両方を受け付けるカスタム戦略を使う。
+enum APIDateDecoding {
+    private static let iso8601Fractional: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    private static let iso8601: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
+    static let strategy: JSONDecoder.DateDecodingStrategy = .custom { decoder in
+        let container = try decoder.singleValueContainer()
+        let string = try container.decode(String.self)
+        if let date = iso8601Fractional.date(from: string) ?? iso8601.date(from: string) {
+            return date
+        }
+        throw DecodingError.dataCorruptedError(
+            in: container,
+            debugDescription: "ISO8601 として解析できない日時: \(string)"
+        )
+    }
+}
+
 // MARK: - API Client
 
 class APIClient {
@@ -146,6 +177,24 @@ class APIClient {
         self.session = URLSession(configuration: config)
     }
 
+    /// UI テスト時はネットワークへ出ない。
+    /// `--uitesting` ではモック認証のため実トークンが無く、認証付きリクエストが
+    /// 401 → トークンリフレッシュ失敗 → サインアウトを引き起こしてテストが
+    /// サインイン画面に落ちる。全リクエストをここで `.offline` として弾くことで、
+    /// 各 sync メソッドはローカル状態を保ったまま静かに失敗する。
+    /// （ユニットテストは `--uitesting` を付けないため実サーバへ到達する。）
+    private static let isOfflineTestMode: Bool = {
+        #if DEBUG
+        return CommandLine.arguments.contains("--uitesting")
+        #else
+        return false
+        #endif
+    }()
+
+    private func assertOnline() throws {
+        if Self.isOfflineTestMode { throw APIError.offline }
+    }
+
     // MARK: - Auth Token Management
 
     func setAuthToken(_ token: String?) {
@@ -161,6 +210,30 @@ class APIClient {
         self.tokenRefresher = refresher
     }
 
+    // MARK: - Transient Error Retry
+
+    /// 一時的な通信エラー（QUIC/HTTP3 の接続断 -1017, -1005 等）かどうか
+    private static func isTransient(_ error: URLError) -> Bool {
+        error.code == .cannotParseResponse || error.code == .networkConnectionLost
+    }
+
+    /// リトライしても安全なリクエストかどうか。
+    /// GET は冪等なので常に可。POST は二重実行の副作用がない認証系のみ可。
+    private static func isSafeToRetry(_ request: URLRequest) -> Bool {
+        if request.httpMethod == "GET" { return true }
+        return request.url?.path.hasPrefix("/auth/") == true
+    }
+
+    /// 一時的なネットワークエラーを短い待機を挟んで1回だけリトライする
+    private func sendWithTransientRetry(_ request: URLRequest) async throws -> (Data, URLResponse) {
+        do {
+            return try await session.data(for: request)
+        } catch let error as URLError where Self.isTransient(error) && Self.isSafeToRetry(request) {
+            try await Task.sleep(nanoseconds: 600_000_000)
+            return try await session.data(for: request)
+        }
+    }
+
     // MARK: - 401 Retry
 
     /// 401時に refresh → 1回だけリトライ。
@@ -169,7 +242,7 @@ class APIClient {
         _ request: URLRequest,
         requiresAuth: Bool
     ) async throws -> (Data, URLResponse) {
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await sendWithTransientRetry(request)
 
         guard requiresAuth,
               let http = response as? HTTPURLResponse,
@@ -235,7 +308,7 @@ class APIClient {
             do {
                 let decoder = JSONDecoder()
                 decoder.keyDecodingStrategy = .convertFromSnakeCase
-                decoder.dateDecodingStrategy = .iso8601
+                decoder.dateDecodingStrategy = APIDateDecoding.strategy
                 return try decoder.decode(T.self, from: data)
             } catch {
                 throw APIError.decodingError(error)
@@ -265,6 +338,7 @@ class APIClient {
         queryItems: [URLQueryItem]? = nil,
         requiresAuth: Bool = true
     ) async throws -> T {
+        try assertOnline()
         let url = try buildURL(path: path, queryItems: queryItems)
         let request = buildRequest(url: url, method: "GET", requiresAuth: requiresAuth)
 
@@ -288,6 +362,7 @@ class APIClient {
         body: U,
         requiresAuth: Bool = true
     ) throws -> URLRequest {
+        try assertOnline()
         let url = try buildURL(path: path)
         let encoder = JSONEncoder()
         encoder.keyEncodingStrategy = .convertToSnakeCase
@@ -308,6 +383,7 @@ class APIClient {
         body: U,
         requiresAuth: Bool = true
     ) async throws -> T {
+        try assertOnline()
         let url = try buildURL(path: path)
 
         let encoder = JSONEncoder()
@@ -336,6 +412,7 @@ class APIClient {
         body: U,
         requiresAuth: Bool = true
     ) async throws -> T {
+        try assertOnline()
         let url = try buildURL(path: path)
 
         let encoder = JSONEncoder()
@@ -363,6 +440,7 @@ class APIClient {
         path: String,
         requiresAuth: Bool = true
     ) async throws {
+        try assertOnline()
         let url = try buildURL(path: path)
         let request = buildRequest(url: url, method: "DELETE", requiresAuth: requiresAuth)
 

@@ -18,7 +18,7 @@ struct TaskHeader: View {
     var body: some View {
         HStack(alignment: .center) {
             Text("タスクリスト")
-                .font(.system(size: 28, weight: .bold))
+                .font(DesignSystem.Fonts.screenTitle)
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
 
             Spacer()
@@ -44,6 +44,8 @@ struct TaskHeader: View {
                     .foregroundStyle(DesignSystem.Colors.textSecondary)
                     .modifier(GlassIconModifier())
             }
+            .accessibilityLabel("メニュー")
+            .accessibilityIdentifier("task_menu")
         }
         .padding(.horizontal, DesignSystem.Spacing.lg)
         .padding(.top, DesignSystem.Spacing.md)

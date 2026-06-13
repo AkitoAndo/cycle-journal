@@ -66,6 +66,13 @@ final class SubscriptionService {
     }
 
     func registerAPNsDeviceToken(_ token: String) async throws {
+        #if DEBUG
+        // UI テスト時はサーバ登録しない。モック認証では 401 となり、
+        // 401 リトライ経路がトークンリフレッシュ失敗 → サインアウトを
+        // 引き起こしてテストがサインイン画面に落ちるため。
+        if CommandLine.arguments.contains("--uitesting") { return }
+        #endif
+
         let request = IAPDeviceTokenRequest(
             deviceToken: token,
             environment: Self.apnsEnvironment

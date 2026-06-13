@@ -42,14 +42,32 @@ private struct SurfaceCardStyle: ViewModifier {
                 .background(DesignSystem.Colors.surface)
                 .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous))
                 .overlay(
+                    // 上端を白く、下端をグレーにしたヘアラインで立体感を出す
                     RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous)
-                        .stroke(DesignSystem.Colors.grey.opacity(0.6), lineWidth: 0.5)
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    DesignSystem.Colors.hairlineHighlight,
+                                    DesignSystem.Colors.grey.opacity(0.6)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            ),
+                            lineWidth: 0.5
+                        )
+                )
+                // 近接シャドウ（輪郭）と拡散シャドウ（浮遊感）の2層
+                .shadow(
+                    color: DesignSystem.Colors.brownDark.opacity(0.06),
+                    radius: 1.5,
+                    x: 0,
+                    y: 1
                 )
                 .shadow(
-                    color: DesignSystem.Colors.brownDark.opacity(0.08),
-                    radius: 4,
+                    color: DesignSystem.Colors.brownDark.opacity(0.07),
+                    radius: 12,
                     x: 0,
-                    y: 2
+                    y: 6
                 )
         }
     }
