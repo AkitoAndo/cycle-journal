@@ -177,6 +177,24 @@ class APIClient {
         self.session = URLSession(configuration: config)
     }
 
+    /// UI テスト時はネットワークへ出ない。
+    /// `--uitesting` ではモック認証のため実トークンが無く、認証付きリクエストが
+    /// 401 → トークンリフレッシュ失敗 → サインアウトを引き起こしてテストが
+    /// サインイン画面に落ちる。全リクエストをここで `.offline` として弾くことで、
+    /// 各 sync メソッドはローカル状態を保ったまま静かに失敗する。
+    /// （ユニットテストは `--uitesting` を付けないため実サーバへ到達する。）
+    private static let isOfflineTestMode: Bool = {
+        #if DEBUG
+        return CommandLine.arguments.contains("--uitesting")
+        #else
+        return false
+        #endif
+    }()
+
+    private func assertOnline() throws {
+        if Self.isOfflineTestMode { throw APIError.offline }
+    }
+
     // MARK: - Auth Token Management
 
     func setAuthToken(_ token: String?) {
@@ -320,6 +338,7 @@ class APIClient {
         queryItems: [URLQueryItem]? = nil,
         requiresAuth: Bool = true
     ) async throws -> T {
+        try assertOnline()
         let url = try buildURL(path: path, queryItems: queryItems)
         let request = buildRequest(url: url, method: "GET", requiresAuth: requiresAuth)
 
@@ -343,6 +362,7 @@ class APIClient {
         body: U,
         requiresAuth: Bool = true
     ) throws -> URLRequest {
+        try assertOnline()
         let url = try buildURL(path: path)
         let encoder = JSONEncoder()
         encoder.keyEncodingStrategy = .convertToSnakeCase
@@ -363,6 +383,7 @@ class APIClient {
         body: U,
         requiresAuth: Bool = true
     ) async throws -> T {
+        try assertOnline()
         let url = try buildURL(path: path)
 
         let encoder = JSONEncoder()
@@ -391,6 +412,7 @@ class APIClient {
         body: U,
         requiresAuth: Bool = true
     ) async throws -> T {
+        try assertOnline()
         let url = try buildURL(path: path)
 
         let encoder = JSONEncoder()
@@ -418,6 +440,7 @@ class APIClient {
         path: String,
         requiresAuth: Bool = true
     ) async throws {
+        try assertOnline()
         let url = try buildURL(path: path)
         let request = buildRequest(url: url, method: "DELETE", requiresAuth: requiresAuth)
 

@@ -305,7 +305,10 @@ struct SettingsView: View {
             }
             .task {
                 await checkNotificationPermission()
-                await subscriptionStore.loadProducts()
+                // 商品情報はほぼ不変なので取得済みなら再取得しない
+                if subscriptionStore.products.isEmpty {
+                    await subscriptionStore.loadProducts()
+                }
                 await subscriptionStore.refreshEntitlements()
             }
         }

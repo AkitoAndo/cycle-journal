@@ -319,13 +319,28 @@ final class TaskViewModel: ObservableObject {
 
     // MARK: - Server Sync
 
+    /// 自動同期の最小間隔。タブを開くたびに view が再生成されて
+    /// `.task` が再発火するため、これがないと毎回サーバを叩いてしまう
+    private static let serverSyncMinInterval: TimeInterval = 300
+    private var lastServerSyncAt: Date?
+
     /// サーバーからタスク一覧を取得してローカルとマージ
-    func fetchServerTasks() async {
+    /// - Parameter force: true なら鮮度チェックを無視して必ず同期する
+    ///   （Pull-to-refresh やエラー後のリトライなど、ユーザーの明示操作用）
+    func fetchServerTasks(force: Bool = false) async {
         #if DEBUG
         if CommandLine.arguments.contains("--uitesting") {
             return // UI テスト時はネットワーク同期しない（auth 状態を壊さないため）
         }
         #endif
+
+        // 直近に同期済みなら自動同期はスキップ（サーバ負荷とバッテリーの節約）
+        if !force,
+           let last = lastServerSyncAt,
+           Date().timeIntervalSince(last) < Self.serverSyncMinInterval {
+            return
+        }
+        guard !isSyncing else { return }
 
         isSyncing = true
         syncError = nil
@@ -347,6 +362,7 @@ final class TaskViewModel: ObservableObject {
                 }
             }
             persist()
+            lastServerSyncAt = Date()
             isSyncing = false
         } catch {
             let apiError = (error as? APIError) ?? .networkError(error)

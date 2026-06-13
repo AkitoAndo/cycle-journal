@@ -322,8 +322,28 @@ class CoachStore: ObservableObject {
 
     // MARK: - Server Sync
 
+    /// 自動同期の最小間隔。履歴シートを開くたびに `.task` が発火するため、
+    /// これがないと毎回サーバを叩いてしまう
+    private static let serverSyncMinInterval: TimeInterval = 300
+    private var lastSessionsSyncAt: Date?
+
     /// サーバーからセッション履歴を取得してマージ
-    func fetchServerSessions() async {
+    /// - Parameter force: true なら鮮度チェックを無視して必ず同期する
+    ///   （Pull-to-refresh などユーザーの明示操作用）
+    func fetchServerSessions(force: Bool = false) async {
+        #if DEBUG
+        if CommandLine.arguments.contains("--uitesting") {
+            return // UI テスト時はネットワーク同期しない（auth 状態を壊さないため）
+        }
+        #endif
+
+        // 直近に同期済みなら自動同期はスキップ（サーバ負荷とバッテリーの節約）
+        if !force,
+           let last = lastSessionsSyncAt,
+           Date().timeIntervalSince(last) < Self.serverSyncMinInterval {
+            return
+        }
+
         await MainActor.run {
             isLoading = true
         }
@@ -343,6 +363,7 @@ class CoachStore: ObservableObject {
                     sessions.sort { $0.updatedAt > $1.updatedAt }
                     saveSessions()
                 }
+                lastSessionsSyncAt = Date()
                 isLoading = false
             }
         } catch {
