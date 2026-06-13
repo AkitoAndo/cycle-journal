@@ -14,18 +14,48 @@ struct ContentView: View {
     @EnvironmentObject private var journalViewModel: JournalViewModel
     @EnvironmentObject private var authStore: AuthStore
     @EnvironmentObject private var taskViewModel: TaskViewModel
+    @EnvironmentObject private var subscriptionStore: SubscriptionStore
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
 
+    /// アプリ起動時のフロー:
+    ///
+    ///   1. Onboarding 体験 (登録なし・カード不要) ← user spec ステップ1
+    ///   2. SignIn (Apple/Google) — 課金主体を identify
+    ///   3. Paywall (Apple 標準 Introductory Offer = 3日間無料トライアル) ← user spec ステップ2
+    ///   4. Main (全機能)
+    ///
+    /// 全機能は有料パッケージなので Paywall はハードゲート。
+    /// オンボーディングだけは認証もカードも不要で循環の触り体験を提供する。
     var body: some View {
         Group {
-            switch authStore.state {
-            case .unknown:
-                splashView
-            case .unauthenticated:
-                SignInView()
-            case .authenticated:
-                mainContent
+            if !hasCompletedOnboarding {
+                OnboardingView()
+            } else {
+                switch authStore.state {
+                case .unknown:
+                    splashView
+                case .unauthenticated:
+                    SignInView()
+                case .authenticated:
+                    authenticatedContent
+                }
             }
+        }
+    }
+
+    @ViewBuilder
+    private var authenticatedContent: some View {
+        switch subscriptionStore.state {
+        case .unknown:
+            splashView
+                .task {
+                    await subscriptionStore.loadProducts()
+                    await subscriptionStore.refreshEntitlements()
+                }
+        case .notSubscribed, .expired:
+            PaywallView()
+        case .trial, .active:
+            mainContent
         }
     }
 
@@ -76,12 +106,6 @@ struct ContentView: View {
             coachStore.shouldOpenChat = true
         }
         .ignoresSafeArea(.keyboard)
-        .overlay {
-            if !hasCompletedOnboarding {
-                OnboardingView()
-                    .transition(.opacity)
-            }
-        }
     }
 
 

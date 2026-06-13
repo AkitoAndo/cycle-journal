@@ -2,23 +2,27 @@
 //  PaywallView.swift
 //  CycleJournal
 //
-//  Issue #54 決定: フェーズ1は月額¥1,800の3日無料トライアルのみ。
-//  年額¥14,400はフェーズ2で追加（App Store Connect で「配信から削除」中）。
+//  Issue #54 / 続: トライアルは Apple 標準 Introductory Offer (3日間無料) に乗せる。
+//  乱用防止は Apple 側で行われるため、サーバー側のトライアル管理は持たない。
 //
 //  Timeline 型 Paywall:
 //  - Day 0「今すぐ全機能」
 //  - Day 2「リマインド」
 //  - Day 3「自動課金開始」
 //
+//  対象 (intro offer eligible) でないユーザーには無料トライアル文言を出さない。
+//
 
 import StoreKit
 import SwiftUI
 
 struct PaywallView: View {
-    @StateObject private var store = SubscriptionStore()
+    @EnvironmentObject private var store: SubscriptionStore
+    @EnvironmentObject private var authStore: AuthStore
     @Environment(\.dismiss) private var dismiss
     @State private var selectedProductID: String = SubscriptionProductID.monthly.rawValue
     @State private var isPurchasing = false
+    @State private var isIntroOfferEligible = true
 
     /// 規約・プライバシーポリシー URL (App Store Connect と同一の URL を入れること)
     let termsURL = URL(string: "https://akitoando.github.io/cycle-journal/legal/TERMS_OF_SERVICE.html")!
@@ -33,7 +37,9 @@ struct PaywallView: View {
         ScrollView {
             VStack(spacing: 28) {
                 header
-                trialTimeline
+                if isIntroOfferEligible {
+                    trialTimeline
+                }
                 planList
                 primaryCTA
                 footer
@@ -45,7 +51,21 @@ struct PaywallView: View {
         .task {
             await store.loadProducts()
             await store.refreshEntitlements()
+            await refreshIntroOfferEligibility()
         }
+    }
+
+    /// Apple Introductory Offer の eligibility を判定する。
+    /// 同一 Apple ID でこのサブスクリプショングループの intro offer を既に消費していた場合、
+    /// Apple が再付与しないため UI からも無料トライアル文言を消す。
+    private func refreshIntroOfferEligibility() async {
+        guard let product = store.products.first(where: { SubscriptionProductID(rawValue: $0.id) == .monthly }),
+              let subscriptionInfo = product.subscription
+        else {
+            isIntroOfferEligible = false
+            return
+        }
+        isIntroOfferEligible = await subscriptionInfo.isEligibleForIntroOffer
     }
 
     // MARK: - Sections
@@ -136,9 +156,15 @@ struct PaywallView: View {
                         .font(.system(size: 18, weight: .semibold))
                     Text(product.displayPrice + "/月")
                         .font(.system(size: 16, weight: .semibold))
-                    Text("最初の 3 日間無料、その後 \(product.displayPrice)/月")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    if isIntroOfferEligible {
+                        Text("最初の 3 日間無料、その後 \(product.displayPrice)/月")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("\(product.displayPrice)/月 (無料トライアル対象外)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 Spacer()
             }
@@ -157,7 +183,7 @@ struct PaywallView: View {
         } label: {
             HStack {
                 if isPurchasing { ProgressView().tint(.white).padding(.trailing, 8) }
-                Text("3日間無料で始める")
+                Text(isIntroOfferEligible ? "3日間無料で始める" : "月額プランを購読")
                     .font(.system(size: 18, weight: .semibold))
             }
             .frame(maxWidth: .infinity)
@@ -188,6 +214,13 @@ struct PaywallView: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+
+            Button("別のアカウントでサインイン") {
+                authStore.signOut()
+            }
+            .font(.caption)
+            .foregroundStyle(.tertiary)
+            .padding(.top, 4)
         }
         .padding(.top, 8)
     }
@@ -210,4 +243,6 @@ struct PaywallView: View {
 
 #Preview {
     PaywallView()
+        .environmentObject(SubscriptionStore())
+        .environmentObject(AuthStore())
 }
