@@ -77,6 +77,13 @@ struct JournalListView: View {
     private var header: some View {
         JournalHeader(
             selectedDate: vm.selectedDate,
+            streakDays: vm.streakDays,
+            onToday: {
+                withAnimation(DesignSystem.Timing.bouncySpring) {
+                    vm.selectedDate = Date()
+                    vm.currentWeekOffset = 0
+                }
+            },
             onShowSearch: {
                 vm.isSearching = true
             },

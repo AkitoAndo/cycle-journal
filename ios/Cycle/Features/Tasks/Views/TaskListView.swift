@@ -72,7 +72,7 @@ struct TaskListView: View {
                     isRetryable: error.isRetryable,
                     onRetry: {
                         vm.clearSyncError()
-                        Task { await vm.fetchServerTasks() }
+                        Task { await vm.fetchServerTasks(force: true) }
                     },
                     onDismiss: { vm.clearSyncError() }
                 )
@@ -144,6 +144,9 @@ struct TaskListView: View {
                         vm.archiveTask(task)
                     }
                 )
+                .refreshable {
+                    await vm.fetchServerTasks(force: true)
+                }
 
                 LinearGradient(
                     colors: [DesignSystem.Colors.background, DesignSystem.Colors.background.opacity(0)],
