@@ -23,6 +23,9 @@ struct PaywallView: View {
     @State private var selectedProductID: String = SubscriptionProductID.monthly.rawValue
     @State private var isPurchasing = false
     @State private var isIntroOfferEligible = true
+    /// Sandbox / TestFlight ビルドで「テスター用にスキップ」した状態を ContentView 側で参照する。
+    /// SandboxDetector.isSandbox = false の本番ビルドでは bypass ボタンを描画しないため、true にできない。
+    @AppStorage("testerBypass") private var testerBypass = false
 
     /// 規約・プライバシーポリシー URL (App Store Connect と同一の URL を入れること)
     let termsURL = URL(string: "https://akitoando.github.io/cycle-journal/legal/TERMS_OF_SERVICE.html")!
@@ -221,6 +224,15 @@ struct PaywallView: View {
             .font(.caption)
             .foregroundStyle(.tertiary)
             .padding(.top, 4)
+
+            if SandboxDetector.isSandbox {
+                Divider().padding(.vertical, 8)
+                Button("テスター用にスキップ (Sandbox のみ)") {
+                    testerBypass = true
+                }
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+            }
         }
         .padding(.top, 8)
     }
