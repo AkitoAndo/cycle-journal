@@ -43,6 +43,16 @@ class Settings(BaseSettings):
     coach_output_max_tokens_cap: int = 4_000  # 暴走時の hard cap
     coach_stream_timeout_seconds: int = 60
 
+    # AI monthly usage budget guardrail
+    # MVP の上限は 1 user あたり月 1,000 円程度。価格・為替は変わるため env で上書き可。
+    ai_monthly_budget_yen: int = 1_000
+    ai_usage_usd_to_jpy: float = 160.0
+    ai_usage_chars_per_input_token: float = 1.0
+    claude_sonnet_input_usd_per_1m: float = 3.0
+    claude_sonnet_output_usd_per_1m: float = 15.0
+    gemini_pro_input_usd_per_1m: float = 1.25
+    gemini_pro_output_usd_per_1m: float = 10.0
+
     # Gemini fallback（Vertex AI Claude の quota 申請待ち中の暫定）
     # use_gemini_fallback=True のとき chat() は Gemini を呼ぶ。
     # Claude quota が下りたら False にして Claude に戻す（追跡: 別 issue）。
