@@ -13,8 +13,7 @@ from google.cloud.firestore import AsyncClient
 from app.config import settings
 from app.dependencies import get_current_user, get_firestore
 from app.models.coach import CoachData, CoachMetadata, CoachRequest
-from app.services import ai_usage_service
-from app.services import coach_service
+from app.services import ai_usage_service, coach_service
 from app.services.coach_graph import run_coach_flow
 from app.services.firestore_client import sessions_ref
 

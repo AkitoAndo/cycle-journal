@@ -70,7 +70,10 @@ def estimate_coach_request(
 
     chars_per_token = max(settings.ai_usage_chars_per_input_token, 0.1)
     input_tokens = max(1, ceil(input_chars / chars_per_token))
-    output_tokens = min(settings.claude_max_tokens, settings.coach_output_max_tokens_cap)
+    output_tokens = min(
+        settings.claude_max_tokens,
+        settings.coach_output_max_tokens_cap,
+    )
 
     model, input_usd_per_1m, output_usd_per_1m = _active_model_prices()
     input_micro_usd = ceil(input_tokens * input_usd_per_1m)
