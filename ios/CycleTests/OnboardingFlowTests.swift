@@ -3,7 +3,7 @@
 //  CycleTests
 //
 //  Issue #37 C-1 決定: オンボーディング再設計 (Welcome → Cycle → Goal →
-//  Sign In → 初ジャーナル誘導 → 通知 opt-in → Paywall) の state machine テスト
+//  Sign In → 初ジャーナル誘導 → 通知 opt-in → Done) の state machine テスト
 //
 
 import Foundation
@@ -37,11 +37,12 @@ struct OnboardingStepTests {
         #expect(OnboardingStep.firstJournal.next() == .notificationPermission)
     }
 
-    @Test func progressesFromNotificationPermissionToPaywall() {
-        #expect(OnboardingStep.notificationPermission.next() == .paywall)
+    @Test func progressesFromNotificationPermissionToDone() {
+        #expect(OnboardingStep.notificationPermission.next() == .done)
     }
 
     @Test func paywallNextIsDone() {
+        // Paywall step は課金再開時の復帰用に残す。
         #expect(OnboardingStep.paywall.next() == .done)
     }
 

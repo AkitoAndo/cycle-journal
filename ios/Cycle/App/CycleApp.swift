@@ -109,7 +109,6 @@ struct CycleApp: App {
     @StateObject private var coachStore = CoachStore()
     @StateObject private var meditationStore = MeditationStore()
     @StateObject private var authStore = AuthStore()
-    @StateObject private var subscriptionStore = SubscriptionStore()
 
     var body: some Scene {
         WindowGroup {
@@ -124,7 +123,6 @@ struct CycleApp: App {
                     .environmentObject(coachStore)
                     .environmentObject(meditationStore)
                     .environmentObject(authStore)
-                    .environmentObject(subscriptionStore)
                     .onOpenURL { url in
                         GIDSignIn.sharedInstance.handle(url)
                     }
