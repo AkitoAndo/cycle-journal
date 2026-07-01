@@ -13,7 +13,7 @@ from google.cloud.firestore import AsyncClient
 from app.config import settings
 from app.dependencies import get_current_user, get_firestore
 from app.models.coach import CoachData, CoachMetadata, CoachRequest
-from app.services import coach_service
+from app.services import ai_usage_service, coach_service
 from app.services.coach_graph import run_coach_flow
 from app.services.firestore_client import sessions_ref
 
@@ -86,6 +86,17 @@ async def chat(
         {"role": doc.get("role"), "content": doc.get("content")}
         for doc in history_docs
     ]
+
+    estimate = ai_usage_service.estimate_coach_request(
+        message=body.message,
+        history=history,
+        diary_content=body.diary_content,
+    )
+    await ai_usage_service.reserve_monthly_budget(
+        db,
+        user_id=user_id,
+        estimate=estimate,
+    )
 
     # コーチ応答を取得（LangGraph or シンプル呼び出し）
     detected_emotion = None
@@ -208,6 +219,17 @@ async def chat_stream(
     history = [
         {"role": doc.get("role"), "content": doc.get("content")} for doc in history_docs
     ]
+
+    estimate = ai_usage_service.estimate_coach_request(
+        message=body.message,
+        history=history,
+        diary_content=body.diary_content,
+    )
+    await ai_usage_service.reserve_monthly_budget(
+        db,
+        user_id=user_id,
+        estimate=estimate,
+    )
 
     # ユーザーメッセージは streaming 開始前に保存（途中で失敗しても残す）
     user_msg_id = str(uuid.uuid4())
