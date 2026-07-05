@@ -14,21 +14,15 @@ struct ContentView: View {
     @EnvironmentObject private var journalViewModel: JournalViewModel
     @EnvironmentObject private var authStore: AuthStore
     @EnvironmentObject private var taskViewModel: TaskViewModel
-    @EnvironmentObject private var subscriptionStore: SubscriptionStore
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
-    /// Sandbox / TestFlight ビルドでのみ意味を持つ「テスター用に paywall を素通り」フラグ。
-    /// 本番ビルドでは PaywallView 側で bypass ボタンが表示されないため、true になることはない。
-    @AppStorage("testerBypass") private var testerBypass = false
 
     /// アプリ起動時のフロー:
     ///
     ///   1. Onboarding 体験 (登録なし・カード不要) ← user spec ステップ1
     ///   2. SignIn (Apple/Google) — 課金主体を identify
-    ///   3. Paywall (Apple 標準 Introductory Offer = 3日間無料トライアル) ← user spec ステップ2
-    ///   4. Main (全機能)
+    ///   3. Main (MVP期間は課金なしで全機能)
     ///
-    /// 全機能は有料パッケージなので Paywall はハードゲート。
-    /// オンボーディングだけは認証もカードも不要で循環の触り体験を提供する。
+    /// 課金再開時は SubscriptionStore / PaywallView をハードゲートに戻す。
     var body: some View {
         Group {
             if !hasCompletedOnboarding {
@@ -48,24 +42,7 @@ struct ContentView: View {
 
     @ViewBuilder
     private var authenticatedContent: some View {
-        // Sandbox / TestFlight ビルドで「テスター用にスキップ」を押されたら subscription state を見ない。
-        // SandboxDetector.isSandbox = false の本番ビルドでは testerBypass を立てる経路がないため安全。
-        if testerBypass && SandboxDetector.isSandbox {
-            mainContent
-        } else {
-            switch subscriptionStore.state {
-            case .unknown:
-                splashView
-                    .task {
-                        await subscriptionStore.loadProducts()
-                        await subscriptionStore.refreshEntitlements()
-                    }
-            case .notSubscribed, .expired:
-                PaywallView()
-            case .trial, .active:
-                mainContent
-            }
-        }
+        mainContent
     }
 
     private var splashView: some View {

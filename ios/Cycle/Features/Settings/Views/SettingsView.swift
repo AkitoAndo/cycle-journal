@@ -11,11 +11,8 @@ struct SettingsView: View {
     @EnvironmentObject var taskViewModel: TaskViewModel
     @EnvironmentObject var coachStore: CoachStore
 
-    @StateObject private var subscriptionStore = SubscriptionStore()
-
     @State private var notificationSettings = NotificationSettingsStore.load()
     @State private var systemPermissionGranted = false
-    @State private var showingPaywall = false
     @State private var showingDataExport = false
     @State private var showingSignOutAlert = false
     @State private var showingClearDataAlert = false
@@ -262,10 +259,6 @@ struct SettingsView: View {
             .scrollContentBackground(.hidden)
             .background(DesignSystem.Colors.backgroundGradient)
             .tint(DesignSystem.Colors.accent)
-            .sheet(isPresented: $showingPaywall) {
-                PaywallView()
-                    .softSheet()
-            }
             .sheet(isPresented: $showingDataExport) {
                 DataExportView()
                     .environmentObject(journalViewModel)
@@ -305,11 +298,6 @@ struct SettingsView: View {
             }
             .task {
                 await checkNotificationPermission()
-                // 商品情報はほぼ不変なので取得済みなら再取得しない
-                if subscriptionStore.products.isEmpty {
-                    await subscriptionStore.loadProducts()
-                }
-                await subscriptionStore.refreshEntitlements()
             }
         }
     }
@@ -318,41 +306,19 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var premiumRow: some View {
-        switch subscriptionStore.state {
-        case .active(_, let expiresAt), .trial(_, let expiresAt):
-            HStack {
-                Image(systemName: "checkmark.seal.fill")
-                    .foregroundColor(DesignSystem.Colors.accent)
-                VStack(alignment: .leading) {
-                    Text("Cycle Premium")
-                        .font(DesignSystem.Fonts.button)
-                    Text(premiumStatusText(expiresAt: expiresAt))
-                        .font(DesignSystem.Fonts.caption)
-                        .foregroundColor(.secondary)
-                }
-                Spacer()
+        HStack {
+            Image(systemName: "checkmark.seal.fill")
+                .foregroundColor(DesignSystem.Colors.accent)
+            VStack(alignment: .leading) {
+                Text("Cycle Premium")
+                    .font(DesignSystem.Fonts.button)
+                Text("MVP期間中は無料で利用できます")
+                    .font(DesignSystem.Fonts.caption)
+                    .foregroundColor(.secondary)
             }
-            .padding(.vertical, 4)
-        default:
-            Button(action: { showingPaywall = true }) {
-                HStack {
-                    Image(systemName: "sparkles")
-                        .foregroundColor(.orange)
-                    VStack(alignment: .leading) {
-                        Text("Cycle Premium にアップグレード")
-                            .font(DesignSystem.Fonts.button)
-                        Text("3日間無料で始める")
-                            .font(DesignSystem.Fonts.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .foregroundColor(.secondary)
-                }
-                .padding(.vertical, 4)
-            }
-            .foregroundColor(.primary)
+            Spacer()
         }
+        .padding(.vertical, 4)
     }
 
     // MARK: - Notification Helpers
@@ -414,18 +380,6 @@ struct SettingsView: View {
     }
 
     // MARK: - Helpers
-
-    private func premiumStatusText(expiresAt: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        let prefix: String
-        if case .trial = subscriptionStore.state {
-            prefix = "トライアル中・"
-        } else {
-            prefix = ""
-        }
-        return prefix + "次回更新 \(formatter.string(from: expiresAt))"
-    }
 
     private var appVersion: String {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"

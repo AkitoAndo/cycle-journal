@@ -13,7 +13,10 @@ def test_coach_chat(auth_client, mock_firestore):
     with patch(
         "app.routers.coach.coach_service.chat",
         new_callable=AsyncMock,
-    ) as mock_chat:
+    ) as mock_chat, patch(
+        "app.routers.coach.ai_usage_service.reserve_monthly_budget",
+        new_callable=AsyncMock,
+    ) as reserve_budget:
         mock_chat.return_value = "そう感じたんだね。"
 
         # Configure mock: after set, session should report message_count
@@ -34,6 +37,7 @@ def test_coach_chat(auth_client, mock_firestore):
         )
 
     assert response.status_code == 200
+    reserve_budget.assert_awaited_once()
     data = response.json()["data"]
     assert data["message"] == "そう感じたんだね。"
     assert "session_id" in data

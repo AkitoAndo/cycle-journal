@@ -5,11 +5,11 @@
 //  Issue #37 C-1 決定のオンボーディング state machine.
 //
 //  フロー: Welcome → Cycle 概念 → Goal 選択 → Apple Sign In →
-//         初ジャーナル誘導 → 通知 opt-in → Paywall → Done
+//         初ジャーナル誘導 → 通知 opt-in → Done
 //
 //  業界ベストプラクティス反映:
 //  - 通知 opt-in は "最初のジャーナル保存直後" の value moment (Blinkist 事例 6%→74%)
-//  - Paywall 前にコア体験 (初ジャーナル) を必須化して転換率向上
+//  - MVP期間は課金なし。Paywall step は課金再開時の復帰用に残す。
 //
 
 import Combine
@@ -33,6 +33,9 @@ enum OnboardingStep: Int, CaseIterable, Equatable {
 
     /// 次の step を返す. done は terminal.
     func next() -> OnboardingStep {
+        if self == .notificationPermission {
+            return .done
+        }
         guard let next = OnboardingStep(rawValue: rawValue + 1) else { return .done }
         return next
     }
