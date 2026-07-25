@@ -13,6 +13,7 @@ import SwiftUI
 struct EmptyStateView: View {
     let icon: String
     let title: String
+    let titleColor: Color
     let subtitle: String?
     let actionTitle: String?
     let action: (() -> Void)?
@@ -20,12 +21,14 @@ struct EmptyStateView: View {
     init(
         icon: String,
         title: String,
+        titleColor: Color = DesignSystem.Colors.textPrimary,
         subtitle: String? = nil,
         actionTitle: String? = nil,
         action: (() -> Void)? = nil
     ) {
         self.icon = icon
         self.title = title
+        self.titleColor = titleColor
         self.subtitle = subtitle
         self.actionTitle = actionTitle
         self.action = action
@@ -58,7 +61,7 @@ struct EmptyStateView: View {
             VStack(spacing: DesignSystem.Spacing.sm) {
                 Text(title)
                     .font(DesignSystem.Fonts.headlineRegular)
-                    .foregroundStyle(DesignSystem.Colors.textPrimary)
+                    .foregroundStyle(titleColor)
 
                 if let subtitle = subtitle {
                     Text(subtitle)

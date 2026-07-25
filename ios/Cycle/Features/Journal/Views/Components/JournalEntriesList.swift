@@ -27,6 +27,7 @@ struct JournalEntriesList: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
+        .contentMargins(.top, DesignSystem.Spacing.md, for: .scrollContent)
         .animation(DesignSystem.Timing.spring, value: entries.map(\.id))
     }
 }

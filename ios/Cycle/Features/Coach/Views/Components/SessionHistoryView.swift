@@ -27,7 +27,7 @@ struct SessionHistoryView: View {
                         }
 
                         Button(action: { selectedTab = 1 }) {
-                            Text("呼吸")
+                            Text("瞑想")
                                 .font(.system(size: DesignSystem.FontSize.body, weight: selectedTab == 1 ? .semibold : .regular))
                                 .foregroundStyle(selectedTab == 1 ? DesignSystem.Colors.textPrimary : DesignSystem.Colors.textSecondary)
                                 .frame(maxWidth: .infinity)
@@ -104,6 +104,14 @@ struct SessionHistoryView: View {
                             Label("削除", systemImage: "trash")
                                 .labelStyle(.iconOnly)
                         }
+
+                        Button {
+                            selectedSession = session
+                        } label: {
+                            Label("チェック", systemImage: "checkmark")
+                                .labelStyle(.iconOnly)
+                        }
+                        .tint(DesignSystem.Colors.textSecondary)
                     }
                 }
             }
@@ -118,7 +126,7 @@ struct SessionHistoryView: View {
         if meditationStore.logs.isEmpty {
             EmptyStateView(
                 icon: "timer",
-                title: "呼吸履歴がありません"
+                title: "瞑想履歴がありません"
             )
         } else {
             List {
@@ -147,7 +155,8 @@ struct BreathingRowView: View {
 
     private let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.dateFormat = "M月d日(E)"
+        // アーカイブ画面と同じ「2026年7月11日 土曜日」形式に統一
+        formatter.dateFormat = "yyyy年M月d日 EEEE"
         formatter.locale = Locale(identifier: "ja_JP")
         return formatter
     }()
@@ -156,7 +165,7 @@ struct BreathingRowView: View {
         SurfaceCard {
             HStack {
                 VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
-                    Text("\(log.durationText)の呼吸")
+                    Text("\(log.durationText)の瞑想")
                         .font(DesignSystem.Fonts.body)
                         .foregroundStyle(DesignSystem.Colors.textPrimary)
 

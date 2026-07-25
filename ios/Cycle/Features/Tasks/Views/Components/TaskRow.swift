@@ -70,13 +70,25 @@ struct TaskRow: View {
     }
 
     private var taskTitle: some View {
-        Text(task.title)
-            .font(DesignSystem.Fonts.body)
-            .foregroundStyle(
-                task.isCompleted
-                    ? DesignSystem.Colors.textSecondary
-                    : DesignSystem.Colors.textPrimary
-            )
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+            Text(task.title)
+                .font(DesignSystem.Fonts.body)
+                .foregroundStyle(
+                    task.isCompleted
+                        ? DesignSystem.Colors.textSecondary
+                        : DesignSystem.Colors.textPrimary
+                )
+            if !task.previewText.isEmpty {
+                Text(task.previewText)
+                    .font(DesignSystem.Fonts.caption)
+                    .foregroundStyle(
+                        task.isCompleted
+                            ? DesignSystem.Colors.textTertiary
+                            : DesignSystem.Colors.textSecondary
+                    )
+                    .lineLimit(1)
+            }
+        }
     }
 
 

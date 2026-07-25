@@ -28,7 +28,7 @@ struct IconCircle: View {
                 Circle()
                     .fill(.clear)
                     .frame(width: size, height: size)
-                    .glassEffect(.regular, in: .circle)
+                    .glassEffect(.surfaceTinted, in: .circle)
             } else {
                 Circle()
                     .fill(

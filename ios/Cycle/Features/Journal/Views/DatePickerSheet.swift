@@ -8,43 +8,33 @@
 import SwiftUI
 
 /// 日付選択用のシートビュー
+/// [0710] 標準の graphical DatePicker から、ホームと共通の
+/// CycleCalendarSheet（選択日/今日/記録のある日を区別表示）に変更。
+/// 日付タップで即確定してシートが閉じる。
 struct DatePickerSheet: View {
     @ObservedObject var vm: JournalViewModel
     @Binding var isPresented: Bool
     @State private var selectedDate = Date()
 
-    var body: some View {
-        NavigationStack {
-            VStack {
-                DatePicker(
-                    "年月を選択",
-                    selection: $selectedDate,
-                    displayedComponents: [.date]
-                )
-                .datePickerStyle(.graphical)
-                .tint(DesignSystem.Colors.accent)
-                .environment(\.locale, Locale(identifier: "ja_JP"))
-                .padding()
+    /// 記録のある日 = 未削除のジャーナルエントリがある日
+    private var recordedDays: Set<DateComponents> {
+        let calendar = Calendar.current
+        return Set(
+            vm.entries
+                .filter { $0.deletedAt == nil }
+                .map { calendar.dateComponents([.year, .month, .day], from: $0.date) }
+        )
+    }
 
-                Spacer()
+    var body: some View {
+        CycleCalendarSheet(
+            selectedDate: $selectedDate,
+            recordedDays: recordedDays,
+            onSelect: { date in
+                vm.jumpToDate(date)
+                isPresented = false
             }
-            .navigationTitle("年月を選択")
-            .navigationBarTitleDisplayMode(.inline)
-            .modifier(GlassNavBarModifier())
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("キャンセル") {
-                        isPresented = false
-                    }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("完了") {
-                        vm.jumpToDate(selectedDate)
-                        isPresented = false
-                    }
-                }
-            }
-        }
+        )
         .presentationDetents([.medium])
         .presentationBackground(DesignSystem.Colors.background)
         .onAppear {

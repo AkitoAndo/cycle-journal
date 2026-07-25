@@ -101,7 +101,7 @@ struct JournalHeader: View {
             }
         } label: {
             Image(systemName: "line.3.horizontal")
-                .font(.system(size: 26))
+                .font(.system(size: 21))
                 .foregroundStyle(DesignSystem.Colors.textSecondary)
                 .modifier(GlassIconModifier())
         }

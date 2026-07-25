@@ -179,7 +179,7 @@ enum CatalogRegistry {
                     CatalogProp("label", "String", "ラベルテキスト"),
                     CatalogProp("text", "Binding<String>", "入力値のバインディング"),
                     CatalogProp("placeholder", "String", required: false, default: "\"\"", "プレースホルダー"),
-                    CatalogProp("minHeight", "CGFloat", required: false, default: "120", "最小高さ"),
+                    CatalogProp("height", "CGFloat", required: false, default: "60", "固定高さ（超過分は欄内スクロール）"),
                 ],
                 preview: AnyView(FormTextEditorPreview())
             ),
@@ -343,7 +343,6 @@ private struct ColorTokensPreview: View {
         VStack(alignment: .leading, spacing: 12) {
             colorSection("Background", [
                 ("background", DesignSystem.Colors.background),
-                ("secondaryBackground", DesignSystem.Colors.secondaryBackground),
                 ("surface", DesignSystem.Colors.surface),
             ])
             colorSection("Text", [
@@ -540,7 +539,8 @@ private struct TaskHeaderPreview: View {
                     isReorderMode: false,
                     onToggleReorderMode: {},
                     onShowArchive: {},
-                    onShowDeleted: {}
+                    onShowDeleted: {},
+                    onShowTemplates: {}
                 )
             }
             previewSection("Reorder Mode") {
@@ -548,7 +548,8 @@ private struct TaskHeaderPreview: View {
                     isReorderMode: true,
                     onToggleReorderMode: {},
                     onShowArchive: {},
-                    onShowDeleted: {}
+                    onShowDeleted: {},
+                    onShowTemplates: {}
                 )
             }
         }
@@ -724,7 +725,7 @@ private struct FormTextFieldPreview: View {
 private struct FormTextEditorPreview: View {
     @State private var text = ""
     var body: some View {
-        FormTextEditor(label: "詳細", text: $text, placeholder: "タスクの詳細を入力", minHeight: 80)
+        FormTextEditor(label: "詳細", text: $text, placeholder: "タスクの詳細を入力", height: 80)
     }
 }
 

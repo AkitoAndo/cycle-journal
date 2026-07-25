@@ -229,7 +229,7 @@ final class JournalViewModel: ObservableObject {
 
     /// 指定した日付にエントリが存在するか確認
     func hasEntries(on date: Date) -> Bool {
-        entries.contains { Calendar.current.isDate($0.date, inSameDayAs: date) }
+        entries.contains { $0.deletedAt == nil && Calendar.current.isDate($0.date, inSameDayAs: date) }
     }
 
     // MARK: - Week Navigation Helpers

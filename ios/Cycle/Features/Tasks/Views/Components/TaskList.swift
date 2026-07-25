@@ -34,6 +34,7 @@ struct TaskList: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
+        .contentMargins(.top, DesignSystem.Spacing.md, for: .scrollContent)
         .animation(DesignSystem.Timing.spring, value: incompleteTasks.map(\.id) + completedTasks.map(\.id))
     }
 

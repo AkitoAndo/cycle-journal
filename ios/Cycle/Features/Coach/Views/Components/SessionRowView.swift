@@ -10,7 +10,8 @@ struct SessionRowView: View {
 
     private let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.dateFormat = "M月d日(E)"
+        // アーカイブ画面と同じ「2026年7月11日 土曜日」形式に統一
+        formatter.dateFormat = "yyyy年M月d日 EEEE"
         formatter.locale = Locale(identifier: "ja_JP")
         return formatter
     }()
@@ -36,10 +37,6 @@ struct SessionRowView: View {
                 }
 
                 Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(DesignSystem.Fonts.caption)
-                    .foregroundStyle(DesignSystem.Colors.textTertiary)
             }
         }
     }

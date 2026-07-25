@@ -149,7 +149,7 @@ private struct SecondaryButtonStyle: ViewModifier {
         if #available(iOS 26.0, *) {
             content
                 .foregroundStyle(color)
-                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
+                .glassEffect(.surfaceTinted.interactive(), in: .rect(cornerRadius: 12))
         } else {
             content
                 .foregroundStyle(color)

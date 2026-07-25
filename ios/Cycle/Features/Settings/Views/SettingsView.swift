@@ -12,6 +12,8 @@ struct SettingsView: View {
     @EnvironmentObject var coachStore: CoachStore
 
     @State private var notificationSettings = NotificationSettingsStore.load()
+    /// タスク完了チェック時に事後情報フォームを出すか（TaskListView と共有）
+    @AppStorage("isPostActionPromptEnabled") private var isPostActionPromptEnabled = true
     @State private var systemPermissionGranted = false
     @State private var showingDataExport = false
     @State private var showingSignOutAlert = false
@@ -123,11 +125,13 @@ struct SettingsView: View {
                         }
                     }
                 }
+                .listRowBackground(GlassListRowBackground())
 
                 // Premium セクション
                 Section("Premium") {
                     premiumRow
                 }
+                .listRowBackground(GlassListRowBackground())
 
                 // 通知セクション
                 Section("通知") {
@@ -166,12 +170,19 @@ struct SettingsView: View {
                             updateReminderSchedule()
                         }
                     }
-
-                    Toggle("タスク締切通知", isOn: $notificationSettings.isTaskDeadlineEnabled)
-                        .onChange(of: notificationSettings.isTaskDeadlineEnabled) { _, newValue in
-                            NotificationSettingsStore.save(notificationSettings)
-                        }
                 }
+                .listRowBackground(GlassListRowBackground())
+
+                // タスクセクション
+                Section("タスク") {
+                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                        Toggle("完了時に事後情報を記入", isOn: $isPostActionPromptEnabled)
+                        Text("タスクをチェックした時に、事実・気づき・次の一手の入力フォームを表示します")
+                            .font(DesignSystem.Fonts.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .listRowBackground(GlassListRowBackground())
 
                 // データセクション
                 Section("データ") {
@@ -182,6 +193,7 @@ struct SettingsView: View {
                         }
                     }
                 }
+                .listRowBackground(GlassListRowBackground())
 
                 // サポートセクション
                 Section("サポート") {
@@ -216,6 +228,7 @@ struct SettingsView: View {
                             .foregroundColor(.secondary)
                     }
                 }
+                .listRowBackground(GlassListRowBackground())
 
                 // デバッグセクション（開発用）
                 #if DEBUG
@@ -252,9 +265,10 @@ struct SettingsView: View {
                             .foregroundColor(.secondary)
                     }
                 }
+                .listRowBackground(GlassListRowBackground())
                 #endif
             }
-            .navigationTitle("設定")
+            .navigationTitle("マイページ")
             .modifier(GlassNavBarModifier())
             .scrollContentBackground(.hidden)
             .background(DesignSystem.Colors.backgroundGradient)
