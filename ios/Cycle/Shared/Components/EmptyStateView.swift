@@ -70,17 +70,7 @@ struct EmptyStateView: View {
             .staggeredAppear(index: 1)
 
             if let actionTitle = actionTitle, let action = action {
-                Button(action: action) {
-                    Text(actionTitle)
-                        .font(DesignSystem.Fonts.button)
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, DesignSystem.Spacing.xxl)
-                        .padding(.vertical, DesignSystem.Spacing.md)
-                        .background(DesignSystem.Colors.accentGradient)
-                        .clipShape(Capsule())
-                        .shadow(color: DesignSystem.Colors.accent.opacity(0.25), radius: 8, x: 0, y: 4)
-                }
-                .buttonStyle(PressableButtonStyle())
+                PrimaryButton(actionTitle, fullWidth: false, action: action)
                 .staggeredAppear(index: 2)
             }
 

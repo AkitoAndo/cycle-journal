@@ -158,6 +158,7 @@ class APIClient {
 
     private let environment: APIEnvironment
     private let session: URLSession
+    private let streamingSession: URLSession
     private var authToken: String?
     private var tokenRefresher: TokenRefresher?
     private let refreshCoordinator = TokenRefreshCoordinator()
@@ -175,6 +176,12 @@ class APIClient {
         config.timeoutIntervalForRequest = 30
         config.timeoutIntervalForResource = 60
         self.session = URLSession(configuration: config)
+
+        let streamingConfig = URLSessionConfiguration.default
+        streamingConfig.timeoutIntervalForRequest = 120
+        streamingConfig.timeoutIntervalForResource = 180
+        streamingConfig.waitsForConnectivity = true
+        self.streamingSession = URLSession(configuration: streamingConfig)
     }
 
     /// UI テスト時はネットワークへ出ない。
@@ -374,8 +381,72 @@ class APIClient {
             body: bodyData,
             requiresAuth: requiresAuth
         )
+        request.timeoutInterval = 120
         request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
         return request
+    }
+
+    /// SSE 用の行ストリーム。通常リクエストと同じく、401時は access token を更新して1回だけ再接続する。
+    func streamingLines(
+        for request: URLRequest,
+        requiresAuth: Bool = true
+    ) -> AsyncThrowingStream<String, Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    var request = request
+                    let (bytes, response) = try await streamingSession.bytes(for: request)
+
+                    if requiresAuth,
+                       let http = response as? HTTPURLResponse,
+                       http.statusCode == 401,
+                       let refresher = tokenRefresher {
+                        do {
+                            let newToken = try await refreshCoordinator.refresh(using: refresher)
+                            request.setValue("Bearer \(newToken)", forHTTPHeaderField: "Authorization")
+                            let (retryBytes, retryResponse) = try await streamingSession.bytes(for: request)
+                            try Self.validateStreamingResponse(retryResponse)
+                            for try await line in retryBytes.lines {
+                                if Task.isCancelled { break }
+                                continuation.yield(line)
+                            }
+                            continuation.finish()
+                            return
+                        } catch {
+                            try Self.validateStreamingResponse(response)
+                        }
+                    }
+
+                    try Self.validateStreamingResponse(response)
+                    for try await line in bytes.lines {
+                        if Task.isCancelled { break }
+                        continuation.yield(line)
+                    }
+                    continuation.finish()
+                } catch let error as APIError {
+                    continuation.finish(throwing: error)
+                } catch let error as URLError where error.code == .timedOut {
+                    continuation.finish(throwing: APIError.timeout)
+                } catch let error as URLError where error.code == .notConnectedToInternet {
+                    continuation.finish(throwing: APIError.offline)
+                } catch {
+                    continuation.finish(throwing: APIError.networkError(error))
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    private static func validateStreamingResponse(_ response: URLResponse) throws {
+        guard let http = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+        if http.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        if !(200...299).contains(http.statusCode) {
+            throw APIError.httpError(statusCode: http.statusCode, message: nil)
+        }
     }
 
     func post<T: Decodable, U: Encodable>(

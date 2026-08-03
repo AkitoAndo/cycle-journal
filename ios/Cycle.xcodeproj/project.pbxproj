@@ -201,9 +201,10 @@
 				};
 			};
 			buildConfigurationList = 2E0FCB0D2EBF921700B9081E /* Build configuration list for PBXProject "Cycle" */;
-			developmentRegion = en;
+			developmentRegion = ja;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				ja,
 				en,
 				Base,
 			);

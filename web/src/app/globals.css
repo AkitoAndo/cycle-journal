@@ -1,0 +1,136 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 60 20% 98%;
+    --background-2: 50 15% 95%;
+    --foreground: 30 4% 15%;
+
+    --surface: 36 12% 94%;
+    --surface-strong: 34 11% 92%;
+
+    --card: 36 12% 96%;
+    --card-foreground: 30 4% 15%;
+
+    --primary: 26 22% 45%;
+    --primary-foreground: 0 0% 100%;
+    --primary-soft: 30 24% 78%;
+    --primary-strong: 28 24% 28%;
+
+    --muted: 36 12% 92%;
+    --muted-foreground: 30 5% 43%;
+
+    --accent: 26 22% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 6 41% 49%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 36 10% 87%;
+    --input: 36 10% 87%;
+    --ring: 26 22% 45%;
+
+    --radius: 0.9rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html,
+  body {
+    @apply text-foreground antialiased;
+    min-height: 100%;
+    margin: 0;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, hsl(30 30% 96%) 0%, transparent 55%),
+      linear-gradient(180deg, hsl(var(--background)), hsl(var(--background-2)));
+  }
+  button,
+  input,
+  textarea {
+    font: inherit;
+  }
+}
+
+@layer components {
+  .glass-surface {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0) 22%),
+      hsl(var(--card));
+    box-shadow:
+      inset 0 0.5px 0 rgba(255, 255, 255, 0.9),
+      0 1px 2px rgba(89, 71, 56, 0.05),
+      0 12px 30px -12px rgba(89, 71, 56, 0.14);
+  }
+
+  .hairline {
+    box-shadow: inset 0 0 0 0.5px hsl(var(--border));
+  }
+
+  .brand-gradient {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary-strong)) 100%);
+  }
+
+  .chat-bubble-user {
+    @apply text-primary-foreground;
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary-strong)) 100%);
+    box-shadow: 0 8px 22px -10px rgba(89, 71, 56, 0.45);
+    border-radius: 18px 18px 6px 18px;
+  }
+
+  .chat-bubble-assistant {
+    @apply bg-card text-foreground;
+    box-shadow:
+      inset 0 0.5px 0 rgba(255, 255, 255, 0.75),
+      0 4px 14px -8px rgba(89, 71, 56, 0.28);
+    border-radius: 18px 18px 18px 6px;
+  }
+
+  .tab-pill-active::before {
+    content: "";
+    position: absolute;
+    inset: 6px 12px;
+    z-index: -1;
+    border-radius: 9999px;
+    background: hsl(var(--primary) / 0.1);
+  }
+
+  .typing-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 9999px;
+    background: hsl(var(--muted-foreground) / 0.6);
+    animation: typing-bounce 1.2s ease-in-out infinite;
+  }
+}
+
+@keyframes typing-bounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+/* Custom scrollbar to match iOS-native feel */
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.28);
+    border-radius: 999px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}

@@ -3,8 +3,7 @@
 //  Cycle
 //
 //  プライマリ・セカンダリボタン
-//  iOS 26+: Liquid Glass スタイル
-//  iOS 17-25: ソリッド背景 / 枠線スタイル
+//  日記CTA / チャット吹き出しと同じアクセント色を使う共通ボタン
 //
 
 import SwiftUI
@@ -20,14 +19,14 @@ import Pow
 struct PrimaryButton: View {
     let title: String
     var icon: String? = nil
-    var color: Color = DesignSystem.Colors.accent
+    var fullWidth: Bool = true
     let action: () -> Void
     @State private var tapCount = 0
 
-    init(_ title: String, icon: String? = nil, color: Color = DesignSystem.Colors.accent, action: @escaping () -> Void) {
+    init(_ title: String, icon: String? = nil, fullWidth: Bool = true, action: @escaping () -> Void) {
         self.title = title
         self.icon = icon
-        self.color = color
+        self.fullWidth = fullWidth
         self.action = action
     }
 
@@ -39,7 +38,7 @@ struct PrimaryButton: View {
             buttonContent
         }
         .buttonStyle(PressableButtonStyle())
-        .modifier(PrimaryButtonStyle(color: color))
+        .modifier(PrimaryButtonStyle())
         .changeEffect(.shine(angle: .degrees(24), duration: DesignSystem.Timing.slow), value: tapCount)
         .changeEffect(.feedback(hapticImpact: .light), value: tapCount)
     }
@@ -52,28 +51,27 @@ struct PrimaryButton: View {
             Text(title)
         }
         .font(DesignSystem.Fonts.button)
-        .frame(maxWidth: .infinity)
-        .padding()
+        .frame(maxWidth: fullWidth ? .infinity : nil)
+        .padding(.horizontal, DesignSystem.Spacing.xxl)
+        .padding(.vertical, DesignSystem.Spacing.md)
     }
 }
 
-/// 全幅のセカンダリボタン（枠線 / ガラススタイル）
+/// 全幅のセカンダリボタン（チャットのコーチ吹き出しに近い surface 色）
 ///
 /// 使用例:
 /// ```swift
-/// SecondaryButton("日記から話す", icon: "book", color: .green) { pickDiary() }
+/// SecondaryButton("日記から話す", icon: "book") { pickDiary() }
 /// ```
 struct SecondaryButton: View {
     let title: String
     var icon: String? = nil
-    var color: Color = DesignSystem.Colors.accent
     let action: () -> Void
     @State private var tapCount = 0
 
-    init(_ title: String, icon: String? = nil, color: Color = DesignSystem.Colors.accent, action: @escaping () -> Void) {
+    init(_ title: String, icon: String? = nil, action: @escaping () -> Void) {
         self.title = title
         self.icon = icon
-        self.color = color
         self.action = action
     }
 
@@ -85,11 +83,11 @@ struct SecondaryButton: View {
             buttonContent
         }
         .buttonStyle(PressableButtonStyle())
-        .modifier(SecondaryButtonStyle(color: color))
+        .modifier(SecondaryButtonStyle())
         .changeEffect(
             .pulse(
-                shape: RoundedRectangle(cornerRadius: 12, style: .continuous),
-                style: color.opacity(0.24),
+                shape: Capsule(),
+                style: DesignSystem.Colors.accent.opacity(0.24),
                 drawingMode: .stroke
             ),
             value: tapCount
@@ -106,59 +104,33 @@ struct SecondaryButton: View {
         }
         .font(DesignSystem.Fonts.button)
         .frame(maxWidth: .infinity)
-        .padding()
+        .padding(.horizontal, DesignSystem.Spacing.xxl)
+        .padding(.vertical, DesignSystem.Spacing.md)
     }
 }
 
 // MARK: - Button Styles
 
 private struct PrimaryButtonStyle: ViewModifier {
-    let color: Color
-
     func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
-            content
-                .foregroundStyle(.white)
-                .background(color)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
-        } else {
-            content
-                .foregroundStyle(.white)
-                .background(
-                    // 単色の上に上端ハイライトを重ねて奥行きを出す
-                    ZStack {
-                        color
-                        LinearGradient(
-                            colors: [Color.white.opacity(0.16), .clear],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    }
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .shadow(color: color.opacity(0.25), radius: 8, x: 0, y: 4)
-        }
+        content
+            .foregroundStyle(.white)
+            .background(DesignSystem.Colors.accentGradient)
+            .clipShape(Capsule())
+            .shadow(color: DesignSystem.Colors.accent.opacity(0.25), radius: 8, x: 0, y: 4)
     }
 }
 
 private struct SecondaryButtonStyle: ViewModifier {
-    let color: Color
-
     func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
-            content
-                .foregroundStyle(color)
-                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
-        } else {
-            content
-                .foregroundStyle(color)
-                .background(color.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(color, lineWidth: 1)
-                )
-        }
+        content
+            .foregroundStyle(DesignSystem.Colors.accent)
+            .background(DesignSystem.Colors.surface)
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(DesignSystem.Colors.accent.opacity(0.22), lineWidth: 1)
+            )
+            .shadow(color: DesignSystem.Colors.brownDark.opacity(0.05), radius: 4, x: 0, y: 2)
     }
 }
