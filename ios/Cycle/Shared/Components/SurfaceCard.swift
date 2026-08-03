@@ -3,8 +3,8 @@
 //  Cycle
 //
 //  カード型コンテナ
-//  iOS 26+: Liquid Glass エフェクト
-//  iOS 17-25: surface背景 + 角丸 + ボーダー + シャドウ
+//  全OS共通: surface背景 + 角丸 + ボーダー + シャドウ
+//  （Liquid Glass 版は preferLiquidGlass で無効化中）
 //
 
 import SwiftUI
@@ -33,10 +33,15 @@ struct SurfaceCard<Content: View>: View {
 }
 
 private struct SurfaceCardStyle: ViewModifier {
+    /// [0710] 素の Liquid Glass はカード上端にハイライト線が出て surface 色とも
+    /// ずれて見えるため、surface 色を tint して色を安定させたガラスを使う。
+    /// 問題が再発する場合は false にすると surface スタイルに戻る。
+    private static let preferLiquidGlass = true
+
     func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
+        if Self.preferLiquidGlass, #available(iOS 26.0, *) {
             content
-                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: DesignSystem.Spacing.md))
+                .glassEffect(.surfaceTinted.interactive(), in: .rect(cornerRadius: DesignSystem.Spacing.md))
         } else {
             content
                 .background(DesignSystem.Colors.surface)

@@ -15,7 +15,6 @@ struct CoachHomeView: View {
     @State private var showingHistory = false
     @State private var showingDiaryPicker = false
     @State private var showingBreathing = false
-    @State private var isBreathing = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -25,22 +24,15 @@ struct CoachHomeView: View {
 
                 Button(action: { showingBreathing = true }) {
                     ZStack {
-                        // 呼吸に合わせて広がる淡いハロー
-                        Circle()
-                            .fill(DesignSystem.Colors.accent.opacity(0.08))
-                            .frame(width: 120, height: 120)
-                            .scaleEffect(isBreathing ? 1.6 : 1.1)
-                        Circle()
-                            .fill(DesignSystem.Colors.accent.opacity(0.12))
-                            .frame(width: 120, height: 120)
-                            .scaleEffect(isBreathing ? 1.35 : 1.05)
-
-                        Image("CycleIcon")
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: 120, height: 120)
-                            .clipShape(Circle())
-                            .scaleEffect(isBreathing ? 1.04 : 1.0)
+                        // 呼吸に合わせて広がるハロー。正弦波駆動の連続アニメーションで
+                        // 折り返しの止まりがなく、常に滑らかに満ち引きする
+                        if reduceMotion {
+                            breathingVisual(phase: 0.5)
+                        } else {
+                            TimelineView(.animation) { context in
+                                breathingVisual(phase: breathPhase(at: context.date))
+                            }
+                        }
                     }
                     // ハローの見た目いっぱいまでタップ可能にする
                     .frame(width: 200, height: 200)
@@ -49,12 +41,6 @@ struct CoachHomeView: View {
                 .buttonStyle(PressableButtonStyle(scale: 0.94))
                 .accessibilityLabel("呼吸セッションを始める")
                 .accessibilityIdentifier("coach_breathing_button")
-                .onAppear {
-                    guard !reduceMotion else { return }
-                    withAnimation(.easeInOut(duration: 3.2).repeatForever(autoreverses: true)) {
-                        isBreathing = true
-                    }
-                }
                 .staggeredAppear(index: 0, group: "coach_home")
 
                 Text("タップして、呼吸を整える")
@@ -137,6 +123,60 @@ struct CoachHomeView: View {
             }
     }
 
+    // MARK: - 呼吸ハロー
+
+    /// 1呼吸（吸って吐く）の周期（秒）。ゆったりした腹式呼吸のテンポ
+    private var breathPeriod: Double { 6.4 }
+
+    /// 時刻から呼吸フェーズを算出（0=吐き切り 〜 1=吸い切り、正弦波で滑らかに往復）
+    private func breathPhase(at date: Date, lag: Double = 0) -> Double {
+        let t = date.timeIntervalSinceReferenceDate / breathPeriod - lag
+        return (sin(t * 2 * .pi - .pi / 2) + 1) / 2
+    }
+
+    /// ハロー + アイコン一式（phase: 0〜1）
+    private func breathingVisual(phase p: Double) -> some View {
+        ZStack {
+            // 外側ほど淡く・わずかに遅れて追従する三重のハロー（波紋のような奥行き）
+            haloRing(phase: p * 0.92, growth: 0.75, maxOpacity: 0.10)
+            haloRing(phase: p * 0.96, growth: 0.55, maxOpacity: 0.16)
+            haloRing(phase: p,        growth: 0.35, maxOpacity: 0.22)
+
+            Image("CycleIcon")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 120, height: 120)
+                .clipShape(Circle())
+                .scaleEffect(1.0 + 0.05 * p)
+                // 吸うときにふわっと明るくなるグロウ
+                .shadow(
+                    color: DesignSystem.Colors.accent.opacity(0.10 + 0.18 * p),
+                    radius: 10 + 10 * p
+                )
+        }
+    }
+
+    /// ハロー1枚。放射グラデーションで縁を柔らかくぼかし、
+    /// 広がるほど淡くなることで自然な減衰を表現する
+    private func haloRing(phase p: Double, growth: CGFloat, maxOpacity: Double) -> some View {
+        Circle()
+            .fill(
+                RadialGradient(
+                    colors: [
+                        DesignSystem.Colors.accent.opacity(maxOpacity),
+                        DesignSystem.Colors.accent.opacity(maxOpacity * 0.55),
+                        DesignSystem.Colors.accent.opacity(0)
+                    ],
+                    center: .center,
+                    startRadius: 28,
+                    endRadius: 74
+                )
+            )
+            .frame(width: 120, height: 120)
+            .scaleEffect(1.04 + growth * CGFloat(p))
+            .opacity(0.55 + 0.45 * (1 - p))
+    }
+
     // MARK: - Header
 
     private var sessionHeader: some View {
@@ -149,7 +189,8 @@ struct CoachHomeView: View {
 
             Button(action: { showingHistory = true }) {
                 Image(systemName: "clock.arrow.circlepath")
-                    .font(.system(size: 22))
+                    // ジャーナル/タスクのヘッダーボタンとサイズを統一
+                    .font(.system(size: 21))
                     .foregroundStyle(DesignSystem.Colors.textSecondary)
                     .modifier(GlassIconModifier())
             }

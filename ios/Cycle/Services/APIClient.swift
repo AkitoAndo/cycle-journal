@@ -190,9 +190,20 @@ class APIClient {
     /// サインイン画面に落ちる。全リクエストをここで `.offline` として弾くことで、
     /// 各 sync メソッドはローカル状態を保ったまま静かに失敗する。
     /// （ユニットテストは `--uitesting` を付けないため実サーバへ到達する。）
+    /// [0710] サインイン一時バイパスの単一スイッチ（DEBUGのみ有効）。
+    /// true の間は AuthStore がモック認証になり、API は全て `.offline` で弾かれる
+    /// （実トークンが無いままの認証付きリクエストが 401 → リフレッシュ失敗 →
+    /// サインアウトを引き起こし、サインイン画面に落ちるのを防ぐため）。
+    /// 元に戻すときはここを false にするだけでよい。
+    #if DEBUG
+    static let debugAuthBypass = true
+    #else
+    static let debugAuthBypass = false
+    #endif
+
     private static let isOfflineTestMode: Bool = {
         #if DEBUG
-        return CommandLine.arguments.contains("--uitesting")
+        return CommandLine.arguments.contains("--uitesting") || debugAuthBypass
         #else
         return false
         #endif

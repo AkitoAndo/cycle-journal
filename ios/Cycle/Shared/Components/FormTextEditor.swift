@@ -14,13 +14,15 @@ import SwiftUI
 /// 使用例:
 /// ```swift
 /// FormTextEditor(label: "詳細", text: $description, placeholder: "タスクの詳細を入力")
-/// FormTextEditor(label: "本文", text: $content, minHeight: 200)
+/// FormTextEditor(label: "本文", text: $content, height: 200)
 /// ```
 struct FormTextEditor: View {
     let label: String
     @Binding var text: String
     var placeholder: String = ""
-    var minHeight: CGFloat = 120
+    // 固定高さ。既定は本文2行分（body ≒ 21pt × 2行 + TextEditor内部余白）。
+    // 入力がこの高さを超えても欄は広がらず、欄内スクロールで見る。
+    var height: CGFloat = 60
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
@@ -30,7 +32,7 @@ struct FormTextEditor: View {
 
             TextEditor(text: $text)
                 .scrollContentBackground(.hidden)
-                .frame(minHeight: minHeight)
+                .frame(height: height)
                 .padding(DesignSystem.Spacing.md)
                 .modifier(FormFieldBackground())
                 .foregroundStyle(DesignSystem.Colors.textPrimary)

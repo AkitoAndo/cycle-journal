@@ -12,47 +12,32 @@ import SwiftUI
 struct TaskPreviewView: View {
     let task: TaskItem
     @Environment(\.dismiss) private var dismiss
+    @State private var selectedSection: TaskSectionTabs.Section = .basic
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: DesignSystem.Spacing.xl) {
-                    titleSection
-
-                    if !task.description.isEmpty {
-                        descriptionSection
+            VStack(spacing: 0) {
+                // セクションタブ（編集画面と同じ構成）
+                TaskSectionTabs(
+                    selectedSection: selectedSection,
+                    onSelectSection: { section in
+                        selectedSection = section
                     }
+                )
 
-                    if let dueDate = task.dueDate {
-                        deadlineSection(date: dueDate)
+                ScrollView {
+                    Group {
+                        if selectedSection == .basic {
+                            basicSectionContent
+                        } else if selectedSection == .detail {
+                            detailSectionContent
+                        } else {
+                            postActionSectionContent
+                        }
                     }
-
-                    if !task.intent.isEmpty {
-                        fieldSection(title: "意図", content: task.intent)
-                    }
-
-                    if !task.achievementVision.isEmpty {
-                        fieldSection(title: "完了イメージ", content: task.achievementVision)
-                    }
-
-                    if !task.notes.isEmpty {
-                        fieldSection(title: "注意点", content: task.notes)
-                    }
-
-                    if !task.fact.isEmpty {
-                        fieldSection(title: "事実", content: task.fact)
-                    }
-
-                    if !task.insight.isEmpty {
-                        fieldSection(title: "気づき", content: task.insight)
-                    }
-
-                    if !task.nextAction.isEmpty {
-                        fieldSection(title: "次の一手", content: task.nextAction)
-                    }
+                    .padding(.top, DesignSystem.Spacing.xl)
+                    .padding(.bottom, DesignSystem.Spacing.xxl)
                 }
-                .padding(.top, DesignSystem.Spacing.xl)
-                .padding(.bottom, DesignSystem.Spacing.xxl)
             }
             .background(DesignSystem.Colors.background)
             .navigationTitle("タスクプレビュー")
@@ -67,6 +52,32 @@ struct TaskPreviewView: View {
             }
         }
         .presentationBackground(DesignSystem.Colors.background)
+    }
+
+    // MARK: - Section Contents
+
+    // 未入力の項目もラベルとカードを表示する（カード内は「未記入」表示）
+    private var basicSectionContent: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xl) {
+            titleSection
+            descriptionSection
+        }
+    }
+
+    private var detailSectionContent: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xl) {
+            fieldSection(title: "意図", content: task.intent)
+            fieldSection(title: "完了イメージ", content: task.achievementVision)
+            fieldSection(title: "注意点", content: task.notes)
+        }
+    }
+
+    private var postActionSectionContent: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xl) {
+            fieldSection(title: "事実", content: task.fact)
+            fieldSection(title: "気づき", content: task.insight)
+            fieldSection(title: "次の一手", content: task.nextAction)
+        }
     }
 
     // MARK: - Sections
@@ -90,21 +101,6 @@ struct TaskPreviewView: View {
         fieldSection(title: "詳細", content: task.description)
     }
 
-    private func deadlineSection(date: Date) -> some View {
-        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
-            Text("締切日時")
-                .font(DesignSystem.Fonts.headline)
-                .foregroundStyle(DesignSystem.Colors.textPrimary)
-
-            SurfaceCard {
-                Text(date.formatted(.dateTime.year().month().day().weekday(.abbreviated).hour().minute().locale(Locale(identifier: "ja_JP"))))
-                    .font(DesignSystem.Fonts.body)
-                    .foregroundStyle(DesignSystem.Colors.textPrimary)
-            }
-        }
-        .padding(.horizontal, DesignSystem.Spacing.lg)
-    }
-
     private func fieldSection(title: String, content: String) -> some View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
             Text(title)
@@ -112,7 +108,8 @@ struct TaskPreviewView: View {
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
 
             SurfaceCard {
-                Text(content)
+                // 未入力でもカードの高さ（1行分）を保つため空白文字を表示
+                Text(content.isEmpty ? " " : content)
                     .font(DesignSystem.Fonts.body)
                     .foregroundStyle(DesignSystem.Colors.textPrimary)
             }

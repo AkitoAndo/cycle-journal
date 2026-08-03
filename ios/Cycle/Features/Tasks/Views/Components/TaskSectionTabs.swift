@@ -64,6 +64,9 @@ private struct SectionTabButton: View {
     let isSelected: Bool
     let onTap: () -> Void
 
+    /// ハプティクスの発火トリガー。このタブが選択された瞬間だけ増える
+    @State private var hapticTrigger = 0
+
     var body: some View {
         Button(action: onTap) {
             Text(section.rawValue)
@@ -72,7 +75,10 @@ private struct SectionTabButton: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, DesignSystem.Spacing.md)
         }
-        .changeEffect(.jump(height: 4), value: isSelected, isEnabled: isSelected)
-        .changeEffect(.feedbackHapticSelection, value: isSelected, isEnabled: isSelected)
+        .changeEffect(.feedbackHapticSelection, value: hapticTrigger)
+        // 選択された瞬間（false→true）だけハプティクスを発火。選択解除側は発火しない。
+        .onChange(of: isSelected) { _, nowSelected in
+            if nowSelected { hapticTrigger += 1 }
+        }
     }
 }

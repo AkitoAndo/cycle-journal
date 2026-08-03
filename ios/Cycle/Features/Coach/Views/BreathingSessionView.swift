@@ -18,6 +18,7 @@ struct BreathingSessionView: View {
     @State private var elapsedSeconds: TimeInterval = 0
     @State private var startedAt: Date?
     @State private var timer: Timer?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let durationOptions = [60, 180, 300]
     private let timerInterval: TimeInterval = 0.1
@@ -66,40 +67,52 @@ struct BreathingSessionView: View {
     private var breathingView: some View {
         VStack(spacing: DesignSystem.Spacing.xxl) {
             ZStack {
+                // 呼吸の広がりの目安となるガイドリング（内=通常時、外=吸い切り時）
                 Circle()
-                    .stroke(DesignSystem.Colors.greyLight.opacity(0.7), lineWidth: 1)
+                    .stroke(DesignSystem.Colors.accent.opacity(0.08), lineWidth: 1)
                     .frame(width: 230, height: 230)
 
                 Circle()
-                    .stroke(DesignSystem.Colors.greyLight.opacity(0.9), lineWidth: 1)
+                    .stroke(DesignSystem.Colors.accent.opacity(0.14), lineWidth: 1)
                     .frame(width: 170, height: 170)
 
-                Circle()
-                    .fill(DesignSystem.Colors.accent.opacity(0.08))
-                    .frame(width: 156, height: 156)
-                    .scaleEffect(circleScale)
-
-                Circle()
-                    .stroke(DesignSystem.Colors.accent.opacity(0.32), lineWidth: 2)
-                    .frame(width: 156, height: 156)
-                    .scaleEffect(circleScale)
-
-                Image("CycleIcon")
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 72, height: 72)
-                    .clipShape(Circle())
-                    .opacity(0.92)
+                if isRunning {
+                    // セッション中: 呼吸フェーズに合わせて拡縮
+                    breathCircle(scale: circleScale, glow: (circleScale - 1.0) * 2)
+                        .animation(.linear(duration: timerInterval), value: circleScale)
+                } else if reduceMotion {
+                    breathCircle(scale: 1.02, glow: 0.3)
+                } else {
+                    // 待機中: セッション画面と同じ正弦波駆動で
+                    // ゆったりと満ち引きする（周期6.4秒）
+                    TimelineView(.animation) { context in
+                        let p = idleBreathPhase(at: context.date)
+                        breathCircle(scale: 1.0 + 0.05 * p, glow: 0.2 + 0.4 * p)
+                    }
+                }
             }
-            .animation(.linear(duration: timerInterval), value: circleScale)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("呼吸フェーズ")
-            .accessibilityValue("\(currentPhase.accessibilityDescription)、残り\(remainingTimeString)")
+            .accessibilityValue(
+                isRunning
+                    ? "\(currentPhase.accessibilityDescription)、残り\(remainingTimeString)"
+                    : "瞑想時間の選択中"
+            )
 
             VStack(spacing: DesignSystem.Spacing.sm) {
-                Text(currentPhase.title)
-                    .font(.system(size: 24, weight: .medium))
-                    .foregroundStyle(DesignSystem.Colors.textPrimary)
+                // タイトル行はセッション前後で高さが変わらないよう固定
+                Group {
+                    if isRunning {
+                        Text(currentPhase.title)
+                            .font(.system(size: 24, weight: .medium))
+                            .foregroundStyle(DesignSystem.Colors.textPrimary)
+                    } else {
+                        Text("準備ができたら、はじめよう")
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundStyle(DesignSystem.Colors.textSecondary)
+                    }
+                }
+                .frame(height: 30)
 
                 Text(remainingTimeString)
                     .font(.system(size: 44, weight: .light, design: .rounded))
@@ -107,7 +120,59 @@ struct BreathingSessionView: View {
                     .foregroundStyle(DesignSystem.Colors.textPrimary)
             }
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("\(currentPhase.accessibilityDescription)、残り\(remainingTimeString)")
+            .accessibilityLabel(
+                isRunning
+                    ? "\(currentPhase.accessibilityDescription)、残り\(remainingTimeString)"
+                    : "瞑想時間 \(remainingTimeString)"
+            )
+        }
+    }
+
+    // MARK: - 呼吸サークル
+
+    /// 待機中の呼吸フェーズ（0〜1）。セッション画面のハローと同じテンポ
+    private func idleBreathPhase(at date: Date) -> Double {
+        let t = date.timeIntervalSinceReferenceDate / 6.4
+        return (sin(t * 2 * .pi - .pi / 2) + 1) / 2
+    }
+
+    /// 呼吸に合わせて拡縮する中央サークル + アイコン。
+    /// 放射グラデーションで縁を柔らかくぼかし、拡張時はグロウで明るくなる
+    private func breathCircle(scale: Double, glow: Double) -> some View {
+        ZStack {
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            DesignSystem.Colors.accent.opacity(0.16),
+                            DesignSystem.Colors.accent.opacity(0.10),
+                            DesignSystem.Colors.accent.opacity(0.02)
+                        ],
+                        center: .center,
+                        startRadius: 24,
+                        endRadius: 82
+                    )
+                )
+                .frame(width: 156, height: 156)
+                .scaleEffect(scale)
+
+            Circle()
+                .stroke(DesignSystem.Colors.accent.opacity(0.24), lineWidth: 1.5)
+                .frame(width: 156, height: 156)
+                .scaleEffect(scale)
+
+            Image("CycleIcon")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 72, height: 72)
+                .clipShape(Circle())
+                .opacity(0.94)
+                // サークルより控えめに連動して奥行きを出す
+                .scaleEffect(1.0 + (scale - 1.0) * 0.3)
+                .shadow(
+                    color: DesignSystem.Colors.accent.opacity(0.08 + 0.16 * min(max(glow, 0), 1)),
+                    radius: 12
+                )
         }
     }
 
@@ -117,7 +182,7 @@ struct BreathingSessionView: View {
                 .font(.system(size: 48))
                 .foregroundStyle(DesignSystem.Colors.accent)
 
-            Text("\(completedDurationString)の呼吸を記録しました")
+            Text("\(completedDurationString)の瞑想を記録しました")
                 .font(DesignSystem.Fonts.sectionTitle)
                 .foregroundStyle(DesignSystem.Colors.textPrimary)
                 .multilineTextAlignment(.center)

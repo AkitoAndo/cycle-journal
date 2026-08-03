@@ -134,7 +134,7 @@ class AuthStore: NSObject, ObservableObject {
                 self.error = "認証に対話が必要です"
             case .unknown:
                 self.error = "不明なエラーが発生しました"
-            @unknown default:
+            default:
                 self.error = "エラーが発生しました"
             }
         } else {
@@ -262,6 +262,24 @@ class AuthStore: NSObject, ObservableObject {
                 provider: .apple
             )
             state = .authenticated(userId: "ui-test-user")
+            return
+        }
+
+        // [0710] サインイン一時バイパス（DEBUGのみ）。モック認証で直接メイン画面へ。
+        // API は APIClient.debugAuthBypass により全て offline 扱いになるため、
+        // サーバー依存機能（コーチ実応答・同期）はモック/オフライン動作。
+        // 元に戻すときは APIClient.debugAuthBypass を false にする。
+        if APIClient.debugAuthBypass {
+            currentUser = AuthUser(
+                userId: "debug-user",
+                appleUserId: nil,
+                googleUserId: nil,
+                email: "debug@example.com",
+                fullName: nil,
+                createdAt: Date(),
+                provider: .apple
+            )
+            state = .authenticated(userId: "debug-user")
             return
         }
         #endif
@@ -460,26 +478,7 @@ extension AuthStore: ASAuthorizationControllerDelegate {
         didCompleteWithError error: Error
     ) {
         Task { @MainActor in
-            if let authError = error as? ASAuthorizationError {
-                switch authError.code {
-                case .canceled:
-                    break
-                case .failed:
-                    self.error = "認証に失敗しました"
-                case .invalidResponse:
-                    self.error = "無効な応答を受け取りました"
-                case .notHandled:
-                    self.error = "認証リクエストが処理されませんでした"
-                case .notInteractive:
-                    self.error = "認証に対話が必要です"
-                case .unknown:
-                    self.error = "不明なエラーが発生しました"
-                @unknown default:
-                    self.error = "エラーが発生しました"
-                }
-            } else {
-                self.error = error.localizedDescription
-            }
+            self.applyAuthorizationError(error)
             self.isLoading = false
         }
     }
@@ -489,10 +488,13 @@ extension AuthStore: ASAuthorizationControllerDelegate {
 
 extension AuthStore: ASAuthorizationControllerPresentationContextProviding {
     nonisolated func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let window = scene.windows.first else {
-            return UIWindow()
+        // システムはメインスレッドで呼び出すため MainActor として扱ってよい
+        MainActor.assumeIsolated {
+            guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                  let window = scene.windows.first else {
+                return UIWindow()
+            }
+            return window
         }
-        return window
     }
 }

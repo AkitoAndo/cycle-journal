@@ -18,8 +18,10 @@ class NetworkMonitor: ObservableObject {
 
     private init() {
         monitor.pathUpdateHandler = { [weak self] path in
+            guard let self else { return }
+            let connected = path.status == .satisfied
             Task { @MainActor in
-                self?.isConnected = path.status == .satisfied
+                self.isConnected = connected
             }
         }
         monitor.start(queue: queue)

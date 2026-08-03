@@ -35,15 +35,13 @@ class TaskService {
         title: String,
         description: String? = nil,
         sessionId: String? = nil,
-        cycleElement: String? = nil,
-        dueDate: Date? = nil
+        cycleElement: String? = nil
     ) async throws -> TaskData {
         let request = CreateTaskRequest(
             title: title,
             description: description,
             sessionId: sessionId,
-            cycleElement: cycleElement,
-            dueDate: dueDate
+            cycleElement: cycleElement
         )
 
         let response: APIResponse<TaskData> = try await apiClient.post(
@@ -60,14 +58,12 @@ class TaskService {
         taskId: String,
         title: String? = nil,
         description: String? = nil,
-        status: String? = nil,
-        dueDate: Date? = nil
+        status: String? = nil
     ) async throws -> TaskData {
         let request = UpdateTaskRequest(
             title: title,
             description: description,
-            status: status,
-            dueDate: dueDate
+            status: status
         )
 
         let response: APIResponse<TaskData> = try await apiClient.put(

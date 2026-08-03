@@ -35,11 +35,14 @@ enum BreathingPhase: Equatable {
 }
 
 struct BreathingCycle {
+    // 4-7-8呼吸法（吸う4秒・止める7秒・吐く8秒、吐き切り後の停止なし）。
+    // 吐く:吸う = 2:1 の吐き強調 + 長い保持で副交感神経を最大限に高める、
+    // リラクゼーション効果を最優先したテンポ。初心者にはきついが瞑想効果重視。
     static let inhaleDuration: TimeInterval = 4
-    static let holdAfterInhaleDuration: TimeInterval = 2
-    static let exhaleDuration: TimeInterval = 6
-    static let holdAfterExhaleDuration: TimeInterval = 2
-    static let totalDuration: TimeInterval = 14
+    static let holdAfterInhaleDuration: TimeInterval = 7
+    static let exhaleDuration: TimeInterval = 8
+    static let holdAfterExhaleDuration: TimeInterval = 0
+    static let totalDuration: TimeInterval = 19
 
     static func phase(at elapsedSeconds: TimeInterval) -> BreathingPhase {
         let position = normalizedPosition(for: elapsedSeconds)

@@ -50,30 +50,26 @@ struct ContentView: View {
 
     private var mainContent: some View {
         ZStack(alignment: .bottom) {
-            // タブは switch で出し分ける（非表示タブをビュー階層に残すと
-            // NavigationStack 境界で accessibilityHidden が効かず、
-            // VoiceOver / UI テストに非表示タブの要素が漏れるため）。
-            // 出現アニメーションの再発火は StaggeredAppear のセッションメモリで防ぐ。
+            // 全タブをマウントしたまま opacity で出し分ける。
+            // 切替時に描画前の裏地（システム背景）が一瞬見えないよう、
+            // 次のタブを常に描画済みの状態にしておくため。
+            // 非選択タブは accessibilityHidden + allowsHitTesting(false) で
+            // VoiceOver / タップ対象から外す。
             ZStack {
-                switch selectedTab {
-                case 0:
-                    NavigationStack {
-                        JournalListView()
-                    }
-                case 1:
-                    NavigationStack {
-                        CoachHomeView()
-                    }
-                case 2:
-                    NavigationStack {
-                        TaskListView()
-                    }
-                case 3:
-                    SettingsView()
-                default:
-                    NavigationStack {
-                        JournalListView()
-                    }
+                tabContainer(index: 0) {
+                    NavigationStack { HomeView() }
+                }
+                tabContainer(index: 1) {
+                    NavigationStack { JournalListView() }
+                }
+                tabContainer(index: 2) {
+                    NavigationStack { CoachHomeView() }
+                }
+                tabContainer(index: 3) {
+                    NavigationStack { TaskListView() }
+                }
+                tabContainer(index: 4) {
+                    MyPageView()
                 }
             }
             .padding(.bottom, 55)
@@ -81,10 +77,27 @@ struct ContentView: View {
             CustomTabBar(selectedTab: $selectedTab)
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToCoachChat)) { _ in
-            selectedTab = 1
+            selectedTab = 2
             coachStore.shouldOpenChat = true
         }
         .ignoresSafeArea(.keyboard)
+    }
+
+
+    /// タブのコンテナ。全タブを常にマウントし、選択中のみ表示・操作可能にする。
+    /// opacity の切替はアニメーションさせない（クロスフェード中に裏地が
+    /// 透けるのを防ぎ、即座に次のタブへ切り替える）。
+    @ViewBuilder
+    private func tabContainer<Content: View>(
+        index: Int,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        let isSelected = selectedTab == index
+        content()
+            .opacity(isSelected ? 1 : 0)
+            .allowsHitTesting(isSelected)
+            .accessibilityHidden(!isSelected)
+            .animation(nil, value: selectedTab)
     }
 }
 
@@ -120,25 +133,41 @@ private struct SplashView: View {
 
 struct CustomTabBar: View {
     @Binding var selectedTab: Int
+    @Namespace private var indicatorNamespace
 
     var body: some View {
         HStack(spacing: 0) {
+            TabBarButton(
+                icon: "house",
+                selectedIcon: "house.fill",
+                label: "ホーム",
+                identifier: "tab_Home",
+                isSelected: selectedTab == 0,
+                namespace: indicatorNamespace,
+                action: { select(0) }
+            )
+
             TabBarButton(
                 icon: "leaf",
                 selectedIcon: "leaf.fill",
                 label: "ジャーナル",
                 identifier: "tab_Journal",
-                isSelected: selectedTab == 0,
-                action: { select(0) }
+                isSelected: selectedTab == 1,
+                namespace: indicatorNamespace,
+                action: { select(1) }
             )
 
             TabBarButton(
-                icon: "bubble.left.and.bubble.right",
-                selectedIcon: "bubble.left.and.bubble.right.fill",
+                // Cycleロゴ（大樹アイコン）をそのまま表示。中央タブとして大きめに
+                icon: "CycleIcon",
+                selectedIcon: "CycleIcon",
                 label: "セッション",
                 identifier: "tab_Coach",
-                isSelected: selectedTab == 1,
-                action: { select(1) }
+                isAssetIcon: true,
+                isProminent: true,
+                isSelected: selectedTab == 2,
+                namespace: indicatorNamespace,
+                action: { select(2) }
             )
 
             TabBarButton(
@@ -146,29 +175,29 @@ struct CustomTabBar: View {
                 selectedIcon: "checklist.checked",
                 label: "タスクリスト",
                 identifier: "tab_Tasks",
-                isSelected: selectedTab == 2,
-                action: { select(2) }
+                isSelected: selectedTab == 3,
+                namespace: indicatorNamespace,
+                action: { select(3) }
             )
 
             TabBarButton(
-                icon: "gearshape",
-                selectedIcon: "gearshape.fill",
-                label: "設定",
-                identifier: "tab_Settings",
-                isSelected: selectedTab == 3,
-                action: { select(3) }
+                icon: "person",
+                selectedIcon: "person.fill",
+                label: "マイページ",
+                identifier: "tab_MyPage",
+                isSelected: selectedTab == 4,
+                namespace: indicatorNamespace,
+                action: { select(4) }
             )
         }
         .frame(height: 55)
         .background(DesignSystem.Colors.background)
-        .overlay(alignment: .top) {
-            Divider()
-                .background(DesignSystem.Colors.grey.opacity(0.4))
-        }
     }
 
     private func select(_ tab: Int) {
-        selectedTab = tab
+        withAnimation(DesignSystem.Timing.bouncySpring) {
+            selectedTab = tab
+        }
     }
 }
 
@@ -178,36 +207,50 @@ struct TabBarButton: View {
     let label: String
     /// 表示ラベルと独立した UI テスト用の安定 ID（例: "tab_Journal"）
     let identifier: String
+    /// true の場合、icon をアセット画像名として扱う（Cycleロゴ等のカラー画像用）
+    var isAssetIcon: Bool = false
+    /// true の場合、他タブよりアイコンを大きく表示して目立たせる（中央タブ用）
+    var isProminent: Bool = false
     let isSelected: Bool
+    let namespace: Namespace.ID
     let action: () -> Void
+
+    private var iconSize: CGFloat {
+        isProminent ? 72 : DesignSystem.ComponentSize.iconSize
+    }
 
     var body: some View {
         Button(action: action) {
             VStack(spacing: 4) {
                 ZStack {
-                    if isSelected {
-                        Image(systemName: selectedIcon)
+                    if isAssetIcon {
+                        Image(icon)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .clipShape(Circle())
+                            // ブランドロゴは選択状態に関わらず常時フルカラーで表示
+                            .frame(width: iconSize, height: iconSize)
+                            // 中央タブはタブバー上端から少し飛び出させ、中心として際立たせる
+                            .offset(y: isProminent ? -8 : 0)
                     } else {
-                        Image(systemName: icon)
+                        // トランジションなしで即アイコン切替（ふわっとしない）
+                        Image(systemName: isSelected ? selectedIcon : icon)
                     }
                 }
                 .font(.system(size: DesignSystem.FontSize.title3))
                 .frame(width: DesignSystem.ComponentSize.iconSize, height: DesignSystem.ComponentSize.iconSize)
 
-                Text(label)
-                    .font(.system(size: 10))
+                // 中央の強調タブはロゴのみ表示（文字なし）
+                if !isProminent {
+                    Text(label)
+                        .font(.system(size: 10))
+                }
             }
             .foregroundStyle(isSelected ? DesignSystem.Colors.accent : DesignSystem.Colors.textSecondary)
             .padding(.vertical, 6)
             .frame(maxWidth: .infinity)
-            .background {
-                if isSelected {
-                    Capsule()
-                        .fill(DesignSystem.Colors.accent.opacity(0.10))
-                        .padding(.horizontal, DesignSystem.Spacing.md)
-                }
-            }
         }
+        .accessibilityLabel(label)
         .accessibilityIdentifier(identifier)
     }
 }

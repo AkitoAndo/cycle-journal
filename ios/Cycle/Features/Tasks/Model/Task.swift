@@ -35,9 +35,6 @@ struct TaskItem: Identifiable, Codable, Hashable {
     /// 完了日時
     var completedAt: Date?
 
-    /// 締切日時
-    var dueDate: Date?
-
     /// 削除日時（論理削除用）
     var deletedAt: Date?
 
@@ -61,4 +58,17 @@ struct TaskItem: Identifiable, Codable, Hashable {
 
     /// 次の一手
     var nextAction: String = ""
+}
+
+extension TaskItem {
+    /// 検索語に一致するか（タイトル+ふりかえり系フィールドを対象・大文字小文字無視）
+    func matches(_ query: String) -> Bool {
+        let fields = [title, description, intent, achievementVision, notes, fact, insight, nextAction]
+        return fields.contains { $0.localizedCaseInsensitiveContains(query) }
+    }
+
+    /// 一覧の2行目に出すプレビュー（テンプレート一覧と同じ仕様: 詳細 → 意図 → 注意点の順で最初の非空欄）
+    var previewText: String {
+        [description, intent, notes].first { !$0.isEmpty } ?? ""
+    }
 }

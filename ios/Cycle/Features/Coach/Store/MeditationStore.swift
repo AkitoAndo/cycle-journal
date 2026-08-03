@@ -19,7 +19,7 @@ class MeditationStore: ObservableObject {
             logs = decoded.sorted { $0.date > $1.date }
         }
     }
-
+    
     func loadLogs() {
         let stored = userDefaults.data(forKey: logsKey)
         if let data = stored,

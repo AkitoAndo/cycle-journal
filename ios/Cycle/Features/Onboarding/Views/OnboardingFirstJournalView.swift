@@ -47,10 +47,8 @@ struct OnboardingFirstJournalView: View {
             Button {
                 let text = flow.firstJournalText.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !text.isEmpty else { return }
-                Task {
-                    await journalViewModel.addEntry(text: text)
-                    flow.advance()
-                }
+                journalViewModel.addEntry(text: text)
+                flow.advance()
             } label: {
                 Text("保存して次へ")
                     .font(.system(size: 17, weight: .semibold))

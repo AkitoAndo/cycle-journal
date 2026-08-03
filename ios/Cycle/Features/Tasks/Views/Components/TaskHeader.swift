@@ -14,6 +14,7 @@ struct TaskHeader: View {
     let onToggleReorderMode: () -> Void
     let onShowArchive: () -> Void
     let onShowDeleted: () -> Void
+    let onShowTemplates: () -> Void
 
     var body: some View {
         HStack(alignment: .center) {
@@ -35,12 +36,16 @@ struct TaskHeader: View {
                     Label("アーカイブ", systemImage: "archivebox")
                 }
 
+                Button(action: onShowTemplates) {
+                    Label("テンプレート管理", systemImage: "square.on.square")
+                }
+
                 Button(action: onShowDeleted) {
                     Label("最近削除した項目", systemImage: "trash")
                 }
             } label: {
                 Image(systemName: "line.3.horizontal")
-                    .font(.system(size: 26))
+                    .font(.system(size: 21))
                     .foregroundStyle(DesignSystem.Colors.textSecondary)
                     .modifier(GlassIconModifier())
             }

@@ -136,13 +136,14 @@ enum DesignSystem {
         }
 
         // UIKit appearance（ナビバー等）用の動的 UIColor
-        static let backgroundUIColor = adaptiveUIColor(light: (0.99, 0.99, 0.98), dark: (0.11, 0.10, 0.09))
+        static let backgroundUIColor = adaptiveUIColor(light: (0.98, 0.95, 0.88), dark: (0.11, 0.10, 0.09))
         static let textPrimaryUIColor = adaptiveUIColor(light: (0.15, 0.15, 0.15), dark: (0.93, 0.91, 0.89))
         static let accentUIColor = adaptiveUIColor(light: (0.55, 0.45, 0.35), dark: (0.71, 0.60, 0.49))
 
-        static let background = adaptive(light: (0.99, 0.99, 0.98), dark: (0.11, 0.10, 0.09))
-        static let secondaryBackground = adaptive(light: (0.96, 0.96, 0.95), dark: (0.14, 0.13, 0.12))
-        static let surface = adaptive(light: (0.95, 0.94, 0.93), dark: (0.17, 0.16, 0.15))
+        /// ライトの背景はアプリアイコンの生成り（#F8ECD4）を少し薄めたトーン
+        static let background = adaptive(light: (0.98, 0.95, 0.88), dark: (0.11, 0.10, 0.09))
+        /// カードは背景より明るい温白にして生成り背景から浮かせる
+        static let surface = adaptive(light: (0.99, 0.98, 0.95), dark: (0.17, 0.16, 0.15))
 
         static let textPrimary = adaptive(light: (0.15, 0.15, 0.15), dark: (0.93, 0.91, 0.89))
         static let textSecondary = adaptive(light: (0.45, 0.43, 0.41), dark: (0.66, 0.63, 0.60))
@@ -174,9 +175,9 @@ enum DesignSystem {
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
-        /// 背景の淡いグラデーション — 画面背景に奥行きを出す
+        /// 画面背景。[0710] 生成り単色（旧グラデーションは廃止）
         static let backgroundGradient = LinearGradient(
-            colors: [background, secondaryBackground],
+            colors: [background, background],
             startPoint: .top,
             endPoint: .bottom
         )
