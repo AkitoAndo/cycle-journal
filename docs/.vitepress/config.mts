@@ -35,6 +35,7 @@ export default defineConfig({
           { text: 'コーチ設計', link: '/product/coach-design' },
           { text: 'Cycleモデル', link: '/product/cycle-model' },
           { text: 'プロンプトカタログ', link: '/product/prompt-catalog' },
+          { text: 'App Store説明文', link: '/product/store-description' },
         ],
       },
       {
