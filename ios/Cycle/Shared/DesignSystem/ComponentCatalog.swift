@@ -694,8 +694,8 @@ private struct PrimaryButtonPreview: View {
             previewSection("With icon") {
                 PrimaryButton("話しかける", icon: "bubble.left") {}
             }
-            previewSection("Custom color") {
-                PrimaryButton("送信", color: .green) {}
+            previewSection("CTA") {
+                PrimaryButton("日記を書く", icon: "pencil") {}
             }
         }
     }
@@ -708,7 +708,7 @@ private struct SecondaryButtonPreview: View {
                 SecondaryButton("キャンセル") {}
             }
             previewSection("With icon") {
-                SecondaryButton("日記から話す", icon: "book", color: .green) {}
+                SecondaryButton("日記から話す", icon: "book") {}
             }
         }
     }

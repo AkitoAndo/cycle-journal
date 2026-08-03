@@ -163,7 +163,7 @@ struct TaskListView: View {
         FloatingActionButton(icon: "plus") {
             showNewTask = true
         }
-        .padding(.trailing, DesignSystem.Spacing.xl + 2)
-        .padding(.bottom, DesignSystem.Spacing.xl - 2)
+        .padding(.trailing, 40)
+        .padding(.bottom, 40)
     }
 }

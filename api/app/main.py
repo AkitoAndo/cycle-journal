@@ -7,7 +7,7 @@ from app.config import settings
 from app.exceptions import AppError, app_error_handler
 from app.logging_config import setup_logging
 from app.middleware.request_id import RequestIdMiddleware
-from app.routers import auth, coach, health, iap, sessions, tasks, users
+from app.routers import admin, auth, coach, health, iap, sessions, tasks, users
 
 setup_logging(project_id=settings.gcp_project_id)
 
@@ -30,6 +30,7 @@ app.add_exception_handler(AppError, app_error_handler)
 
 app.include_router(health.router)
 app.include_router(auth.router)
+app.include_router(admin.router)
 app.include_router(coach.router)
 app.include_router(sessions.router)
 app.include_router(tasks.router)

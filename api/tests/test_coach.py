@@ -16,8 +16,19 @@ def test_coach_chat(auth_client, mock_firestore):
     ) as mock_chat, patch(
         "app.routers.coach.ai_usage_service.reserve_monthly_budget",
         new_callable=AsyncMock,
-    ) as reserve_budget:
+    ) as reserve_budget, patch(
+        "app.routers.coach.prompt_service.get_active_config",
+        new_callable=AsyncMock,
+    ) as active_config:
         mock_chat.return_value = "そう感じたんだね。"
+        active_config.return_value = (
+            {
+                "system_prompt": "system prompt",
+                "use_langgraph": False,
+                "use_gemini_fallback": True,
+            },
+            "prompt-v1",
+        )
 
         # Configure mock: after set, session should report message_count
         mock_doc = mock_firestore._mock_doc
@@ -38,6 +49,8 @@ def test_coach_chat(auth_client, mock_firestore):
 
     assert response.status_code == 200
     reserve_budget.assert_awaited_once()
+    mock_chat.assert_awaited_once()
+    assert mock_chat.call_args.kwargs["system_prompt"] == "system prompt"
     data = response.json()["data"]
     assert data["message"] == "そう感じたんだね。"
     assert "session_id" in data

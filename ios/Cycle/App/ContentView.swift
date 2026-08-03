@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import Pow
 
 struct ContentView: View {
     @State private var selectedTab = 0
@@ -61,28 +60,22 @@ struct ContentView: View {
                     NavigationStack {
                         JournalListView()
                     }
-                    .transition(tabTransition)
                 case 1:
                     NavigationStack {
                         CoachHomeView()
                     }
-                    .transition(tabTransition)
                 case 2:
                     NavigationStack {
                         TaskListView()
                     }
-                    .transition(tabTransition)
                 case 3:
                     SettingsView()
-                        .transition(tabTransition)
                 default:
                     NavigationStack {
                         JournalListView()
                     }
-                    .transition(tabTransition)
                 }
             }
-            .animation(DesignSystem.Timing.gentleSpring, value: selectedTab)
             .padding(.bottom, 55)
 
             CustomTabBar(selectedTab: $selectedTab)
@@ -92,12 +85,6 @@ struct ContentView: View {
             coachStore.shouldOpenChat = true
         }
         .ignoresSafeArea(.keyboard)
-    }
-
-
-    /// タブ切替時のクロスフェード + わずかなスケール
-    private var tabTransition: AnyTransition {
-        .opacity.combined(with: .scale(scale: 0.98))
     }
 }
 
@@ -133,7 +120,6 @@ private struct SplashView: View {
 
 struct CustomTabBar: View {
     @Binding var selectedTab: Int
-    @Namespace private var indicatorNamespace
 
     var body: some View {
         HStack(spacing: 0) {
@@ -143,7 +129,6 @@ struct CustomTabBar: View {
                 label: "ジャーナル",
                 identifier: "tab_Journal",
                 isSelected: selectedTab == 0,
-                namespace: indicatorNamespace,
                 action: { select(0) }
             )
 
@@ -153,7 +138,6 @@ struct CustomTabBar: View {
                 label: "セッション",
                 identifier: "tab_Coach",
                 isSelected: selectedTab == 1,
-                namespace: indicatorNamespace,
                 action: { select(1) }
             )
 
@@ -163,7 +147,6 @@ struct CustomTabBar: View {
                 label: "タスクリスト",
                 identifier: "tab_Tasks",
                 isSelected: selectedTab == 2,
-                namespace: indicatorNamespace,
                 action: { select(2) }
             )
 
@@ -173,7 +156,6 @@ struct CustomTabBar: View {
                 label: "設定",
                 identifier: "tab_Settings",
                 isSelected: selectedTab == 3,
-                namespace: indicatorNamespace,
                 action: { select(3) }
             )
         }
@@ -186,9 +168,7 @@ struct CustomTabBar: View {
     }
 
     private func select(_ tab: Int) {
-        withAnimation(DesignSystem.Timing.bouncySpring) {
-            selectedTab = tab
-        }
+        selectedTab = tab
     }
 }
 
@@ -199,7 +179,6 @@ struct TabBarButton: View {
     /// 表示ラベルと独立した UI テスト用の安定 ID（例: "tab_Journal"）
     let identifier: String
     let isSelected: Bool
-    let namespace: Namespace.ID
     let action: () -> Void
 
     var body: some View {
@@ -208,15 +187,12 @@ struct TabBarButton: View {
                 ZStack {
                     if isSelected {
                         Image(systemName: selectedIcon)
-                            .transition(.movingParts.pop(DesignSystem.Colors.accent))
                     } else {
                         Image(systemName: icon)
-                            .transition(.opacity)
                     }
                 }
                 .font(.system(size: DesignSystem.FontSize.title3))
                 .frame(width: DesignSystem.ComponentSize.iconSize, height: DesignSystem.ComponentSize.iconSize)
-                .changeEffect(.jump(height: 5), value: isSelected, isEnabled: isSelected)
 
                 Text(label)
                     .font(.system(size: 10))
@@ -228,12 +204,10 @@ struct TabBarButton: View {
                 if isSelected {
                     Capsule()
                         .fill(DesignSystem.Colors.accent.opacity(0.10))
-                        .matchedGeometryEffect(id: "tabIndicator", in: namespace)
                         .padding(.horizontal, DesignSystem.Spacing.md)
                 }
             }
         }
-        .animation(DesignSystem.Timing.easing, value: isSelected)
         .accessibilityIdentifier(identifier)
     }
 }

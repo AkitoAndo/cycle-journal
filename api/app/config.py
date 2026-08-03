@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     firestore_database_id: str = "(default)"
     apple_bundle_id: str = "com.akitoando.CycleJournal"
     google_client_id: str = ""  # iOS用Google OAuth Client ID
+    admin_google_emails: str = "takeshiogata1105@gmail.com,28ww.lo.ol.ww28@gmail.com"
+    admin_auth_bypass: bool = False
 
     # Sign in with Apple - revoke / token exchange 用
     # 未設定の場合は revoke / code 交換は no-op になる（ローカル開発フォールバック）

@@ -141,7 +141,7 @@ struct JournalListView: View {
         FloatingActionButton(icon: "plus") {
             showNewEntry = true
         }
-        .padding(.trailing, DesignSystem.Spacing.xl + 2)
-        .padding(.bottom, DesignSystem.Spacing.xl - 2)
+        .padding(.trailing, 40)
+        .padding(.bottom, 40)
     }
 }

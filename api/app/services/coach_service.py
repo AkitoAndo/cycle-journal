@@ -19,6 +19,25 @@ from app.config import settings
 def _capped_max_tokens() -> int:
     return min(settings.claude_max_tokens, settings.coach_output_max_tokens_cap)
 
+
+def _config_value(config: dict | None, key: str, default):
+    if not config:
+        return default
+    value = config.get(key)
+    return default if value is None or value == "" else value
+
+
+def _config_max_tokens(config: dict | None) -> int:
+    max_tokens = int(_config_value(config, "max_tokens", settings.claude_max_tokens))
+    cap = int(
+        _config_value(
+            config,
+            "output_max_tokens_cap",
+            settings.coach_output_max_tokens_cap,
+        )
+    )
+    return min(max_tokens, cap)
+
 # ベースプロンプト（Cycleの大樹スタイル）
 # NOTE: prompt caching を有効化するため、Sonnet の最小 cacheable prefix
 # (約 1024 tokens) を上回るよう Cycle 要素詳細・口調例・few-shot を拡充している。
@@ -125,6 +144,8 @@ async def chat(
     user_message: str,
     history: list[dict] | None = None,
     diary_content: str | None = None,
+    system_prompt: str | None = None,
+    config: dict | None = None,
 ) -> str:
     """コーチの応答を取得.
 
@@ -135,12 +156,17 @@ async def chat(
     if diary_content:
         content = f"【日記の内容】\n{diary_content}\n\n【ユーザーのメッセージ】\n{user_message}"
 
-    if settings.use_gemini_fallback:
-        return _chat_gemini(content, history)
-    return _chat_claude(content, history)
+    if bool(_config_value(config, "use_gemini_fallback", settings.use_gemini_fallback)):
+        return _chat_gemini(content, history, system_prompt, config)
+    return _chat_claude(content, history, system_prompt, config)
 
 
-def _chat_claude(content: str, history: list[dict] | None) -> str:
+def _chat_claude(
+    content: str,
+    history: list[dict] | None,
+    system_prompt: str | None = None,
+    config: dict | None = None,
+) -> str:
     client = _get_claude_client()
     messages: list[dict] = []
     if history:
@@ -148,31 +174,36 @@ def _chat_claude(content: str, history: list[dict] | None) -> str:
     messages.append({"role": "user", "content": content})
 
     response = client.messages.create(
-        model=settings.claude_model_coach,
-        max_tokens=settings.claude_max_tokens,
+        model=_config_value(config, "claude_model_coach", settings.claude_model_coach),
+        max_tokens=_config_max_tokens(config),
         system=[
             {
                 "type": "text",
-                "text": SYSTEM_PROMPT,
+                "text": system_prompt or SYSTEM_PROMPT,
                 "cache_control": {"type": "ephemeral"},
             }
         ],
         messages=messages,
-        temperature=settings.claude_temperature,
+        temperature=float(_config_value(config, "temperature", settings.claude_temperature)),
     )
     return response.content[0].text
 
 
-def _chat_gemini(content: str, history: list[dict] | None) -> str:
+def _chat_gemini(
+    content: str,
+    history: list[dict] | None,
+    system_prompt: str | None = None,
+    config: dict | None = None,
+) -> str:
     client = _get_gemini_client()
     contents = _build_gemini_contents(content, history)
     response = client.models.generate_content(
-        model=settings.gemini_model_coach,
+        model=_config_value(config, "gemini_model_coach", settings.gemini_model_coach),
         contents=contents,
         config=genai_types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            max_output_tokens=_capped_max_tokens(),
-            temperature=settings.claude_temperature,
+            system_instruction=system_prompt or SYSTEM_PROMPT,
+            max_output_tokens=_config_max_tokens(config),
+            temperature=float(_config_value(config, "temperature", settings.claude_temperature)),
         ),
     )
     return response.text or ""
@@ -197,6 +228,8 @@ async def chat_stream(
     user_message: str,
     history: list[dict] | None = None,
     diary_content: str | None = None,
+    system_prompt: str | None = None,
+    config: dict | None = None,
 ) -> AsyncIterator[str]:
     """ストリーミングでテキスト chunk を yield する.
 
@@ -209,12 +242,12 @@ async def chat_stream(
     client = _get_gemini_client()
     contents = _build_gemini_contents(content, history)
     stream = client.models.generate_content_stream(
-        model=settings.gemini_model_coach,
+        model=_config_value(config, "gemini_model_coach", settings.gemini_model_coach),
         contents=contents,
         config=genai_types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            max_output_tokens=_capped_max_tokens(),
-            temperature=settings.claude_temperature,
+            system_instruction=system_prompt or SYSTEM_PROMPT,
+            max_output_tokens=_config_max_tokens(config),
+            temperature=float(_config_value(config, "temperature", settings.claude_temperature)),
         ),
     )
     for chunk in stream:
