@@ -15,6 +15,7 @@ import UIKit
 /// タップ時のスケールアニメーションと触覚フィードバック付き
 struct FloatingActionButton: View {
     let icon: String
+    var accessibilityIdentifier: String?
     let action: () -> Void
 
     @State private var tapCount = 0
@@ -34,7 +35,7 @@ struct FloatingActionButton: View {
         .buttonStyle(ScaleButtonStyle())
         .changeEffect(.jump(height: 10), value: tapCount)
         .changeEffect(.feedback(hapticImpact: .medium), value: tapCount)
-        .accessibilityIdentifier("fab_\(icon)")
+        .accessibilityIdentifier(accessibilityIdentifier ?? "fab_\(icon)")
     }
 
     private var fabForeground: Color {

@@ -177,7 +177,7 @@ struct TaskListView: View {
     }
 
     private var floatingActionButton: some View {
-        FloatingActionButton(icon: "plus") {
+        FloatingActionButton(icon: "plus", accessibilityIdentifier: "task_fab_plus") {
             showNewTask = true
         }
         .padding(.trailing, 40)

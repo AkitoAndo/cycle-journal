@@ -138,7 +138,7 @@ struct JournalListView: View {
     }
 
     private var floatingActionButton: some View {
-        FloatingActionButton(icon: "plus") {
+        FloatingActionButton(icon: "plus", accessibilityIdentifier: "journal_fab_plus") {
             showNewEntry = true
         }
         .padding(.trailing, 40)
