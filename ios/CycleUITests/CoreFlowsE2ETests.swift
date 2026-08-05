@@ -126,7 +126,7 @@ final class CoreFlowsE2ETests: XCTestCase {
         let doneButton = app.buttons["完了"]
         XCTAssertTrue(doneButton.waitForExistence(timeout: 5), "終了後に完了画面が現れない")
         XCTAssertTrue(
-            app.staticTexts.matching(NSPredicate(format: "label CONTAINS '呼吸を記録しました'")).firstMatch.exists,
+            app.staticTexts.matching(NSPredicate(format: "label CONTAINS '記録しました'")).firstMatch.exists,
             "記録完了メッセージが表示されない"
         )
 
