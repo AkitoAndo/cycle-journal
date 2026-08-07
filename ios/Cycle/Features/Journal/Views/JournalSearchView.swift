@@ -11,6 +11,9 @@ struct JournalSearchView: View {
     @ObservedObject var vm: JournalViewModel
     @Environment(\.dismiss) private var dismiss
 
+    /// スワイプ「編集」で開くエントリ（一覧と同じ JournalEditView）
+    @State private var editingEntry: JournalEntry?
+
     // テキスト検索の結果
     private var textSearchResults: [JournalEntry] {
         vm.entries.filter { $0.deletedAt == nil && $0.text.localizedCaseInsensitiveContains(vm.searchText) }
@@ -164,6 +167,10 @@ struct JournalSearchView: View {
             }
         }
         .presentationBackground(DesignSystem.Colors.background)
+        .sheet(item: $editingEntry) { entry in
+            JournalEditView(vm: vm, entry: entry)
+                .softSheet()
+        }
     }
 
     private func toggleSearchTag(_ tag: String) {
@@ -203,7 +210,6 @@ struct JournalSearchView: View {
 
     @ViewBuilder
     private func entryList(entries: [JournalEntry], showEmptyMessage: String) -> some View {
-        ZStack(alignment: .top) {
         List {
             if entries.isEmpty {
                 EmptyStateView(icon: "magnifyingglass", title: "見つかりませんでした")
@@ -252,6 +258,22 @@ struct JournalSearchView: View {
                         )
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button(role: .destructive) {
+                                vm.deleteEntry(entry)
+                            } label: {
+                                Label("削除", systemImage: "trash")
+                                    .labelStyle(.iconOnly)
+                            }
+
+                            Button {
+                                editingEntry = entry
+                            } label: {
+                                Label("編集", systemImage: "pencil")
+                                    .labelStyle(.iconOnly)
+                            }
+                            .tint(DesignSystem.Colors.accent)
+                        }
                     }
                 }
             }
@@ -259,15 +281,6 @@ struct JournalSearchView: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(DesignSystem.Colors.background)
-
-            LinearGradient(
-                colors: [DesignSystem.Colors.background, DesignSystem.Colors.background.opacity(0)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .frame(height: 12)
-            .allowsHitTesting(false)
-        }
     }
 }
 
@@ -298,7 +311,7 @@ private struct SearchBarStyle: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
             content
-                .glassEffect(.regular, in: .rect(cornerRadius: DesignSystem.Spacing.md))
+                .glassEffect(.surfaceTinted, in: .rect(cornerRadius: DesignSystem.Spacing.md))
         } else {
             content
                 .background(DesignSystem.Colors.surface)
@@ -311,7 +324,7 @@ private struct SearchCardStyle: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
             content
-                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: DesignSystem.Spacing.md))
+                .glassEffect(.surfaceTinted.interactive(), in: .rect(cornerRadius: DesignSystem.Spacing.md))
         } else {
             content
                 .background(DesignSystem.Colors.surface)

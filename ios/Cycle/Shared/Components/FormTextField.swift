@@ -42,7 +42,7 @@ struct FormFieldBackground: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
             content
-                .glassEffect(.regular, in: .rect(cornerRadius: DesignSystem.Spacing.md))
+                .glassEffect(.surfaceTinted, in: .rect(cornerRadius: DesignSystem.Spacing.md))
         } else {
             content
                 .background(DesignSystem.Colors.surface)

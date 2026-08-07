@@ -13,6 +13,7 @@ import SwiftUI
 struct EmptyStateView: View {
     let icon: String
     let title: String
+    let titleColor: Color
     let subtitle: String?
     let actionTitle: String?
     let action: (() -> Void)?
@@ -20,12 +21,14 @@ struct EmptyStateView: View {
     init(
         icon: String,
         title: String,
+        titleColor: Color = DesignSystem.Colors.textPrimary,
         subtitle: String? = nil,
         actionTitle: String? = nil,
         action: (() -> Void)? = nil
     ) {
         self.icon = icon
         self.title = title
+        self.titleColor = titleColor
         self.subtitle = subtitle
         self.actionTitle = actionTitle
         self.action = action
@@ -58,7 +61,7 @@ struct EmptyStateView: View {
             VStack(spacing: DesignSystem.Spacing.sm) {
                 Text(title)
                     .font(DesignSystem.Fonts.headlineRegular)
-                    .foregroundStyle(DesignSystem.Colors.textPrimary)
+                    .foregroundStyle(titleColor)
 
                 if let subtitle = subtitle {
                     Text(subtitle)
@@ -70,17 +73,7 @@ struct EmptyStateView: View {
             .staggeredAppear(index: 1)
 
             if let actionTitle = actionTitle, let action = action {
-                Button(action: action) {
-                    Text(actionTitle)
-                        .font(DesignSystem.Fonts.button)
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, DesignSystem.Spacing.xxl)
-                        .padding(.vertical, DesignSystem.Spacing.md)
-                        .background(DesignSystem.Colors.accentGradient)
-                        .clipShape(Capsule())
-                        .shadow(color: DesignSystem.Colors.accent.opacity(0.25), radius: 8, x: 0, y: 4)
-                }
-                .buttonStyle(PressableButtonStyle())
+                PrimaryButton(actionTitle, fullWidth: false, action: action)
                 .staggeredAppear(index: 2)
             }
 

@@ -69,7 +69,7 @@ final class CycleUITests: XCTestCase {
     @MainActor
     func testScreenshots_Journal_02_NewEntry() {
         tapTab("Journal")
-        waitAndTap(app.buttons["fab_plus"])
+        waitAndTap(app.buttons["journal_fab_plus"])
         takeScreenshot("journal-new")
     }
 
@@ -118,7 +118,7 @@ final class CycleUITests: XCTestCase {
     @MainActor
     func testScreenshots_Tasks_02_NewEntry() {
         tapTab("Tasks")
-        waitAndTap(app.buttons["fab_plus"])
+        waitAndTap(app.buttons["task_fab_plus"])
         takeScreenshot("task-new")
     }
 
@@ -190,7 +190,7 @@ final class CycleUITests: XCTestCase {
 
     @MainActor
     func testScreenshots_Settings_01_Main() {
-        tapTab("Settings")
+        tapTab("MyPage")
         takeScreenshot("settings")
     }
 
@@ -207,7 +207,7 @@ final class CycleUITests: XCTestCase {
         tapTab("Tasks")
         takeScreenshot("tab-tasks")
 
-        tapTab("Settings")
+        tapTab("MyPage")
         takeScreenshot("tab-settings")
     }
 
@@ -216,7 +216,7 @@ final class CycleUITests: XCTestCase {
     @MainActor
     func testJournalCreateEntry() {
         tapTab("Journal")
-        waitAndTap(app.buttons["fab_plus"])
+        waitAndTap(app.buttons["journal_fab_plus"])
 
         let textView = app.textViews.firstMatch
         XCTAssertTrue(textView.waitForExistence(timeout: 3))
@@ -231,7 +231,7 @@ final class CycleUITests: XCTestCase {
     @MainActor
     func testJournalCancelCreate() {
         tapTab("Journal")
-        waitAndTap(app.buttons["fab_plus"])
+        waitAndTap(app.buttons["journal_fab_plus"])
 
         let textView = app.textViews.firstMatch
         XCTAssertTrue(textView.waitForExistence(timeout: 3))
@@ -246,7 +246,7 @@ final class CycleUITests: XCTestCase {
     @MainActor
     func testTaskCreateTask() {
         tapTab("Tasks")
-        waitAndTap(app.buttons["fab_plus"])
+        waitAndTap(app.buttons["task_fab_plus"])
 
         let titleField = app.textFields.firstMatch
         XCTAssertTrue(titleField.waitForExistence(timeout: 3))
@@ -265,7 +265,7 @@ final class CycleUITests: XCTestCase {
     @MainActor
     func testTaskCancelCreate() {
         tapTab("Tasks")
-        waitAndTap(app.buttons["fab_plus"])
+        waitAndTap(app.buttons["task_fab_plus"])
 
         let titleField = app.textFields.firstMatch
         XCTAssertTrue(titleField.waitForExistence(timeout: 3))
@@ -291,7 +291,7 @@ final class CycleUITests: XCTestCase {
         // タブ切替直後にタスクリストの最初のセルが出るのを待つ（FAB が立ち上がる前提条件）
         _ = app.staticTexts["朝の瞑想を10分する"].waitForExistence(timeout: 10)
 
-        let fab = app.buttons["fab_plus"]
+        let fab = app.buttons["task_fab_plus"]
         XCTAssertTrue(fab.waitForExistence(timeout: 10), "FAB が見つからない")
 
         takeScreenshot("ipad-tasks-before-fab-tap")
@@ -319,7 +319,7 @@ final class CycleUITests: XCTestCase {
 
         tapTab("Journal")
 
-        let fab = app.buttons["fab_plus"]
+        let fab = app.buttons["journal_fab_plus"]
         XCTAssertTrue(fab.waitForExistence(timeout: 10), "FAB が見つからない")
 
         takeScreenshot("ipad-journal-before-fab-tap")

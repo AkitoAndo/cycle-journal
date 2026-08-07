@@ -21,13 +21,21 @@ struct PrimaryButton: View {
     let title: String
     var icon: String? = nil
     var color: Color = DesignSystem.Colors.accent
+    var fullWidth: Bool = true
     let action: () -> Void
     @State private var tapCount = 0
 
-    init(_ title: String, icon: String? = nil, color: Color = DesignSystem.Colors.accent, action: @escaping () -> Void) {
+    init(
+        _ title: String,
+        icon: String? = nil,
+        color: Color = DesignSystem.Colors.accent,
+        fullWidth: Bool = true,
+        action: @escaping () -> Void
+    ) {
         self.title = title
         self.icon = icon
         self.color = color
+        self.fullWidth = fullWidth
         self.action = action
     }
 
@@ -52,8 +60,9 @@ struct PrimaryButton: View {
             Text(title)
         }
         .font(DesignSystem.Fonts.button)
-        .frame(maxWidth: .infinity)
-        .padding()
+        .frame(maxWidth: fullWidth ? .infinity : nil)
+        .padding(.horizontal, DesignSystem.Spacing.xxl)
+        .padding(.vertical, DesignSystem.Spacing.md)
     }
 }
 
@@ -70,7 +79,12 @@ struct SecondaryButton: View {
     let action: () -> Void
     @State private var tapCount = 0
 
-    init(_ title: String, icon: String? = nil, color: Color = DesignSystem.Colors.accent, action: @escaping () -> Void) {
+    init(
+        _ title: String,
+        icon: String? = nil,
+        color: Color = DesignSystem.Colors.accent,
+        action: @escaping () -> Void
+    ) {
         self.title = title
         self.icon = icon
         self.color = color
@@ -106,7 +120,8 @@ struct SecondaryButton: View {
         }
         .font(DesignSystem.Fonts.button)
         .frame(maxWidth: .infinity)
-        .padding()
+        .padding(.horizontal, DesignSystem.Spacing.xxl)
+        .padding(.vertical, DesignSystem.Spacing.md)
     }
 }
 
@@ -126,7 +141,6 @@ private struct PrimaryButtonStyle: ViewModifier {
             content
                 .foregroundStyle(.white)
                 .background(
-                    // 単色の上に上端ハイライトを重ねて奥行きを出す
                     ZStack {
                         color
                         LinearGradient(
@@ -149,7 +163,7 @@ private struct SecondaryButtonStyle: ViewModifier {
         if #available(iOS 26.0, *) {
             content
                 .foregroundStyle(color)
-                .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
+                .glassEffect(.surfaceTinted.interactive(), in: .rect(cornerRadius: 12))
         } else {
             content
                 .foregroundStyle(color)

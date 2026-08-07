@@ -15,6 +15,7 @@ import UIKit
 /// タップ時のスケールアニメーションと触覚フィードバック付き
 struct FloatingActionButton: View {
     let icon: String
+    var accessibilityIdentifier: String?
     let action: () -> Void
 
     @State private var tapCount = 0
@@ -34,15 +35,12 @@ struct FloatingActionButton: View {
         .buttonStyle(ScaleButtonStyle())
         .changeEffect(.jump(height: 10), value: tapCount)
         .changeEffect(.feedback(hapticImpact: .medium), value: tapCount)
-        .accessibilityIdentifier("fab_\(icon)")
+        .accessibilityIdentifier(accessibilityIdentifier ?? "fab_\(icon)")
     }
 
     private var fabForeground: Color {
-        if Self.useLiquidGlass {
-            return DesignSystem.Colors.accent
-        } else {
-            return DesignSystem.Colors.background
-        }
+        // ガラス版もアクセントtintの上に乗るため、常に背景色（明色）のアイコン
+        DesignSystem.Colors.background
     }
 
     /// iPad では iOS 26+ でも Liquid Glass を使わない
@@ -58,8 +56,10 @@ struct FloatingActionButton: View {
 private struct FABBackgroundStyle: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *), FloatingActionButton.useLiquidGlass {
+            // 素の透明ガラスだと非ガラス版（アクセントのソリッド円）と見た目が
+            // 乖離するため、アクセントtintでブランドカラーの主ボタンに統一する
             content
-                .glassEffect(.regular.interactive(), in: .circle)
+                .glassEffect(.accentTinted.interactive(), in: .circle)
         } else {
             content
                 .background(DesignSystem.Colors.accentGradient)

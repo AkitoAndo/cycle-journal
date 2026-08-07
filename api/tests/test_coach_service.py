@@ -79,6 +79,26 @@ async def test_chat_passes_system_with_cache_control_in_claude_mode(monkeypatch)
 
 
 @pytest.mark.asyncio
+async def test_chat_accepts_system_prompt_override_in_claude_mode(monkeypatch):
+    """Admin prompt tests can run through the real chat path with an override."""
+    monkeypatch.setattr(settings, "use_gemini_fallback", False)
+
+    with patch("app.services.coach_service._get_claude_client") as mock_get:
+        client = MagicMock()
+        block = MagicMock()
+        block.text = "ok"
+        response = MagicMock()
+        response.content = [block]
+        client.messages.create.return_value = response
+        mock_get.return_value = client
+
+        await coach_service.chat(user_message="hi", system_prompt="custom prompt")
+
+        system = client.messages.create.call_args.kwargs["system"]
+        assert system[0]["text"] == "custom prompt"
+
+
+@pytest.mark.asyncio
 async def test_chat_uses_gemini_when_fallback_enabled(monkeypatch):
     """Gemini fallback モードでは Gemini モデルを呼ぶ."""
     monkeypatch.setattr(settings, "use_gemini_fallback", True)

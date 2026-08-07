@@ -7,6 +7,7 @@
 
 import Foundation
 import Combine
+import SwiftUI
 
 /// タスク管理のビジネスロジックを担当するViewModel
 /// タスクとグループの CRUD 操作、フィルタリング、並び替えを提供
@@ -39,6 +40,7 @@ final class TaskViewModel: ObservableObject {
     init() {
         loadData()
         loadArchives()
+        loadTemplates()
     }
 
     // MARK: - Computed Properties
@@ -75,8 +77,7 @@ final class TaskViewModel: ObservableObject {
         notes: String = "",
         fact: String = "",
         insight: String = "",
-        nextAction: String = "",
-        dueDate: Date? = nil
+        nextAction: String = ""
     ) {
         guard let trimmedTitle = trimTitle(title), !trimmedTitle.isEmpty else { return }
 
@@ -92,13 +93,9 @@ final class TaskViewModel: ObservableObject {
         newTask.fact = fact
         newTask.insight = insight
         newTask.nextAction = nextAction
-        newTask.dueDate = dueDate
 
         tasks.append(newTask)
         persist()
-
-        // 締切通知をスケジュール
-        scheduleDeadlineNotificationIfNeeded(for: newTask)
 
         // サーバーに同期
         let taskIndex = tasks.count - 1
@@ -134,13 +131,6 @@ final class TaskViewModel: ObservableObject {
         tasks[index].completedAt = tasks[index].isCompleted ? Date() : nil
         persist()
 
-        // 締切通知の管理
-        if tasks[index].isCompleted {
-            NotificationManager.shared.cancelTaskDeadlineNotification(taskId: tasks[index].id)
-        } else {
-            scheduleDeadlineNotificationIfNeeded(for: tasks[index])
-        }
-
         // サーバーに同期
         let updatedTask = tasks[index]
         Task {
@@ -158,8 +148,7 @@ final class TaskViewModel: ObservableObject {
         newNotes: String = "",
         newFact: String = "",
         newInsight: String = "",
-        newNextAction: String = "",
-        newDueDate: Date? = nil
+        newNextAction: String = ""
     ) {
         guard let trimmedTitle = trimTitle(newTitle), !trimmedTitle.isEmpty else { return }
 
@@ -173,12 +162,7 @@ final class TaskViewModel: ObservableObject {
             tasks[index].fact = newFact
             tasks[index].insight = newInsight
             tasks[index].nextAction = newNextAction
-            tasks[index].dueDate = newDueDate
             persist()
-
-            // 締切通知を再スケジュール
-            NotificationManager.shared.cancelTaskDeadlineNotification(taskId: tasks[index].id)
-            scheduleDeadlineNotificationIfNeeded(for: tasks[index])
 
             // サーバーに同期
             let updatedTask = tasks[index]
@@ -206,9 +190,6 @@ final class TaskViewModel: ObservableObject {
         guard let index = findTaskIndex(task) else { return }
         tasks[index].deletedAt = Date()
         persist()
-
-        // 締切通知をキャンセル
-        NotificationManager.shared.cancelTaskDeadlineNotification(taskId: task.id)
 
         // サーバーから削除
         Task {
@@ -290,24 +271,6 @@ final class TaskViewModel: ObservableObject {
     private func trimTitle(_ title: String) -> String? {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
-    }
-
-    // MARK: - Private Helpers - Notifications
-
-    /// タスク締切通知が有効な場合にスケジュール
-    private func scheduleDeadlineNotificationIfNeeded(for task: TaskItem) {
-        let settings = NotificationSettingsStore.load()
-        guard settings.isTaskDeadlineEnabled,
-              let dueDate = task.dueDate,
-              !task.isCompleted,
-              task.deletedAt == nil else { return }
-
-        NotificationManager.shared.scheduleTaskDeadlineNotification(
-            taskId: task.id,
-            title: task.title,
-            dueDate: dueDate,
-            minutesBefore: settings.deadlineAlertMinutesBefore
-        )
     }
 
     // MARK: - Private Helpers - Persistence
@@ -530,5 +493,66 @@ final class TaskViewModel: ObservableObject {
         }
 
         loadArchives()
+    }
+
+    // MARK: - Template Management
+    // ジャーナルのタグ（allTags / addTag / renameTag / moveTags）と同じ流儀で
+    // テンプレートを ViewModel に集約する
+
+    /// 全てのテンプレート（並び順は保存順）
+    @Published private(set) var templates: [TaskTemplate] = []
+
+    /// テンプレートを読み込み
+    func loadTemplates() {
+        templates = TaskTemplateStore.loadAll()
+    }
+
+    /// テンプレートを追加（タイトル空・同名は無視。タグの重複ガードと同じ）
+    func addTemplate(_ template: TaskTemplate) {
+        let trimmed = template.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        guard !templates.contains(where: { $0.title == trimmed }) else { return }
+        var newTemplate = template
+        newTemplate.title = trimmed
+        templates.append(newTemplate)
+        persistTemplates()
+    }
+
+    /// テンプレートを削除
+    func removeTemplate(_ template: TaskTemplate) {
+        templates.removeAll { $0.id == template.id }
+        persistTemplates()
+    }
+
+    /// テンプレートのタイトルを変更（空・同名は無視）
+    func renameTemplate(_ template: TaskTemplate, to newTitle: String) {
+        let trimmed = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        guard !templates.contains(where: { $0.title == trimmed && $0.id != template.id }) else { return }
+        guard let index = templates.firstIndex(where: { $0.id == template.id }) else { return }
+        templates[index].title = trimmed
+        persistTemplates()
+    }
+
+    /// テンプレートの内容を全項目更新（タイトルが空・同名の別テンプレートは無視）
+    func updateTemplate(_ template: TaskTemplate) {
+        let trimmed = template.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        guard !templates.contains(where: { $0.title == trimmed && $0.id != template.id }) else { return }
+        guard let index = templates.firstIndex(where: { $0.id == template.id }) else { return }
+        var updated = template
+        updated.title = trimmed
+        templates[index] = updated
+        persistTemplates()
+    }
+
+    /// テンプレートを並び替え
+    func moveTemplates(from source: IndexSet, to destination: Int) {
+        templates.move(fromOffsets: source, toOffset: destination)
+        persistTemplates()
+    }
+
+    private func persistTemplates() {
+        TaskTemplateStore.saveAll(templates)
     }
 }

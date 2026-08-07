@@ -65,11 +65,11 @@ final class CoreFlowsE2ETests: XCTestCase {
             "タスク一覧にテストデータが表示されない"
         )
 
-        // Settings
-        tapTab("Settings")
+        // MyPage / Settings
+        tapTab("MyPage")
         XCTAssertTrue(
-            app.staticTexts["設定"].waitForExistence(timeout: 5),
-            "設定画面が表示されない"
+            app.staticTexts["マイページ"].waitForExistence(timeout: 5),
+            "マイページ画面が表示されない"
         )
 
         // Journal に戻る（タブ keep-alive の確認）
@@ -126,7 +126,7 @@ final class CoreFlowsE2ETests: XCTestCase {
         let doneButton = app.buttons["完了"]
         XCTAssertTrue(doneButton.waitForExistence(timeout: 5), "終了後に完了画面が現れない")
         XCTAssertTrue(
-            app.staticTexts.matching(NSPredicate(format: "label CONTAINS '呼吸を記録しました'")).firstMatch.exists,
+            app.staticTexts.matching(NSPredicate(format: "label CONTAINS '記録しました'")).firstMatch.exists,
             "記録完了メッセージが表示されない"
         )
 
@@ -222,8 +222,8 @@ final class CoreFlowsE2ETests: XCTestCase {
     /// 設定画面の主要セクションが表示されること
     @MainActor
     func testSettingsShowsMainSections() {
-        tapTab("Settings")
-        XCTAssertTrue(app.staticTexts["設定"].waitForExistence(timeout: 5))
+        tapTab("MyPage")
+        XCTAssertTrue(app.staticTexts["マイページ"].waitForExistence(timeout: 5))
         // スクロールして主要な行があることを確認
         let exportRow = app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'エクスポート'")).firstMatch
         if !exportRow.exists {

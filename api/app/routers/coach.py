@@ -13,7 +13,7 @@ from google.cloud.firestore import AsyncClient
 from app.config import settings
 from app.dependencies import get_current_user, get_firestore
 from app.models.coach import CoachData, CoachMetadata, CoachRequest
-from app.services import ai_usage_service, coach_service
+from app.services import ai_usage_service, coach_service, prompt_service
 from app.services.coach_graph import run_coach_flow
 from app.services.firestore_client import sessions_ref
 
@@ -98,15 +98,20 @@ async def chat(
         estimate=estimate,
     )
 
+    prompt_config, prompt_version_id = await prompt_service.get_active_config(db)
+    system_prompt = str(prompt_config["system_prompt"])
+
     # コーチ応答を取得（LangGraph or シンプル呼び出し）
     detected_emotion = None
     response_cycle_element = None
 
-    if settings.use_langgraph:
+    if bool(prompt_config.get("use_langgraph")):
         flow_result = await run_coach_flow(
             user_message=body.message,
             history=history,
             diary_content=body.diary_content,
+            system_prompt=system_prompt,
+            config=prompt_config,
         )
         response_text = flow_result["response"]
         detected_emotion = flow_result.get("detected_emotion")
@@ -116,6 +121,8 @@ async def chat(
             user_message=body.message,
             history=history,
             diary_content=body.diary_content,
+            system_prompt=system_prompt,
+            config=prompt_config,
         )
 
     # ユーザーメッセージを保存
@@ -135,6 +142,7 @@ async def chat(
         "content": response_text,
         "metadata": {
             "model": settings.claude_model,
+            "prompt_version_id": prompt_version_id,
         },
         "created_at": assistant_now,
     })
@@ -219,6 +227,8 @@ async def chat_stream(
     history = [
         {"role": doc.get("role"), "content": doc.get("content")} for doc in history_docs
     ]
+    prompt_config, prompt_version_id = await prompt_service.get_active_config(db)
+    system_prompt = str(prompt_config["system_prompt"])
 
     estimate = ai_usage_service.estimate_coach_request(
         message=body.message,
@@ -248,6 +258,8 @@ async def chat_stream(
                     user_message=body.message,
                     history=history,
                     diary_content=body.diary_content,
+                    system_prompt=system_prompt,
+                    config=prompt_config,
                 ):
                     accumulated += chunk
                     yield chunk
@@ -278,6 +290,7 @@ async def chat_stream(
                         "metadata": {
                             "model": settings.claude_model,
                             "streamed": True,
+                            "prompt_version_id": prompt_version_id,
                         },
                         "created_at": assistant_now,
                     }

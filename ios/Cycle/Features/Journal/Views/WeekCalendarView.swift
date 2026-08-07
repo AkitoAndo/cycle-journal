@@ -43,6 +43,8 @@ struct WeekCalendarView: View {
     /// 個別の日付セル
     private func dayCell(for date: Date) -> some View {
         let isSelected = Calendar.current.isDate(date, inSameDayAs: vm.selectedDate)
+        let isToday = Calendar.current.isDateInToday(date)
+        let hasRecord = vm.hasEntries(on: date)
 
         return VStack(spacing: DesignSystem.Spacing.sm) {
             // 曜日
@@ -50,28 +52,39 @@ struct WeekCalendarView: View {
                 .font(.system(size: DesignSystem.FontSize.caption - 1))
                 .foregroundStyle(DesignSystem.Colors.textSecondary)
 
-            // 日付
-            Text(date, format: .dateTime.day())
-                .font(.system(
-                    size: DesignSystem.FontSize.headline,
-                    weight: isSelected ? .semibold : .regular
-                ))
-                .foregroundStyle(
-                    isSelected ? DesignSystem.Colors.background : DesignSystem.Colors.textPrimary
-                )
-                .frame(
-                    width: DesignSystem.ComponentSize.dateCircle,
-                    height: DesignSystem.ComponentSize.dateCircle
-                )
-                .background {
-                    if isSelected {
-                        Circle()
-                            .fill(DesignSystem.Colors.accent)
-                            .matchedGeometryEffect(id: "daySelection", in: selectionNamespace)
+            // 日付 + 記録ドット
+            VStack(spacing: 2) {
+                Text(date, format: .dateTime.day())
+                    .font(.system(
+                        size: DesignSystem.FontSize.headline,
+                        weight: isSelected ? .semibold : .regular
+                    ))
+                    .foregroundStyle(
+                        isSelected ? DesignSystem.Colors.background : DesignSystem.Colors.textPrimary
+                    )
+                    .frame(
+                        width: DesignSystem.ComponentSize.dateCircle,
+                        height: DesignSystem.ComponentSize.dateCircle
+                    )
+                    .background {
+                        if isSelected {
+                            Circle()
+                                .fill(DesignSystem.Colors.accent)
+                                .matchedGeometryEffect(id: "daySelection", in: selectionNamespace)
+                        } else if isToday {
+                            // 今日（未選択時）はホームと同じくアクセントの枠線の丸
+                            Circle()
+                                .stroke(DesignSystem.Colors.accent, lineWidth: 1.5)
+                        }
                     }
-                }
-                .animation(DesignSystem.Timing.easing, value: isSelected)
-                .changeEffect(.feedbackHapticSelection, value: isSelected, isEnabled: isSelected)
+                    .animation(DesignSystem.Timing.easing, value: isSelected)
+                    .changeEffect(.feedbackHapticSelection, value: isSelected, isEnabled: isSelected)
+
+                // 記録のある日はドット（ホームと同じ表現）
+                Circle()
+                    .fill(hasRecord ? DesignSystem.Colors.accent.opacity(0.6) : Color.clear)
+                    .frame(width: 5, height: 5)
+            }
         }
         .frame(maxWidth: .infinity)
         .contentShape(Rectangle())

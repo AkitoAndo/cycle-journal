@@ -86,14 +86,12 @@ struct CreateTaskRequest: Encodable {
     let description: String?
     let sessionId: String?
     let cycleElement: String?
-    let dueDate: Date?
 }
 
 struct UpdateTaskRequest: Encodable {
     let title: String?
     let description: String?
     let status: String?
-    let dueDate: Date?
 }
 
 struct TaskData: Decodable {
@@ -103,7 +101,6 @@ struct TaskData: Decodable {
     let status: String
     let sessionId: String?
     let cycleElement: String?
-    let dueDate: Date?
     let completedAt: Date?
     let createdAt: Date
     let updatedAt: Date?

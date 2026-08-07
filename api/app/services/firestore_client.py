@@ -32,3 +32,15 @@ def tasks_ref(db: AsyncClient):
 
 def refresh_tokens_ref(db: AsyncClient):
     return db.collection("refresh_tokens")
+
+
+def prompt_versions_ref(db: AsyncClient):
+    return db.collection("prompt_versions")
+
+
+def prompt_deployments_ref(db: AsyncClient):
+    return db.collection("prompt_deployments")
+
+
+def prompt_test_logs_ref(db: AsyncClient):
+    return db.collection("prompt_test_logs")

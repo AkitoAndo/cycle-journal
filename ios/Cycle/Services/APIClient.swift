@@ -158,6 +158,7 @@ class APIClient {
 
     private let environment: APIEnvironment
     private let session: URLSession
+    private let streamingSession: URLSession
     private var authToken: String?
     private var tokenRefresher: TokenRefresher?
     private let refreshCoordinator = TokenRefreshCoordinator()
@@ -175,6 +176,12 @@ class APIClient {
         config.timeoutIntervalForRequest = 30
         config.timeoutIntervalForResource = 60
         self.session = URLSession(configuration: config)
+
+        let streamingConfig = URLSessionConfiguration.default
+        streamingConfig.timeoutIntervalForRequest = 120
+        streamingConfig.timeoutIntervalForResource = 180
+        streamingConfig.waitsForConnectivity = true
+        self.streamingSession = URLSession(configuration: streamingConfig)
     }
 
     /// UI テスト時はネットワークへ出ない。
@@ -183,9 +190,20 @@ class APIClient {
     /// サインイン画面に落ちる。全リクエストをここで `.offline` として弾くことで、
     /// 各 sync メソッドはローカル状態を保ったまま静かに失敗する。
     /// （ユニットテストは `--uitesting` を付けないため実サーバへ到達する。）
+    /// [0710] サインイン一時バイパスの単一スイッチ（DEBUGのみ有効）。
+    /// true の間は AuthStore がモック認証になり、API は全て `.offline` で弾かれる
+    /// （実トークンが無いままの認証付きリクエストが 401 → リフレッシュ失敗 →
+    /// サインアウトを引き起こし、サインイン画面に落ちるのを防ぐため）。
+    /// 元に戻すときはここを false にするだけでよい。
+    #if DEBUG
+    static let debugAuthBypass = true
+    #else
+    static let debugAuthBypass = false
+    #endif
+
     private static let isOfflineTestMode: Bool = {
         #if DEBUG
-        return CommandLine.arguments.contains("--uitesting")
+        return CommandLine.arguments.contains("--uitesting") || debugAuthBypass
         #else
         return false
         #endif
@@ -374,8 +392,72 @@ class APIClient {
             body: bodyData,
             requiresAuth: requiresAuth
         )
+        request.timeoutInterval = 120
         request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
         return request
+    }
+
+    /// SSE 用の行ストリーム。通常リクエストと同じく、401時は access token を更新して1回だけ再接続する。
+    func streamingLines(
+        for request: URLRequest,
+        requiresAuth: Bool = true
+    ) -> AsyncThrowingStream<String, Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    var request = request
+                    let (bytes, response) = try await streamingSession.bytes(for: request)
+
+                    if requiresAuth,
+                       let http = response as? HTTPURLResponse,
+                       http.statusCode == 401,
+                       let refresher = tokenRefresher {
+                        do {
+                            let newToken = try await refreshCoordinator.refresh(using: refresher)
+                            request.setValue("Bearer \(newToken)", forHTTPHeaderField: "Authorization")
+                            let (retryBytes, retryResponse) = try await streamingSession.bytes(for: request)
+                            try Self.validateStreamingResponse(retryResponse)
+                            for try await line in retryBytes.lines {
+                                if Task.isCancelled { break }
+                                continuation.yield(line)
+                            }
+                            continuation.finish()
+                            return
+                        } catch {
+                            try Self.validateStreamingResponse(response)
+                        }
+                    }
+
+                    try Self.validateStreamingResponse(response)
+                    for try await line in bytes.lines {
+                        if Task.isCancelled { break }
+                        continuation.yield(line)
+                    }
+                    continuation.finish()
+                } catch let error as APIError {
+                    continuation.finish(throwing: error)
+                } catch let error as URLError where error.code == .timedOut {
+                    continuation.finish(throwing: APIError.timeout)
+                } catch let error as URLError where error.code == .notConnectedToInternet {
+                    continuation.finish(throwing: APIError.offline)
+                } catch {
+                    continuation.finish(throwing: APIError.networkError(error))
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    private static func validateStreamingResponse(_ response: URLResponse) throws {
+        guard let http = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+        if http.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        if !(200...299).contains(http.statusCode) {
+            throw APIError.httpError(statusCode: http.statusCode, message: nil)
+        }
     }
 
     func post<T: Decodable, U: Encodable>(

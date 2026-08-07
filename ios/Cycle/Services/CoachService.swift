@@ -60,22 +60,10 @@ class CoachService {
                         path: "/coach/stream",
                         body: request
                     )
-                    let (bytes, response) = try await URLSession.shared.bytes(for: urlRequest)
-                    if let http = response as? HTTPURLResponse, http.statusCode >= 400 {
-                        if http.statusCode == 401 {
-                            continuation.finish(throwing: APIError.unauthorized)
-                        } else {
-                            continuation.finish(throwing: APIError.httpError(
-                                statusCode: http.statusCode,
-                                message: nil
-                            ))
-                        }
-                        return
-                    }
 
                     var currentEvent: String? = nil
                     var dataLines: [String] = []
-                    for try await line in bytes.lines {
+                    for try await line in apiClient.streamingLines(for: urlRequest) {
                         if Task.isCancelled { break }
                         if line.isEmpty {
                             if let event = Self.makeEvent(name: currentEvent, dataLines: dataLines) {

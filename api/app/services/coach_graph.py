@@ -21,6 +21,34 @@ from app.services.coach_service import SYSTEM_PROMPT
 # Cycle要素
 CYCLE_ELEMENTS = ["Soil", "Water", "Root", "Trunk", "Branch", "Leaf", "Fruit", "Sky"]
 
+ANALYZE_EMOTION_PROMPT = (
+    "以下のメッセージから、ユーザーの主な感情を1単語の日本語で答えてください。"
+    "例: 喜び、不安、怒り、悲しみ、迷い、期待、疲れ、安心\n\n"
+    "メッセージ: {user_message}"
+)
+
+DETERMINE_CYCLE_PROMPT = (
+    "以下のメッセージが、Cycleモデルのどの要素に最も関連するか1つ選んでください。\n"
+    "選択肢: {elements}\n"
+    "要素名だけを答えてください。\n\n"
+    "メッセージ: {user_message}\n"
+    "検出された感情: {detected_emotion}"
+)
+
+ANALYSIS_INJECTION_PROMPT = (
+    "## 現在の分析結果\n"
+    "- 検出された感情: {detected_emotion}\n"
+    "- Cycle要素: {cycle_element}\n"
+    "この情報をもとに、適切な問いかけや共感を返してください。\n\n"
+)
+
+SAFETY_FILTER_PROMPT = (
+    "以下のAIコーチの応答が安全かどうかを判定してください。\n"
+    "危険な例: 医療診断、自傷行為の肯定、個人情報の要求\n"
+    "「safe」または「unsafe」だけで答えてください。\n\n"
+    "応答: {response}"
+)
+
 
 @dataclass
 class CoachState:
@@ -33,6 +61,15 @@ class CoachState:
     cycle_element: str | None = None
     response: str = ""
     is_safe: bool = True
+    system_prompt: str = SYSTEM_PROMPT
+    analyze_emotion_prompt: str = ANALYZE_EMOTION_PROMPT
+    determine_cycle_prompt: str = DETERMINE_CYCLE_PROMPT
+    analysis_injection_prompt: str = ANALYSIS_INJECTION_PROMPT
+    safety_filter_prompt: str = SAFETY_FILTER_PROMPT
+    coach_model: str = settings.claude_model_coach
+    quick_model: str = settings.claude_model_quick
+    max_tokens: int = settings.claude_max_tokens
+    temperature: float = settings.claude_temperature
 
 
 def _get_client() -> anthropic.AnthropicVertex:
@@ -62,12 +99,10 @@ def _quick_classify(client: Any, prompt: str, model: str | None = None) -> str:
 def analyze_emotion(state: CoachState) -> dict:
     """ユーザーメッセージから感情を検出."""
     client = _get_client()
-    prompt = (
-        f"以下のメッセージから、ユーザーの主な感情を1単語の日本語で答えてください。"
-        f"例: 喜び、不安、怒り、悲しみ、迷い、期待、疲れ、安心\n\n"
-        f"メッセージ: {state.user_message}"
+    prompt = state.analyze_emotion_prompt.format(
+        user_message=state.user_message,
     )
-    emotion = _quick_classify(client, prompt)
+    emotion = _quick_classify(client, prompt, model=state.quick_model)
     return {"detected_emotion": emotion}
 
 
@@ -75,14 +110,12 @@ def determine_cycle(state: CoachState) -> dict:
     """Cycleモデルのどの要素に関連するか判定."""
     client = _get_client()
     elements_str = ", ".join(CYCLE_ELEMENTS)
-    prompt = (
-        f"以下のメッセージが、Cycleモデルのどの要素に最も関連するか1つ選んでください。\n"
-        f"選択肢: {elements_str}\n"
-        f"要素名だけを答えてください。\n\n"
-        f"メッセージ: {state.user_message}\n"
-        f"検出された感情: {state.detected_emotion}"
+    prompt = state.determine_cycle_prompt.format(
+        elements=elements_str,
+        user_message=state.user_message,
+        detected_emotion=state.detected_emotion,
     )
-    element = _quick_classify(client, prompt)
+    element = _quick_classify(client, prompt, model=state.quick_model)
     # 有効な要素名かチェック
     if element not in CYCLE_ELEMENTS:
         element = "Root"
@@ -100,11 +133,9 @@ def generate_response(state: CoachState) -> dict:
 
     # 分析結果(動的)は user message 側に注入する。
     # system は SYSTEM_PROMPT そのもので固定し prompt caching の prefix を崩さない。
-    analysis_block = (
-        "## 現在の分析結果\n"
-        f"- 検出された感情: {state.detected_emotion}\n"
-        f"- Cycle要素: {state.cycle_element}\n"
-        "この情報をもとに、適切な問いかけや共感を返してください。\n\n"
+    analysis_block = state.analysis_injection_prompt.format(
+        detected_emotion=state.detected_emotion,
+        cycle_element=state.cycle_element,
     )
 
     body = state.user_message
@@ -117,17 +148,17 @@ def generate_response(state: CoachState) -> dict:
     messages.append({"role": "user", "content": analysis_block + body})
 
     resp = client.messages.create(
-        model=settings.claude_model_coach,
-        max_tokens=settings.claude_max_tokens,
+        model=state.coach_model,
+        max_tokens=state.max_tokens,
         system=[
             {
                 "type": "text",
-                "text": SYSTEM_PROMPT,
+                "text": state.system_prompt,
                 "cache_control": {"type": "ephemeral"},
             }
         ],
         messages=messages,
-        temperature=settings.claude_temperature,
+        temperature=state.temperature,
     )
     return {"response": resp.content[0].text}
 
@@ -135,13 +166,10 @@ def generate_response(state: CoachState) -> dict:
 def safety_filter(state: CoachState) -> dict:
     """応答の安全性をチェック."""
     client = _get_client()
-    prompt = (
-        f"以下のAIコーチの応答が安全かどうかを判定してください。\n"
-        f"危険な例: 医療診断、自傷行為の肯定、個人情報の要求\n"
-        f"「safe」または「unsafe」だけで答えてください。\n\n"
-        f"応答: {state.response}"
+    prompt = state.safety_filter_prompt.format(
+        response=state.response,
     )
-    result = _quick_classify(client, prompt)
+    result = _quick_classify(client, prompt, model=state.quick_model)
     is_safe = "unsafe" not in result.lower()
 
     if not is_safe:
@@ -164,6 +192,15 @@ def _state_to_dict(state: CoachState) -> dict:
         "cycle_element": state.cycle_element,
         "response": state.response,
         "is_safe": state.is_safe,
+        "system_prompt": state.system_prompt,
+        "analyze_emotion_prompt": state.analyze_emotion_prompt,
+        "determine_cycle_prompt": state.determine_cycle_prompt,
+        "analysis_injection_prompt": state.analysis_injection_prompt,
+        "safety_filter_prompt": state.safety_filter_prompt,
+        "coach_model": state.coach_model,
+        "quick_model": state.quick_model,
+        "max_tokens": state.max_tokens,
+        "temperature": state.temperature,
     }
 
 
@@ -196,6 +233,18 @@ def _dict_to_state(d: dict) -> CoachState:
         cycle_element=d.get("cycle_element"),
         response=d.get("response", ""),
         is_safe=d.get("is_safe", True),
+        system_prompt=d.get("system_prompt") or SYSTEM_PROMPT,
+        analyze_emotion_prompt=d.get("analyze_emotion_prompt")
+        or ANALYZE_EMOTION_PROMPT,
+        determine_cycle_prompt=d.get("determine_cycle_prompt")
+        or DETERMINE_CYCLE_PROMPT,
+        analysis_injection_prompt=d.get("analysis_injection_prompt")
+        or ANALYSIS_INJECTION_PROMPT,
+        safety_filter_prompt=d.get("safety_filter_prompt") or SAFETY_FILTER_PROMPT,
+        coach_model=d.get("coach_model") or settings.claude_model_coach,
+        quick_model=d.get("quick_model") or settings.claude_model_quick,
+        max_tokens=d.get("max_tokens") or settings.claude_max_tokens,
+        temperature=d.get("temperature") or settings.claude_temperature,
     )
 
 
@@ -215,6 +264,8 @@ async def run_coach_flow(
     user_message: str,
     history: list[dict] | None = None,
     diary_content: str | None = None,
+    system_prompt: str | None = None,
+    config: dict | None = None,
 ) -> dict:
     """コーチングフローを実行.
 
@@ -223,6 +274,7 @@ async def run_coach_flow(
     """
     graph = get_coach_graph()
 
+    config = config or {}
     initial_state = {
         "user_message": user_message,
         "diary_content": diary_content,
@@ -231,6 +283,19 @@ async def run_coach_flow(
         "cycle_element": None,
         "response": "",
         "is_safe": True,
+        "system_prompt": system_prompt or SYSTEM_PROMPT,
+        "analyze_emotion_prompt": config.get("analyze_emotion_prompt")
+        or ANALYZE_EMOTION_PROMPT,
+        "determine_cycle_prompt": config.get("determine_cycle_prompt")
+        or DETERMINE_CYCLE_PROMPT,
+        "analysis_injection_prompt": config.get("analysis_injection_prompt")
+        or ANALYSIS_INJECTION_PROMPT,
+        "safety_filter_prompt": config.get("safety_filter_prompt")
+        or SAFETY_FILTER_PROMPT,
+        "coach_model": config.get("claude_model_coach") or settings.claude_model_coach,
+        "quick_model": config.get("claude_model_quick") or settings.claude_model_quick,
+        "max_tokens": config.get("max_tokens") or settings.claude_max_tokens,
+        "temperature": config.get("temperature") or settings.claude_temperature,
     }
 
     result = graph.invoke(initial_state)

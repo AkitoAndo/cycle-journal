@@ -66,10 +66,30 @@ struct JournalListView: View {
     private var mainContent: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-            weekCalendar
-            entriesList
+            if vm.todays.isEmpty {
+                // タスク画面と同じ位置に空表示を出すため、週カレンダーの高さに
+                // 影響されないようヘッダー直下の全域に中央寄せする
+                ZStack {
+                    VStack(spacing: 0) {
+                        weekCalendar
+                        Spacer()
+                    }
+                    emptyStateMessage
+                }
+            } else {
+                weekCalendar
+                entriesList
+            }
         }
         .background(DesignSystem.Colors.backgroundGradient)
+    }
+
+    private var emptyStateMessage: some View {
+        EmptyStateView(
+            icon: "leaf",
+            title: "この日の記録はありません",
+            titleColor: DesignSystem.Colors.textTertiary
+        )
     }
 
     // MARK: - Components
@@ -104,44 +124,24 @@ struct JournalListView: View {
             .padding(.bottom, DesignSystem.Spacing.sm)
     }
 
-    @ViewBuilder
+    // 非空時のみ使用（空表示は mainContent 側で中央寄せする）
     private var entriesList: some View {
-        if vm.todays.isEmpty {
-            EmptyStateView(
-                icon: "leaf",
-                title: "この日はまだ記録がありません",
-                subtitle: "短い一行からでも残してみましょう",
-                actionTitle: "日記を書く",
-                action: { showNewEntry = true }
-            )
-        } else {
-            ZStack(alignment: .top) {
-                JournalEntriesList(
-                    entries: vm.todays,
-                    onEdit: { entry in
-                        editingEntry = entry
-                    },
-                    onDelete: { entry in
-                        vm.deleteEntry(entry)
-                    }
-                )
-
-                LinearGradient(
-                    colors: [DesignSystem.Colors.background, DesignSystem.Colors.background.opacity(0)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .frame(height: 12)
-                .allowsHitTesting(false)
+        JournalEntriesList(
+            entries: vm.todays,
+            onEdit: { entry in
+                editingEntry = entry
+            },
+            onDelete: { entry in
+                vm.deleteEntry(entry)
             }
-        }
+        )
     }
 
     private var floatingActionButton: some View {
-        FloatingActionButton(icon: "plus") {
+        FloatingActionButton(icon: "plus", accessibilityIdentifier: "journal_fab_plus") {
             showNewEntry = true
         }
-        .padding(.trailing, DesignSystem.Spacing.xl + 2)
-        .padding(.bottom, DesignSystem.Spacing.xl - 2)
+        .padding(.trailing, 40)
+        .padding(.bottom, 40)
     }
 }

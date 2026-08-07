@@ -19,6 +19,12 @@ struct TaskListView: View {
     @State private var isReorderMode = false
     @State private var showArchive = false
     @State private var showDeleted = false
+    @State private var showTemplates = false
+
+    /// チェック（完了）直後に事後情報フォームを出す対象タスク
+    @State private var postActionTask: TaskItem?
+    /// マイページの「完了時に事後情報を記入」設定
+    @AppStorage("isPostActionPromptEnabled") private var isPostActionPromptEnabled = true
 
     // MARK: - Body
 
@@ -49,6 +55,14 @@ struct TaskListView: View {
                 TaskDeletedView(vm: vm)
                     .softSheet()
             }
+            .sheet(isPresented: $showTemplates) {
+                TaskTemplateManagementView(vm: vm)
+                    .softSheet()
+            }
+            .sheet(item: $postActionTask) { task in
+                TaskPostActionEntryView(vm: vm, task: task)
+                    .softSheet()
+            }
     }
 
     // MARK: - Content
@@ -66,7 +80,9 @@ struct TaskListView: View {
 
             NetworkStatusBanner()
 
-            if let error = vm.lastSyncError, vm.syncError != nil {
+            // 開発ビルドで API をバイパス中（debugAuthBypass）は同期が意図的に
+            // 遮断され .offline になるため、その場合はバナーを出さない
+            if !APIClient.debugAuthBypass, let error = vm.lastSyncError, vm.syncError != nil {
                 ErrorBannerView(
                     message: error.errorDescription ?? "同期エラー",
                     isRetryable: error.isRetryable,
@@ -105,19 +121,23 @@ struct TaskListView: View {
             },
             onShowDeleted: {
                 showDeleted = true
+            },
+            onShowTemplates: {
+                showTemplates = true
             }
         )
     }
 
     @ViewBuilder
     private var taskListOrEmptyState: some View {
-        if vm.tasks.isEmpty {
+        // 表示対象（未完了+完了）が無ければ空表示。
+        // vm.tasks はソフトデリート済みも含むため、それで判定すると
+        // 全削除後に「空でも一覧でもない」ブランクになるので使わない。
+        if vm.incompleteTasks.isEmpty && vm.completedTasks.isEmpty {
             EmptyStateView(
                 icon: "checkmark.circle",
-                title: "タスクがまだありません",
-                subtitle: "小さなタスクから始めてみましょう",
-                actionTitle: "タスクを追加",
-                action: { showNewTask = true }
+                title: "タスクはありません",
+                titleColor: DesignSystem.Colors.textTertiary
             )
         } else {
             ZStack(alignment: .top) {
@@ -129,7 +149,12 @@ struct TaskListView: View {
                         vm.moveIncompleteTasks(from: source, to: destination)
                     },
                     onToggleCompletion: { task in
+                        let wasCompleted = task.isCompleted
                         vm.toggleCompletion(task)
+                        // 未完了 → 完了のチェック時のみ、設定がオンなら事後情報フォームを出す
+                        if !wasCompleted && isPostActionPromptEnabled {
+                            postActionTask = task
+                        }
                     },
                     onEdit: { task in
                         editingTask = task
@@ -147,23 +172,15 @@ struct TaskListView: View {
                 .refreshable {
                     await vm.fetchServerTasks(force: true)
                 }
-
-                LinearGradient(
-                    colors: [DesignSystem.Colors.background, DesignSystem.Colors.background.opacity(0)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .frame(height: 12)
-                .allowsHitTesting(false)
             }
         }
     }
 
     private var floatingActionButton: some View {
-        FloatingActionButton(icon: "plus") {
+        FloatingActionButton(icon: "plus", accessibilityIdentifier: "task_fab_plus") {
             showNewTask = true
         }
-        .padding(.trailing, DesignSystem.Spacing.xl + 2)
-        .padding(.bottom, DesignSystem.Spacing.xl - 2)
+        .padding(.trailing, 40)
+        .padding(.bottom, 40)
     }
 }

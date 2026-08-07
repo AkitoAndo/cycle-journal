@@ -50,7 +50,7 @@ struct JournalEntryForm: View {
     }
 
     private var contentSection: some View {
-        FormTextEditor(label: "日記", text: $text, placeholder: "", minHeight: 200)
+        FormTextEditor(label: "日記", text: $text, placeholder: "", height: 200)
             .focused($isTextFocused)
             .padding(.horizontal, DesignSystem.Spacing.lg)
     }

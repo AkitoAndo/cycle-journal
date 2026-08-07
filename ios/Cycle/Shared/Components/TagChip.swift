@@ -55,7 +55,7 @@ private struct TagChipBackgroundStyle: ViewModifier {
             content
                 .background(DesignSystem.Colors.accent.opacity(0.10))
                 .clipShape(Capsule())
-                .glassEffect(.regular, in: .capsule)
+                .glassEffect(.surfaceTinted, in: .capsule)
         } else {
             content
                 .background(DesignSystem.Colors.accent.opacity(0.10))
