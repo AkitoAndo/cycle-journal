@@ -88,6 +88,55 @@ def test_coach_chat(auth_client, mock_firestore):
     assert "session_id" in data
 
 
+def test_coach_boundary_route_skips_model_call(auth_client, mock_firestore):
+    """Layer8 server route should persist and return without invoking a model."""
+    with (
+        patch(
+            "app.routers.coach.coach_service.chat",
+            new_callable=AsyncMock,
+        ) as mock_chat,
+        patch(
+            "app.routers.coach.context_service.build_context_block",
+            new_callable=AsyncMock,
+        ) as build_context,
+        patch(
+            "app.routers.coach.ai_usage_service.reserve_monthly_budget",
+            new_callable=AsyncMock,
+        ) as reserve_budget,
+        patch(
+            "app.routers.coach.context_service.maybe_update_session_summary",
+            new_callable=AsyncMock,
+        ) as update_summary,
+        patch(
+            "app.routers.coach.prompt_service.get_active_config",
+            new_callable=AsyncMock,
+        ) as active_config,
+    ):
+        active_config.return_value = (
+            {
+                "system_prompt": "system prompt",
+                "use_langgraph": False,
+                "use_gemini_fallback": True,
+            },
+            "prompt-v1",
+        )
+        response = auth_client.post(
+            "/coach",
+            json={"message": "もう死にたいです"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["data"]["metadata"]["model"] == "server-boundary"
+    assert "人の支援" in response.json()["data"]["message"]
+    mock_chat.assert_not_awaited()
+    build_context.assert_not_awaited()
+    reserve_budget.assert_not_awaited()
+    update_summary.assert_not_awaited()
+    update_payload = mock_firestore._mock_doc.update.await_args.args[0]
+    assert update_payload["coach_state"]["phase"] == "acknowledge"
+    assert update_payload["coach_state"]["layer8"] is True
+
+
 def test_coach_stream_filters_control_block(auth_client, mock_firestore):
     """SSE should not stream the hidden control block to the client."""
 

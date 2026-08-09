@@ -145,6 +145,10 @@ export interface PromptConfig {
   determineCyclePrompt: string;
   analysisInjectionPrompt: string;
   safetyFilterPrompt: string;
+  coachPhaseModules?: Record<string, string>;
+  coachActionCoreChecklist?: string | null;
+  coachLayer8CrisisPrompt?: string | null;
+  coachProfessionalBoundaryPrompt?: string | null;
 }
 
 export interface PromptTestData {

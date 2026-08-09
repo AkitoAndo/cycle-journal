@@ -24,12 +24,13 @@ def test_system_prompt_is_long_enough_for_caching():
     )
 
 
-def test_system_prompt_keeps_core_metaphor():
-    """B-3: 拡張後も大樹メタファーの核となるキーワードを維持する."""
+def test_system_prompt_keeps_static_core_contract():
+    """B-3: static core contains the coach runtime contract."""
     prompt = coach_service.SYSTEM_PROMPT
+    for marker in ["<identity_core>", "<layer8>", "<output_spec>", "<action_core>"]:
+        assert marker in prompt, f"{marker} が SYSTEM_PROMPT に含まれていない"
     for element in ["Soil", "Water", "Root", "Trunk", "Branch", "Leaf", "Fruit", "Sky"]:
         assert element in prompt, f"{element} が SYSTEM_PROMPT に含まれていない"
-    assert "わたし" in prompt
 
 
 def test_build_user_content_includes_dynamic_context():

@@ -18,6 +18,10 @@ class PromptConfig(BaseModel):
     determine_cycle_prompt: str = Field(..., min_length=1)
     analysis_injection_prompt: str = Field(..., min_length=1)
     safety_filter_prompt: str = Field(..., min_length=1)
+    coach_phase_modules: dict[str, str] = Field(default_factory=dict)
+    coach_action_core_checklist: str | None = None
+    coach_layer8_crisis_prompt: str | None = None
+    coach_professional_boundary_prompt: str | None = None
 
 
 class PromptVersionCreateRequest(BaseModel):

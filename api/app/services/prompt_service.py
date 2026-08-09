@@ -9,7 +9,7 @@ from typing import Any
 from google.cloud.firestore import AsyncClient
 
 from app.config import settings
-from app.services import coach_graph, coach_service
+from app.services import coach_graph, coach_prompt_core, coach_service
 from app.services.firestore_client import (
     prompt_deployments_ref,
     prompt_test_logs_ref,
@@ -35,6 +35,12 @@ def default_config() -> dict[str, Any]:
         "determine_cycle_prompt": coach_graph.DETERMINE_CYCLE_PROMPT,
         "analysis_injection_prompt": coach_graph.ANALYSIS_INJECTION_PROMPT,
         "safety_filter_prompt": coach_graph.SAFETY_FILTER_PROMPT,
+        "coach_phase_modules": dict(coach_prompt_core.PHASE_MODULES),
+        "coach_action_core_checklist": coach_prompt_core.ACTION_CORE_CHECKLIST,
+        "coach_layer8_crisis_prompt": coach_prompt_core.LAYER8_CRISIS_PROMPT,
+        "coach_professional_boundary_prompt": (
+            coach_prompt_core.PROFESSIONAL_BOUNDARY_PROMPT
+        ),
     }
 
 
