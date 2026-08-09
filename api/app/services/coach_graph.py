@@ -16,7 +16,7 @@ import anthropic
 from langgraph.graph import END, StateGraph
 
 from app.config import settings
-from app.services.coach_service import SYSTEM_PROMPT
+from app.services.coach_service import SYSTEM_PROMPT, build_user_content
 
 # Cycle要素
 CYCLE_ELEMENTS = ["Soil", "Water", "Root", "Trunk", "Branch", "Leaf", "Fruit", "Sky"]
@@ -56,6 +56,7 @@ class CoachState:
 
     user_message: str = ""
     diary_content: str | None = None
+    context_block: str | None = None
     history: list[dict[str, str]] = field(default_factory=list)
     detected_emotion: str | None = None
     cycle_element: str | None = None
@@ -138,12 +139,11 @@ def generate_response(state: CoachState) -> dict:
         cycle_element=state.cycle_element,
     )
 
-    body = state.user_message
-    if state.diary_content:
-        body = (
-            f"【日記の内容】\n{state.diary_content}\n\n"
-            f"【ユーザーのメッセージ】\n{state.user_message}"
-        )
+    body = build_user_content(
+        state.user_message,
+        diary_content=state.diary_content,
+        context_block=state.context_block,
+    )
 
     messages.append({"role": "user", "content": analysis_block + body})
 
@@ -187,6 +187,7 @@ def _state_to_dict(state: CoachState) -> dict:
     return {
         "user_message": state.user_message,
         "diary_content": state.diary_content,
+        "context_block": state.context_block,
         "history": state.history,
         "detected_emotion": state.detected_emotion,
         "cycle_element": state.cycle_element,
@@ -210,9 +211,7 @@ def build_coach_graph() -> StateGraph:
 
     graph.add_node("analyze_emotion", lambda s: analyze_emotion(_dict_to_state(s)))
     graph.add_node("determine_cycle", lambda s: determine_cycle(_dict_to_state(s)))
-    graph.add_node(
-        "generate_response", lambda s: generate_response(_dict_to_state(s))
-    )
+    graph.add_node("generate_response", lambda s: generate_response(_dict_to_state(s)))
     graph.add_node("safety_filter", lambda s: safety_filter(_dict_to_state(s)))
 
     graph.set_entry_point("analyze_emotion")
@@ -228,6 +227,7 @@ def _dict_to_state(d: dict) -> CoachState:
     return CoachState(
         user_message=d.get("user_message", ""),
         diary_content=d.get("diary_content"),
+        context_block=d.get("context_block"),
         history=d.get("history", []),
         detected_emotion=d.get("detected_emotion"),
         cycle_element=d.get("cycle_element"),
@@ -264,6 +264,7 @@ async def run_coach_flow(
     user_message: str,
     history: list[dict] | None = None,
     diary_content: str | None = None,
+    context_block: str | None = None,
     system_prompt: str | None = None,
     config: dict | None = None,
 ) -> dict:
@@ -278,6 +279,7 @@ async def run_coach_flow(
     initial_state = {
         "user_message": user_message,
         "diary_content": diary_content,
+        "context_block": context_block,
         "history": history or [],
         "detected_emotion": None,
         "cycle_element": None,

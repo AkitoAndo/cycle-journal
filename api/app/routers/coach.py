@@ -13,7 +13,12 @@ from google.cloud.firestore import AsyncClient
 from app.config import settings
 from app.dependencies import get_current_user, get_firestore
 from app.models.coach import CoachData, CoachMetadata, CoachRequest
-from app.services import ai_usage_service, coach_service, prompt_service
+from app.services import (
+    ai_usage_service,
+    coach_service,
+    context_service,
+    prompt_service,
+)
 from app.services.coach_graph import run_coach_flow
 from app.services.firestore_client import sessions_ref
 
@@ -41,56 +46,40 @@ async def chat(
     """ユーザーのメッセージに対してAIコーチが応答."""
     _validate_input_size(body.message)
     now = datetime.now(UTC)
-    ref = sessions_ref(db)
-
-    # セッション取得 or 新規作成
-    if body.session_id:
-        session_doc = ref.document(body.session_id)
-        session_snap = await session_doc.get()
-        if not session_snap.exists or session_snap.get("user_id") != user_id:
-            # セッションが存在しないか別ユーザーの場合は新規作成
-            session_id = str(uuid.uuid4())
-            session_doc = ref.document(session_id)
-        else:
-            session_id = body.session_id
-    else:
-        session_id = str(uuid.uuid4())
-        session_doc = ref.document(session_id)
-
-    # セッションが未作成の場合は作成
-    session_snap = await session_doc.get()
-    if not session_snap.exists:
-        cycle_element = (
-            body.context.cycle_element.value
-            if body.context and body.context.cycle_element
-            else None
-        )
-        await session_doc.set(
-            {
-                "user_id": user_id,
-                "title": None,
-                "cycle_element": cycle_element,
-                "has_diary_context": body.diary_content is not None,
-                "message_count": 0,
-                "last_message_at": now,
-                "created_at": now,
-                "updated_at": now,
-            }
-        )
+    session_id, session_doc, session_data = await _ensure_session(
+        db, user_id, body, now
+    )
+    effective_diary_content = await _remember_diary_context(
+        session_doc,
+        session_data,
+        body.diary_content,
+        now,
+    )
 
     # 過去のメッセージ履歴を取得
     messages_ref = session_doc.collection("messages")
-    history_query = messages_ref.order_by("created_at").limit(50)
+    history_query = messages_ref.order_by("created_at").limit(
+        settings.coach_context_history_max_messages
+    )
     history_docs = [doc async for doc in history_query.stream()]
-    history = [
-        {"role": doc.get("role"), "content": doc.get("content")}
-        for doc in history_docs
-    ]
+    history = context_service.trim_history(
+        [
+            {"role": doc.get("role"), "content": doc.get("content")}
+            for doc in history_docs
+        ]
+    )
+
+    context_block = await context_service.build_context_block(
+        db,
+        user_id=user_id,
+        current_session_id=session_id,
+    )
 
     estimate = ai_usage_service.estimate_coach_request(
         message=body.message,
         history=history,
-        diary_content=body.diary_content,
+        diary_content=effective_diary_content,
+        context_block=context_block,
     )
     await ai_usage_service.reserve_monthly_budget(
         db,
@@ -109,7 +98,8 @@ async def chat(
         flow_result = await run_coach_flow(
             user_message=body.message,
             history=history,
-            diary_content=body.diary_content,
+            diary_content=effective_diary_content,
+            context_block=context_block,
             system_prompt=system_prompt,
             config=prompt_config,
         )
@@ -120,45 +110,65 @@ async def chat(
         response_text = await coach_service.chat(
             user_message=body.message,
             history=history,
-            diary_content=body.diary_content,
+            diary_content=effective_diary_content,
+            context_block=context_block,
             system_prompt=system_prompt,
             config=prompt_config,
         )
 
     # ユーザーメッセージを保存
     user_msg_id = str(uuid.uuid4())
-    await messages_ref.document(user_msg_id).set({
-        "role": "user",
-        "content": body.message,
-        "metadata": None,
-        "created_at": now,
-    })
+    await messages_ref.document(user_msg_id).set(
+        {
+            "role": "user",
+            "content": body.message,
+            "metadata": None,
+            "created_at": now,
+        }
+    )
 
     # アシスタント応答を保存
     assistant_msg_id = str(uuid.uuid4())
     assistant_now = datetime.now(UTC)
-    await messages_ref.document(assistant_msg_id).set({
-        "role": "assistant",
-        "content": response_text,
-        "metadata": {
-            "model": settings.claude_model,
-            "prompt_version_id": prompt_version_id,
-        },
-        "created_at": assistant_now,
-    })
+    await messages_ref.document(assistant_msg_id).set(
+        {
+            "role": "assistant",
+            "content": response_text,
+            "metadata": {
+                "model": settings.claude_model,
+                "prompt_version_id": prompt_version_id,
+            },
+            "created_at": assistant_now,
+        }
+    )
 
     # セッションのメッセージ数を更新
-    session_data = (await session_doc.get()).to_dict() or {}
-    await session_doc.update({
-        "message_count": session_data.get("message_count", 0) + 2,
-        "last_message_at": assistant_now,
-        "updated_at": assistant_now,
-    })
+    base_message_count = int(session_data.get("message_count", 0) or 0)
+    next_message_count = base_message_count + 2
+    await session_doc.update(
+        {
+            "message_count": next_message_count,
+            "last_message_at": assistant_now,
+            "updated_at": assistant_now,
+        }
+    )
+    summary_session_data = {**session_data, "message_count": next_message_count}
+    await _try_update_summary(
+        session_doc=session_doc,
+        session_data=summary_session_data,
+        messages=[
+            *history,
+            {"role": "user", "content": body.message},
+            {"role": "assistant", "content": response_text},
+        ],
+        diary_context=effective_diary_content,
+        prompt_config=prompt_config,
+        now=assistant_now,
+    )
 
     # Cycle要素: LangGraphの判定結果 > リクエストの指定
-    final_cycle_element = (
-        response_cycle_element
-        or (body.context.cycle_element if body.context else None)
+    final_cycle_element = response_cycle_element or (
+        body.context.cycle_element if body.context else None
     )
 
     return {
@@ -180,7 +190,7 @@ async def _ensure_session(
     user_id: str,
     body: CoachRequest,
     now: datetime,
-) -> tuple[str, object]:
+) -> tuple[str, object, dict]:
     ref = sessions_ref(db)
     session_id = body.session_id or str(uuid.uuid4())
     session_doc = ref.document(session_id)
@@ -195,19 +205,68 @@ async def _ensure_session(
             if body.context and body.context.cycle_element
             else None
         )
-        await session_doc.set(
-            {
-                "user_id": user_id,
-                "title": None,
-                "cycle_element": cycle_element,
-                "has_diary_context": body.diary_content is not None,
-                "message_count": 0,
-                "last_message_at": now,
-                "created_at": now,
-                "updated_at": now,
-            }
+        diary_context = context_service.sanitize_diary_context(body.diary_content)
+        session_data = {
+            "user_id": user_id,
+            "title": None,
+            "cycle_element": cycle_element,
+            "diary_context": diary_context,
+            "has_diary_context": diary_context is not None,
+            "message_count": 0,
+            "last_message_at": now,
+            "created_at": now,
+            "updated_at": now,
+        }
+        await session_doc.set(session_data)
+        return session_id, session_doc, session_data
+    return session_id, session_doc, snap.to_dict() or {}
+
+
+async def _remember_diary_context(
+    session_doc,
+    session_data: dict,
+    diary_content: str | None,
+    now: datetime,
+) -> str | None:
+    if diary_content is None:
+        return session_data.get("diary_context")
+
+    diary_context = context_service.sanitize_diary_context(diary_content)
+    if diary_context == session_data.get("diary_context"):
+        return diary_context
+
+    await session_doc.update(
+        {
+            "diary_context": diary_context,
+            "has_diary_context": diary_context is not None,
+            "updated_at": now,
+        }
+    )
+    session_data["diary_context"] = diary_context
+    session_data["has_diary_context"] = diary_context is not None
+    return diary_context
+
+
+async def _try_update_summary(
+    *,
+    session_doc,
+    session_data: dict,
+    messages: list[dict[str, str]],
+    diary_context: str | None,
+    prompt_config: dict,
+    now: datetime,
+) -> None:
+    try:
+        await context_service.maybe_update_session_summary(
+            session_doc,
+            session_data=session_data,
+            messages=messages,
+            diary_context=diary_context,
+            config=prompt_config,
+            now=now,
         )
-    return session_id, session_doc
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("coach summary update failed: %s", exc)
 
 
 @router.post("/coach/stream")
@@ -219,21 +278,40 @@ async def chat_stream(
     """Server-Sent Events で chunk 単位に応答を返す."""
     _validate_input_size(body.message)
     now = datetime.now(UTC)
-    session_id, session_doc = await _ensure_session(db, user_id, body, now)
+    session_id, session_doc, session_data = await _ensure_session(
+        db, user_id, body, now
+    )
+    effective_diary_content = await _remember_diary_context(
+        session_doc,
+        session_data,
+        body.diary_content,
+        now,
+    )
 
     messages_ref = session_doc.collection("messages")
-    history_query = messages_ref.order_by("created_at").limit(50)
+    history_query = messages_ref.order_by("created_at").limit(
+        settings.coach_context_history_max_messages
+    )
     history_docs = [doc async for doc in history_query.stream()]
-    history = [
-        {"role": doc.get("role"), "content": doc.get("content")} for doc in history_docs
-    ]
+    history = context_service.trim_history(
+        [
+            {"role": doc.get("role"), "content": doc.get("content")}
+            for doc in history_docs
+        ]
+    )
+    context_block = await context_service.build_context_block(
+        db,
+        user_id=user_id,
+        current_session_id=session_id,
+    )
     prompt_config, prompt_version_id = await prompt_service.get_active_config(db)
     system_prompt = str(prompt_config["system_prompt"])
 
     estimate = ai_usage_service.estimate_coach_request(
         message=body.message,
         history=history,
-        diary_content=body.diary_content,
+        diary_content=effective_diary_content,
+        context_block=context_block,
     )
     await ai_usage_service.reserve_monthly_budget(
         db,
@@ -252,12 +330,14 @@ async def chat_stream(
         yield f"event: session\ndata: {json.dumps({'session_id': session_id})}\n\n"
         accumulated = ""
         try:
+
             async def consume():
                 nonlocal accumulated
                 async for chunk in coach_service.chat_stream(
                     user_message=body.message,
                     history=history,
-                    diary_content=body.diary_content,
+                    diary_content=effective_diary_content,
+                    context_block=context_block,
                     system_prompt=system_prompt,
                     config=prompt_config,
                 ):
@@ -295,14 +375,30 @@ async def chat_stream(
                         "created_at": assistant_now,
                     }
                 )
-                snap = await session_doc.get()
-                data = snap.to_dict() or {}
+                base_message_count = int(session_data.get("message_count", 0) or 0)
+                next_message_count = base_message_count + 2
                 await session_doc.update(
                     {
-                        "message_count": data.get("message_count", 0) + 2,
+                        "message_count": next_message_count,
                         "last_message_at": assistant_now,
                         "updated_at": assistant_now,
                     }
+                )
+                summary_session_data = {
+                    **session_data,
+                    "message_count": next_message_count,
+                }
+                await _try_update_summary(
+                    session_doc=session_doc,
+                    session_data=summary_session_data,
+                    messages=[
+                        *history,
+                        {"role": "user", "content": body.message},
+                        {"role": "assistant", "content": accumulated},
+                    ],
+                    diary_context=effective_diary_content,
+                    prompt_config=prompt_config,
+                    now=assistant_now,
                 )
             yield "event: done\ndata: {}\n\n"
 

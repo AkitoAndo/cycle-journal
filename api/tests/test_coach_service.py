@@ -32,6 +32,20 @@ def test_system_prompt_keeps_core_metaphor():
     assert "わたし" in prompt
 
 
+def test_build_user_content_includes_dynamic_context():
+    content = coach_service.build_user_content(
+        "この日記について話したいです",
+        diary_content="朝から緊張していた",
+        context_block="【過去セッション要約】\n- 仕事の疲れ",
+    )
+
+    assert "【参考コンテキスト】" in content
+    assert "仕事の疲れ" in content
+    assert "【日記の内容】" in content
+    assert "朝から緊張していた" in content
+    assert "【ユーザーのメッセージ】" in content
+
+
 @pytest.mark.asyncio
 async def test_chat_uses_coach_model_in_claude_mode(monkeypatch):
     """Claude モード (use_gemini_fallback=False) では Sonnet を使う."""
@@ -118,3 +132,22 @@ async def test_chat_uses_gemini_when_fallback_enabled(monkeypatch):
         # system_instruction は config 経由で渡される
         cfg = call_kwargs["config"]
         assert cfg.system_instruction == coach_service.SYSTEM_PROMPT
+
+
+@pytest.mark.asyncio
+async def test_quick_text_uses_gemini_quick_when_fallback_enabled(monkeypatch):
+    """要約などの短い抽出は Gemini fallback 時も quick モデルを使う."""
+    monkeypatch.setattr(settings, "use_gemini_fallback", True)
+
+    with patch("app.services.coach_service._get_gemini_client") as mock_get:
+        client = MagicMock()
+        response = MagicMock()
+        response.text = "要約"
+        client.models.generate_content.return_value = response
+        mock_get.return_value = client
+
+        result = await coach_service.quick_text("要約して")
+
+        assert result == "要約"
+        call_kwargs = client.models.generate_content.call_args.kwargs
+        assert call_kwargs["model"] == settings.gemini_model_quick

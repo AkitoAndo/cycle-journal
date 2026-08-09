@@ -43,6 +43,7 @@ struct CreateSessionRequest: Encodable {
 struct SessionData: Decodable {
     let sessionId: String
     let title: String?
+    let summary: String?
     let cycleElement: String?
     let messageCount: Int?
     let lastMessageAt: Date?
@@ -59,6 +60,8 @@ struct SessionListData: Decodable {
 struct SessionDetailData: Decodable {
     let sessionId: String
     let title: String?
+    let summary: String?
+    let summaryGeneratedAt: Date?
     let cycleElement: String?
     let hasDiaryContext: Bool?
     let messages: [MessageData]

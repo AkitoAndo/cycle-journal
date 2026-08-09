@@ -15,6 +15,7 @@ from app.models.session import (
     SessionListData,
     SessionSummary,
 )
+from app.services import context_service
 from app.services.firestore_client import sessions_ref
 
 router = APIRouter(prefix="/sessions", tags=["Sessions"])
@@ -29,9 +30,8 @@ async def list_sessions(
 ):
     """ユーザーの会話セッション一覧を取得."""
     ref = sessions_ref(db)
-    query = (
-        ref.where("user_id", "==", user_id)
-        .order_by("created_at", direction="DESCENDING")
+    query = ref.where("user_id", "==", user_id).order_by(
+        "created_at", direction="DESCENDING"
     )
 
     # 全件数を取得
@@ -48,6 +48,7 @@ async def list_sessions(
             SessionSummary(
                 session_id=doc.id,
                 title=data.get("title"),
+                summary=data.get("summary"),
                 cycle_element=data.get("cycle_element"),
                 message_count=data.get("message_count", 0),
                 last_message_at=data.get("last_message_at"),
@@ -75,12 +76,14 @@ async def create_session(
     ref = sessions_ref(db)
     session_id = str(uuid.uuid4())
     now = datetime.now(UTC)
+    diary_context = context_service.sanitize_diary_context(body.diary_content)
 
     session_data = {
         "user_id": user_id,
         "title": body.title,
         "cycle_element": body.cycle_element.value if body.cycle_element else None,
-        "has_diary_context": body.diary_content is not None,
+        "diary_context": diary_context,
+        "has_diary_context": diary_context is not None,
         "message_count": 0,
         "last_message_at": now,
         "created_at": now,
@@ -92,6 +95,7 @@ async def create_session(
         "data": SessionSummary(
             session_id=session_id,
             title=body.title,
+            summary=None,
             cycle_element=body.cycle_element,
             message_count=0,
             last_message_at=now,
@@ -138,6 +142,8 @@ async def get_session(
         "data": SessionDetail(
             session_id=session_id,
             title=data.get("title"),
+            summary=data.get("summary"),
+            summary_generated_at=data.get("summary_generated_at"),
             cycle_element=data.get("cycle_element"),
             has_diary_context=data.get("has_diary_context", False),
             messages=messages,

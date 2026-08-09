@@ -10,17 +10,30 @@ def test_coach_requires_auth(client):
 
 def test_coach_chat(auth_client, mock_firestore):
     """Test successful coach chat."""
-    with patch(
-        "app.routers.coach.coach_service.chat",
-        new_callable=AsyncMock,
-    ) as mock_chat, patch(
-        "app.routers.coach.ai_usage_service.reserve_monthly_budget",
-        new_callable=AsyncMock,
-    ) as reserve_budget, patch(
-        "app.routers.coach.prompt_service.get_active_config",
-        new_callable=AsyncMock,
-    ) as active_config:
+    with (
+        patch(
+            "app.routers.coach.coach_service.chat",
+            new_callable=AsyncMock,
+        ) as mock_chat,
+        patch(
+            "app.routers.coach.context_service.build_context_block",
+            new_callable=AsyncMock,
+        ) as build_context,
+        patch(
+            "app.routers.coach.context_service.maybe_update_session_summary",
+            new_callable=AsyncMock,
+        ) as update_summary,
+        patch(
+            "app.routers.coach.ai_usage_service.reserve_monthly_budget",
+            new_callable=AsyncMock,
+        ) as reserve_budget,
+        patch(
+            "app.routers.coach.prompt_service.get_active_config",
+            new_callable=AsyncMock,
+        ) as active_config,
+    ):
         mock_chat.return_value = "そう感じたんだね。"
+        build_context.return_value = "【過去セッション要約】\n- 前回の話"
         active_config.return_value = (
             {
                 "system_prompt": "system prompt",
@@ -51,6 +64,11 @@ def test_coach_chat(auth_client, mock_firestore):
     reserve_budget.assert_awaited_once()
     mock_chat.assert_awaited_once()
     assert mock_chat.call_args.kwargs["system_prompt"] == "system prompt"
+    assert (
+        mock_chat.call_args.kwargs["context_block"]
+        == "【過去セッション要約】\n- 前回の話"
+    )
+    update_summary.assert_awaited_once()
     data = response.json()["data"]
     assert data["message"] == "そう感じたんだね。"
     assert "session_id" in data
