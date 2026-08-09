@@ -137,6 +137,71 @@ def test_coach_boundary_route_skips_model_call(auth_client, mock_firestore):
     assert update_payload["coach_state"]["layer8"] is True
 
 
+def test_coach_creates_task_from_permitted_triage_report(
+    auth_client,
+    mock_firestore,
+):
+    task_doc = MagicMock()
+    task_doc.set = AsyncMock()
+    task_collection = MagicMock()
+    task_collection.document.return_value = task_doc
+
+    with (
+        patch(
+            "app.routers.coach.coach_service.chat",
+            new_callable=AsyncMock,
+        ) as mock_chat,
+        patch(
+            "app.routers.coach.context_service.build_context_block",
+            new_callable=AsyncMock,
+        ) as build_context,
+        patch(
+            "app.routers.coach.coach_phase_service.build_phase_context",
+            return_value="PHASE",
+        ),
+        patch(
+            "app.routers.coach.context_service.maybe_update_session_summary",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "app.routers.coach.ai_usage_service.reserve_monthly_budget",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "app.routers.coach.prompt_service.get_active_config",
+            new_callable=AsyncMock,
+        ) as active_config,
+        patch("app.routers.coach.tasks_ref", return_value=task_collection),
+    ):
+        mock_chat.return_value = (
+            '請求書を置きました。\n\n<control>{"phase":"triage",'
+            '"phase_complete":false,"route":null,'
+            '"report":{"item":"請求書","placement":"片づく",'
+            '"task_permission":true}}</control>'
+        )
+        build_context.return_value = None
+        active_config.return_value = (
+            {
+                "system_prompt": "system prompt",
+                "use_langgraph": False,
+                "use_gemini_fallback": True,
+            },
+            "prompt-v1",
+        )
+
+        response = auth_client.post("/coach", json={"message": "請求書は片づく"})
+
+    assert response.status_code == 200
+    task_doc.set.assert_awaited_once()
+    task_payload = task_doc.set.await_args.args[0]
+    assert task_payload["title"] == "請求書"
+    assert task_payload["status"] == "pending"
+    assert task_payload["source"] == "coach_triage"
+    assert task_payload["session_id"] == response.json()["data"]["session_id"]
+    update_payload = mock_firestore._mock_doc.update.await_args.args[0]
+    assert update_payload["coach_state"]["items"][0]["task_id"]
+
+
 def test_coach_stream_filters_control_block(auth_client, mock_firestore):
     """SSE should not stream the hidden control block to the client."""
 

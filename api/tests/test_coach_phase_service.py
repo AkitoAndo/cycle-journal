@@ -63,8 +63,86 @@ def test_apply_control_state_stores_reported_session_material():
     )
 
     assert state["items"] == [
-        {"text": "請求書", "status": "片づく", "task_permission": True}
+        {
+            "text": "請求書",
+            "status": "片づく",
+            "task_permission": True,
+            "task_id": None,
+        }
     ]
+
+
+def test_task_write_candidate_requires_done_placement_and_permission():
+    candidate = coach_phase_service.task_write_candidate(
+        {"phase": "triage"},
+        {
+            "phase": "triage",
+            "report": {
+                "item": "請求書",
+                "placement": "片づく",
+                "task_permission": True,
+            },
+        },
+    )
+    denied = coach_phase_service.task_write_candidate(
+        {"phase": "triage"},
+        {
+            "phase": "triage",
+            "report": {
+                "item": "母のこと",
+                "placement": "残る",
+                "task_permission": True,
+            },
+        },
+    )
+
+    assert candidate == {"title": "請求書"}
+    assert denied is None
+
+
+def test_task_write_candidate_skips_existing_task_id():
+    candidate = coach_phase_service.task_write_candidate(
+        {
+            "phase": "triage",
+            "items": [
+                {
+                    "text": "請求書",
+                    "status": "片づく",
+                    "task_permission": True,
+                    "task_id": "task-1",
+                }
+            ],
+        },
+        {
+            "phase": "triage",
+            "report": {
+                "item": "請求書",
+                "placement": "片づく",
+                "task_permission": True,
+            },
+        },
+    )
+
+    assert candidate is None
+
+
+def test_attach_task_to_state_links_item():
+    state = coach_phase_service.attach_task_to_state(
+        {
+            "phase": "triage",
+            "items": [
+                {
+                    "text": "請求書",
+                    "status": "片づく",
+                    "task_permission": True,
+                }
+            ],
+        },
+        item_text="請求書",
+        task_id="task-1",
+    )
+
+    assert state["items"][0]["task_id"] == "task-1"
 
 
 def test_build_phase_context_contains_current_phase_and_control_contract():

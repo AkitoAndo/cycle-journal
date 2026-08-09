@@ -5,6 +5,7 @@ import json
 import logging
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -21,7 +22,7 @@ from app.services import (
     prompt_service,
 )
 from app.services.coach_graph import run_coach_flow
-from app.services.firestore_client import sessions_ref
+from app.services.firestore_client import sessions_ref, tasks_ref
 
 router = APIRouter(tags=["Coach"])
 logger = logging.getLogger("app.coach")
@@ -176,6 +177,28 @@ async def chat(
         coach_control,
         now=assistant_now,
     )
+    created_task_id = await _maybe_create_triage_task(
+        db=db,
+        user_id=user_id,
+        session_id=session_id,
+        session_data=session_data,
+        coach_control=coach_control,
+        cycle_element=body.context.cycle_element.value
+        if body.context and body.context.cycle_element
+        else None,
+        now=assistant_now,
+    )
+    if created_task_id:
+        candidate = coach_phase_service.task_write_candidate(
+            session_data.get("coach_state"),
+            coach_control,
+        )
+        if candidate:
+            coach_state = coach_phase_service.attach_task_to_state(
+                coach_state,
+                item_text=candidate["title"],
+                task_id=created_task_id,
+            )
     await messages_ref.document(assistant_msg_id).set(
         {
             "role": "assistant",
@@ -184,6 +207,7 @@ async def chat(
                 "model": settings.claude_model,
                 "prompt_version_id": prompt_version_id,
                 "coach_control": coach_control,
+                "created_task_id": created_task_id,
             },
             "created_at": assistant_now,
         }
@@ -370,6 +394,41 @@ async def _persist_fixed_coach_response(
     )
 
 
+async def _maybe_create_triage_task(
+    *,
+    db: AsyncClient,
+    user_id: str,
+    session_id: str,
+    session_data: dict,
+    coach_control: dict[str, Any] | None,
+    cycle_element: str | None,
+    now: datetime,
+) -> str | None:
+    candidate = coach_phase_service.task_write_candidate(
+        session_data.get("coach_state"),
+        coach_control,
+    )
+    if not candidate:
+        return None
+
+    task_id = str(uuid.uuid4())
+    task_data = {
+        "user_id": user_id,
+        "title": candidate["title"],
+        "description": None,
+        "status": "pending",
+        "session_id": session_id,
+        "cycle_element": cycle_element,
+        "due_date": None,
+        "completed_at": None,
+        "source": "coach_triage",
+        "created_at": now,
+        "updated_at": now,
+    }
+    await tasks_ref(db).document(task_id).set(task_data)
+    return task_id
+
+
 @router.post("/coach/stream")
 async def chat_stream(
     body: CoachRequest,
@@ -507,6 +566,28 @@ async def chat_stream(
                     now=datetime.now(UTC),
                 )
                 assistant_now = datetime.now(UTC)
+                created_task_id = await _maybe_create_triage_task(
+                    db=db,
+                    user_id=user_id,
+                    session_id=session_id,
+                    session_data=session_data,
+                    coach_control=coach_control,
+                    cycle_element=body.context.cycle_element.value
+                    if body.context and body.context.cycle_element
+                    else None,
+                    now=assistant_now,
+                )
+                if created_task_id:
+                    candidate = coach_phase_service.task_write_candidate(
+                        session_data.get("coach_state"),
+                        coach_control,
+                    )
+                    if candidate:
+                        coach_state = coach_phase_service.attach_task_to_state(
+                            coach_state,
+                            item_text=candidate["title"],
+                            task_id=created_task_id,
+                        )
                 assistant_msg_id = str(uuid.uuid4())
                 await messages_ref.document(assistant_msg_id).set(
                     {
@@ -517,6 +598,7 @@ async def chat_stream(
                             "streamed": True,
                             "prompt_version_id": prompt_version_id,
                             "coach_control": coach_control,
+                            "created_task_id": created_task_id,
                         },
                         "created_at": assistant_now,
                     }
