@@ -30,6 +30,10 @@ def tasks_ref(db: AsyncClient):
     return db.collection("tasks")
 
 
+def journals_ref(db: AsyncClient):
+    return db.collection("journals")
+
+
 def refresh_tokens_ref(db: AsyncClient):
     return db.collection("refresh_tokens")
 

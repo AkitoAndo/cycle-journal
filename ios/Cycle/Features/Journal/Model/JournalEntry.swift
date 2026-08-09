@@ -28,4 +28,15 @@ struct JournalEntry: Identifiable, Codable, Hashable {
 
     /// 削除日時（論理削除用）
     var deletedAt: Date?
+
+    /// 最終更新日時（サーバー同期の last-write-wins 判定用）
+    var updatedAt: Date?
+
+    var syncUpdatedAt: Date {
+        updatedAt ?? deletedAt ?? date
+    }
+
+    mutating func touch(_ now: Date = Date()) {
+        updatedAt = now
+    }
 }
