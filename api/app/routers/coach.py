@@ -15,6 +15,7 @@ from app.dependencies import get_current_user, get_firestore
 from app.models.coach import CoachData, CoachMetadata, CoachRequest
 from app.services import (
     ai_usage_service,
+    coach_phase_service,
     coach_service,
     context_service,
     prompt_service,
@@ -69,10 +70,14 @@ async def chat(
         ]
     )
 
-    context_block = await context_service.build_context_block(
+    memory_context_block = await context_service.build_context_block(
         db,
         user_id=user_id,
         current_session_id=session_id,
+    )
+    phase_context_block = coach_phase_service.build_phase_context(session_data)
+    context_block = context_service.join_context_blocks(
+        [memory_context_block, phase_context_block]
     )
 
     estimate = ai_usage_service.estimate_coach_request(
@@ -115,6 +120,9 @@ async def chat(
             system_prompt=system_prompt,
             config=prompt_config,
         )
+    visible_response_text, coach_control = coach_phase_service.extract_control_block(
+        response_text
+    )
 
     # ユーザーメッセージを保存
     user_msg_id = str(uuid.uuid4())
@@ -130,13 +138,19 @@ async def chat(
     # アシスタント応答を保存
     assistant_msg_id = str(uuid.uuid4())
     assistant_now = datetime.now(UTC)
+    coach_state = coach_phase_service.apply_control_state(
+        session_data.get("coach_state"),
+        coach_control,
+        now=assistant_now,
+    )
     await messages_ref.document(assistant_msg_id).set(
         {
             "role": "assistant",
-            "content": response_text,
+            "content": visible_response_text,
             "metadata": {
                 "model": settings.claude_model,
                 "prompt_version_id": prompt_version_id,
+                "coach_control": coach_control,
             },
             "created_at": assistant_now,
         }
@@ -150,6 +164,7 @@ async def chat(
             "message_count": next_message_count,
             "last_message_at": assistant_now,
             "updated_at": assistant_now,
+            "coach_state": coach_state,
         }
     )
     summary_session_data = {**session_data, "message_count": next_message_count}
@@ -159,7 +174,7 @@ async def chat(
         messages=[
             *history,
             {"role": "user", "content": body.message},
-            {"role": "assistant", "content": response_text},
+            {"role": "assistant", "content": visible_response_text},
         ],
         diary_context=effective_diary_content,
         prompt_config=prompt_config,
@@ -173,7 +188,7 @@ async def chat(
 
     return {
         "data": CoachData(
-            message=response_text,
+            message=visible_response_text,
             session_id=session_id,
             metadata=CoachMetadata(
                 stage=settings.environment,
@@ -299,10 +314,14 @@ async def chat_stream(
             for doc in history_docs
         ]
     )
-    context_block = await context_service.build_context_block(
+    memory_context_block = await context_service.build_context_block(
         db,
         user_id=user_id,
         current_session_id=session_id,
+    )
+    phase_context_block = coach_phase_service.build_phase_context(session_data)
+    context_block = context_service.join_context_blocks(
+        [memory_context_block, phase_context_block]
     )
     prompt_config, prompt_version_id = await prompt_service.get_active_config(db)
     system_prompt = str(prompt_config["system_prompt"])
@@ -329,6 +348,7 @@ async def chat_stream(
         # SSE 起動メッセージ
         yield f"event: session\ndata: {json.dumps({'session_id': session_id})}\n\n"
         accumulated = ""
+        control_filter = coach_phase_service.ControlBlockStreamFilter()
         try:
 
             async def consume():
@@ -342,7 +362,12 @@ async def chat_stream(
                     config=prompt_config,
                 ):
                     accumulated += chunk
-                    yield chunk
+                    visible_chunk = control_filter.feed(chunk)
+                    if visible_chunk:
+                        yield visible_chunk
+                visible_tail = control_filter.flush()
+                if visible_tail:
+                    yield visible_tail
 
             async for chunk in _with_timeout(
                 consume(), settings.coach_stream_timeout_seconds
@@ -361,16 +386,25 @@ async def chat_stream(
         finally:
             # 完了後に assistant メッセージを保存（部分応答でも残す）
             if accumulated:
+                visible_response_text, coach_control = (
+                    coach_phase_service.extract_control_block(accumulated)
+                )
+                coach_state = coach_phase_service.apply_control_state(
+                    session_data.get("coach_state"),
+                    coach_control,
+                    now=datetime.now(UTC),
+                )
                 assistant_now = datetime.now(UTC)
                 assistant_msg_id = str(uuid.uuid4())
                 await messages_ref.document(assistant_msg_id).set(
                     {
                         "role": "assistant",
-                        "content": accumulated,
+                        "content": visible_response_text,
                         "metadata": {
                             "model": settings.claude_model,
                             "streamed": True,
                             "prompt_version_id": prompt_version_id,
+                            "coach_control": coach_control,
                         },
                         "created_at": assistant_now,
                     }
@@ -382,6 +416,7 @@ async def chat_stream(
                         "message_count": next_message_count,
                         "last_message_at": assistant_now,
                         "updated_at": assistant_now,
+                        "coach_state": coach_state,
                     }
                 )
                 summary_session_data = {
@@ -394,7 +429,7 @@ async def chat_stream(
                     messages=[
                         *history,
                         {"role": "user", "content": body.message},
-                        {"role": "assistant", "content": accumulated},
+                        {"role": "assistant", "content": visible_response_text},
                     ],
                     diary_context=effective_diary_content,
                     prompt_config=prompt_config,
