@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from app.services import coach_phase_service
+from app.services import coach_phase_service, coach_vocabulary_service
 
 MAX_REGEN_ATTEMPTS = 1
 
@@ -69,6 +69,8 @@ def lint_visible_response(
     *,
     raw_state: Any,
     control: dict[str, Any] | None,
+    vocabulary_sources: list[str | None] | None = None,
+    enable_vocabulary_lint: bool = False,
 ) -> list[str]:
     """Return mechanical lint violations for a user-visible coach response."""
     if _is_layer8(control):
@@ -101,6 +103,14 @@ def lint_visible_response(
         if hit:
             violations.append(f"forbidden_{category}:{hit}")
 
+    if enable_vocabulary_lint:
+        violations.extend(
+            _vocabulary_violations(
+                visible_text,
+                vocabulary_sources=vocabulary_sources or [],
+            )
+        )
+
     return violations
 
 
@@ -131,3 +141,14 @@ def _question_count(text: str) -> int:
     punctuation_questions = text.count("?") + text.count("？")
     phrase_questions = len(QUESTION_PATTERNS.findall(text))
     return max(punctuation_questions, phrase_questions)
+
+
+def _vocabulary_violations(
+    visible_text: str,
+    *,
+    vocabulary_sources: list[str | None],
+) -> list[str]:
+    allowed = coach_vocabulary_service.allowed_lemmas(vocabulary_sources)
+    response_lemmas = coach_vocabulary_service.content_lemmas(visible_text)
+    extra = sorted(response_lemmas - allowed)
+    return [f"new_content_word:{lemma}" for lemma in extra[:5]]

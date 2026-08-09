@@ -24,3 +24,27 @@ def test_lint_visible_response_skips_layer8():
     )
 
     assert violations == []
+
+
+def test_lint_visible_response_allows_user_vocabulary_and_core_verbs():
+    violations = coach_response_lint.lint_visible_response(
+        "疲れが、あります。",
+        raw_state={"phase": "triage"},
+        control={"phase": "triage", "report": {}},
+        vocabulary_sources=["今日は疲れた"],
+        enable_vocabulary_lint=True,
+    )
+
+    assert violations == []
+
+
+def test_lint_visible_response_detects_new_content_words():
+    violations = coach_response_lint.lint_visible_response(
+        "疲れと海が、あります。",
+        raw_state={"phase": "triage"},
+        control={"phase": "triage", "report": {}},
+        vocabulary_sources=["今日は疲れた"],
+        enable_vocabulary_lint=True,
+    )
+
+    assert "new_content_word:海" in violations

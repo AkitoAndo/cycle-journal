@@ -22,6 +22,7 @@ class PromptConfig(BaseModel):
     coach_action_core_checklist: str | None = None
     coach_layer8_crisis_prompt: str | None = None
     coach_professional_boundary_prompt: str | None = None
+    coach_vocabulary_lint_enabled: bool = True
 
 
 class PromptVersionCreateRequest(BaseModel):
