@@ -55,6 +55,7 @@ def estimate_coach_request(
     message: str,
     history: list[dict] | None = None,
     diary_content: str | None = None,
+    context_block: str | None = None,
     period: str | None = None,
 ) -> UsageEstimate:
     """Estimate cost before the model call.
@@ -65,6 +66,8 @@ def estimate_coach_request(
     input_chars = len(coach_service.SYSTEM_PROMPT) + len(message)
     if diary_content:
         input_chars += len(diary_content)
+    if context_block:
+        input_chars += len(context_block)
     if history:
         input_chars += sum(len(str(item.get("content") or "")) for item in history)
 

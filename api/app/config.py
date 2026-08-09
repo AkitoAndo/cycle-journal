@@ -44,6 +44,16 @@ class Settings(BaseSettings):
     coach_input_max_chars: int = 10_000
     coach_output_max_tokens_cap: int = 4_000  # 暴走時の hard cap
     coach_stream_timeout_seconds: int = 60
+    coach_context_history_max_messages: int = 50
+    coach_context_history_max_chars: int = 24_000
+    coach_context_summary_limit: int = 5
+    coach_context_summary_max_chars: int = 600
+    coach_context_diary_max_chars: int = 8_000
+    coach_summary_generation_enabled: bool = True
+    coach_summary_min_user_messages: int = 1
+    coach_summary_refresh_message_interval: int = 4
+    coach_summary_source_max_messages: int = 40
+    coach_summary_max_chars: int = 360
 
     # AI monthly usage budget guardrail
     # MVP の上限は 1 user あたり月 1,000 円程度。価格・為替は変わるため env で上書き可。

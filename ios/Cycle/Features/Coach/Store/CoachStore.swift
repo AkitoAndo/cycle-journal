@@ -392,6 +392,7 @@ class CoachStore: ObservableObject {
                 if let index = sessions.firstIndex(where: { $0.serverId == serverId }) {
                     sessions[index].messages = fullSession.messages
                     sessions[index].updatedAt = fullSession.updatedAt
+                    sessions[index].summary = fullSession.summary
                     saveSessions()
                 }
             }

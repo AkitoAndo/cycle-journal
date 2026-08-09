@@ -47,7 +47,7 @@ struct CoachSession: Identifiable, Codable {
             serverId: data.sessionId,
             createdAt: data.createdAt,
             updatedAt: data.lastMessageAt ?? data.createdAt,
-            summary: data.title,
+            summary: data.summary ?? data.title,
             isActive: false
         )
     }
@@ -73,7 +73,7 @@ struct CoachSession: Identifiable, Codable {
             messages: messages,
             createdAt: detail.createdAt,
             updatedAt: detail.updatedAt ?? detail.createdAt,
-            summary: detail.title,
+            summary: detail.summary ?? detail.title,
             isActive: false
         )
     }
