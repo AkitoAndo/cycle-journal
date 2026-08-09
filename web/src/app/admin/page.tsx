@@ -29,6 +29,13 @@ import { cn } from "@/lib/utils";
 
 const DEFAULT_MESSAGE = "今日は少し疲れています。自分のペースを取り戻したいです。";
 const ADMIN_AUTH_KEY = "cycle.admin.auth";
+const COACH_PHASE_FIELDS = [
+  { key: "acknowledge", label: "Phase 1 Acknowledge" },
+  { key: "triage", label: "Phase 2 Triage" },
+  { key: "space", label: "Phase 3 Residue" },
+  { key: "naming", label: "Phase 4 Naming" },
+  { key: "reflection", label: "Phase 5 Reflection" }
+] as const;
 
 function loadAdminAuth(): AuthTokens | null {
   if (ADMIN_AUTH_BYPASS) {
@@ -353,6 +360,50 @@ function PromptAdmin({
                     />
                     LangGraph
                   </label>
+                </div>
+              )}
+              {config && (
+                <div className="space-y-3 rounded-md border border-border bg-card p-3">
+                  <div className="text-[12px] font-semibold text-muted-foreground">
+                    Coach runtime prompts
+                  </div>
+                  <PromptArea
+                    label="Action core checklist"
+                    value={config.coachActionCoreChecklist ?? ""}
+                    onChange={(value) =>
+                      setConfig({ ...config, coachActionCoreChecklist: value })
+                    }
+                  />
+                  <PromptArea
+                    label="Layer8 crisis route"
+                    value={config.coachLayer8CrisisPrompt ?? ""}
+                    onChange={(value) =>
+                      setConfig({ ...config, coachLayer8CrisisPrompt: value })
+                    }
+                  />
+                  <PromptArea
+                    label="Professional boundary route"
+                    value={config.coachProfessionalBoundaryPrompt ?? ""}
+                    onChange={(value) =>
+                      setConfig({ ...config, coachProfessionalBoundaryPrompt: value })
+                    }
+                  />
+                  {COACH_PHASE_FIELDS.map((phase) => (
+                    <PromptArea
+                      key={phase.key}
+                      label={phase.label}
+                      value={config.coachPhaseModules?.[phase.key] ?? ""}
+                      onChange={(value) =>
+                        setConfig({
+                          ...config,
+                          coachPhaseModules: {
+                            ...(config.coachPhaseModules ?? {}),
+                            [phase.key]: value
+                          }
+                        })
+                      }
+                    />
+                  ))}
                 </div>
               )}
               {config && (

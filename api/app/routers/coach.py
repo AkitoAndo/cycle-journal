@@ -56,6 +56,37 @@ async def chat(
         body.diary_content,
         now,
     )
+    prompt_config, prompt_version_id = await prompt_service.get_active_config(db)
+    boundary_route = coach_phase_service.detect_boundary_route(body.message)
+    if boundary_route:
+        visible_response_text = coach_phase_service.boundary_response(boundary_route)
+        coach_control = coach_phase_service.boundary_control(
+            session_data.get("coach_state"),
+            boundary_route,
+        )
+        await _persist_fixed_coach_response(
+            session_doc=session_doc,
+            session_data=session_data,
+            message=body.message,
+            visible_response_text=visible_response_text,
+            coach_control=coach_control,
+            prompt_version_id=prompt_version_id,
+            user_now=now,
+        )
+        return {
+            "data": CoachData(
+                message=visible_response_text,
+                session_id=session_id,
+                metadata=CoachMetadata(
+                    stage=settings.environment,
+                    model="server-boundary",
+                    cycle_element=body.context.cycle_element
+                    if body.context
+                    else None,
+                    detected_emotion=None,
+                ),
+            )
+        }
 
     # 過去のメッセージ履歴を取得
     messages_ref = session_doc.collection("messages")
@@ -75,7 +106,10 @@ async def chat(
         user_id=user_id,
         current_session_id=session_id,
     )
-    phase_context_block = coach_phase_service.build_phase_context(session_data)
+    phase_context_block = coach_phase_service.build_phase_context(
+        session_data,
+        config=prompt_config,
+    )
     context_block = context_service.join_context_blocks(
         [memory_context_block, phase_context_block]
     )
@@ -92,7 +126,6 @@ async def chat(
         estimate=estimate,
     )
 
-    prompt_config, prompt_version_id = await prompt_service.get_active_config(db)
     system_prompt = str(prompt_config["system_prompt"])
 
     # コーチ応答を取得（LangGraph or シンプル呼び出し）
@@ -284,6 +317,59 @@ async def _try_update_summary(
         logger.warning("coach summary update failed: %s", exc)
 
 
+async def _persist_fixed_coach_response(
+    *,
+    session_doc,
+    session_data: dict,
+    message: str,
+    visible_response_text: str,
+    coach_control: dict,
+    prompt_version_id: str | None,
+    user_now: datetime,
+) -> None:
+    """Persist a server-routed coach response that did not call a model."""
+    messages_ref = session_doc.collection("messages")
+    user_msg_id = str(uuid.uuid4())
+    await messages_ref.document(user_msg_id).set(
+        {
+            "role": "user",
+            "content": message,
+            "metadata": None,
+            "created_at": user_now,
+        }
+    )
+
+    assistant_now = datetime.now(UTC)
+    assistant_msg_id = str(uuid.uuid4())
+    coach_state = coach_phase_service.apply_control_state(
+        session_data.get("coach_state"),
+        coach_control,
+        now=assistant_now,
+    )
+    await messages_ref.document(assistant_msg_id).set(
+        {
+            "role": "assistant",
+            "content": visible_response_text,
+            "metadata": {
+                "model": "server-boundary",
+                "prompt_version_id": prompt_version_id,
+                "coach_control": coach_control,
+            },
+            "created_at": assistant_now,
+        }
+    )
+
+    base_message_count = int(session_data.get("message_count", 0) or 0)
+    await session_doc.update(
+        {
+            "message_count": base_message_count + 2,
+            "last_message_at": assistant_now,
+            "updated_at": assistant_now,
+            "coach_state": coach_state,
+        }
+    )
+
+
 @router.post("/coach/stream")
 async def chat_stream(
     body: CoachRequest,
@@ -302,6 +388,30 @@ async def chat_stream(
         body.diary_content,
         now,
     )
+    prompt_config, prompt_version_id = await prompt_service.get_active_config(db)
+    boundary_route = coach_phase_service.detect_boundary_route(body.message)
+    if boundary_route:
+        visible_response_text = coach_phase_service.boundary_response(boundary_route)
+        coach_control = coach_phase_service.boundary_control(
+            session_data.get("coach_state"),
+            boundary_route,
+        )
+        await _persist_fixed_coach_response(
+            session_doc=session_doc,
+            session_data=session_data,
+            message=body.message,
+            visible_response_text=visible_response_text,
+            coach_control=coach_control,
+            prompt_version_id=prompt_version_id,
+            user_now=now,
+        )
+
+        async def fixed_event_source():
+            yield f"event: session\ndata: {json.dumps({'session_id': session_id})}\n\n"
+            yield f"data: {json.dumps({'chunk': visible_response_text})}\n\n"
+            yield "event: done\ndata: {}\n\n"
+
+        return StreamingResponse(fixed_event_source(), media_type="text/event-stream")
 
     messages_ref = session_doc.collection("messages")
     history_query = messages_ref.order_by("created_at").limit(
@@ -319,11 +429,13 @@ async def chat_stream(
         user_id=user_id,
         current_session_id=session_id,
     )
-    phase_context_block = coach_phase_service.build_phase_context(session_data)
+    phase_context_block = coach_phase_service.build_phase_context(
+        session_data,
+        config=prompt_config,
+    )
     context_block = context_service.join_context_blocks(
         [memory_context_block, phase_context_block]
     )
-    prompt_config, prompt_version_id = await prompt_service.get_active_config(db)
     system_prompt = str(prompt_config["system_prompt"])
 
     estimate = ai_usage_service.estimate_coach_request(
