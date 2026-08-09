@@ -43,6 +43,10 @@ def test_format_context_block_includes_past_summaries():
     assert "2026-07-25 仕事の疲れについて話した" in block
 
 
+def test_join_context_blocks_skips_empty_parts():
+    assert context_service.join_context_blocks([None, " A ", "", "B"]) == "A\n\nB"
+
+
 @pytest.mark.asyncio
 async def test_get_past_session_summaries_filters_current_and_empty():
     def make_doc(doc_id: str, data: dict) -> MagicMock:

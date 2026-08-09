@@ -1,5 +1,6 @@
 """Coach endpoint tests."""
 
+import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 
@@ -20,6 +21,10 @@ def test_coach_chat(auth_client, mock_firestore):
             new_callable=AsyncMock,
         ) as build_context,
         patch(
+            "app.routers.coach.coach_phase_service.build_phase_context",
+            return_value="PHASE",
+        ),
+        patch(
             "app.routers.coach.context_service.maybe_update_session_summary",
             new_callable=AsyncMock,
         ) as update_summary,
@@ -32,7 +37,10 @@ def test_coach_chat(auth_client, mock_firestore):
             new_callable=AsyncMock,
         ) as active_config,
     ):
-        mock_chat.return_value = "そう感じたんだね。"
+        mock_chat.return_value = (
+            'そう感じたんだね。\n\n<control>{"phase":"acknowledge",'
+            '"phase_complete":true,"route":"triage","report":{}}</control>'
+        )
         build_context.return_value = "【過去セッション要約】\n- 前回の話"
         active_config.return_value = (
             {
@@ -66,9 +74,77 @@ def test_coach_chat(auth_client, mock_firestore):
     assert mock_chat.call_args.kwargs["system_prompt"] == "system prompt"
     assert (
         mock_chat.call_args.kwargs["context_block"]
-        == "【過去セッション要約】\n- 前回の話"
+        == "【過去セッション要約】\n- 前回の話\n\nPHASE"
     )
     update_summary.assert_awaited_once()
+    assert (
+        update_summary.await_args.kwargs["messages"][-1]["content"]
+        == "そう感じたんだね。"
+    )
+    update_payload = mock_firestore._mock_doc.update.await_args.args[0]
+    assert update_payload["coach_state"]["phase"] == "triage"
     data = response.json()["data"]
     assert data["message"] == "そう感じたんだね。"
     assert "session_id" in data
+
+
+def test_coach_stream_filters_control_block(auth_client, mock_firestore):
+    """SSE should not stream the hidden control block to the client."""
+
+    async def fake_stream(**kwargs):
+        yield "そう"
+        yield "感じたんだね。<con"
+        yield (
+            'trol>{"phase":"acknowledge","phase_complete":true,'
+            '"route":"triage","report":{}}</control>'
+        )
+
+    with (
+        patch(
+            "app.routers.coach.coach_service.chat_stream",
+            return_value=fake_stream(),
+        ),
+        patch(
+            "app.routers.coach.context_service.build_context_block",
+            new_callable=AsyncMock,
+        ) as build_context,
+        patch(
+            "app.routers.coach.coach_phase_service.build_phase_context",
+            return_value="PHASE",
+        ),
+        patch(
+            "app.routers.coach.context_service.maybe_update_session_summary",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "app.routers.coach.ai_usage_service.reserve_monthly_budget",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "app.routers.coach.prompt_service.get_active_config",
+            new_callable=AsyncMock,
+        ) as active_config,
+    ):
+        build_context.return_value = None
+        active_config.return_value = (
+            {
+                "system_prompt": "system prompt",
+                "use_langgraph": False,
+                "use_gemini_fallback": True,
+            },
+            "prompt-v1",
+        )
+        response = auth_client.post("/coach/stream", json={"message": "今日は疲れた"})
+
+    assert response.status_code == 200
+    chunks = []
+    for line in response.text.splitlines():
+        if not line.startswith("data: "):
+            continue
+        data = json.loads(line.removeprefix("data: "))
+        if "chunk" in data:
+            chunks.append(data["chunk"])
+    assert "".join(chunks) == "そう感じたんだね。"
+    assert "<control>" not in response.text
+    update_payload = mock_firestore._mock_doc.update.await_args.args[0]
+    assert update_payload["coach_state"]["phase"] == "triage"

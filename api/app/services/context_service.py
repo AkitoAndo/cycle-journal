@@ -117,6 +117,14 @@ def format_context_block(summaries: list[PastSessionSummary]) -> str | None:
     return "\n".join(lines)
 
 
+def join_context_blocks(blocks: list[str | None]) -> str | None:
+    """Join optional dynamic prompt blocks into one bounded user-side context."""
+    normalized = [block.strip() for block in blocks if block and block.strip()]
+    if not normalized:
+        return None
+    return "\n\n".join(normalized)
+
+
 async def build_context_block(
     db: AsyncClient,
     *,
