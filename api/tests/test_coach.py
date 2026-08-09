@@ -202,6 +202,69 @@ def test_coach_creates_task_from_permitted_triage_report(
     assert update_payload["coach_state"]["items"][0]["task_id"]
 
 
+def test_coach_regenerates_once_when_response_lint_fails(
+    auth_client,
+    mock_firestore,
+):
+    with (
+        patch(
+            "app.routers.coach.coach_service.chat",
+            new_callable=AsyncMock,
+        ) as mock_chat,
+        patch(
+            "app.routers.coach.context_service.build_context_block",
+            new_callable=AsyncMock,
+        ) as build_context,
+        patch(
+            "app.routers.coach.coach_phase_service.build_phase_context",
+            return_value="PHASE",
+        ),
+        patch(
+            "app.routers.coach.context_service.maybe_update_session_summary",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "app.routers.coach.ai_usage_service.reserve_monthly_budget",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "app.routers.coach.prompt_service.get_active_config",
+            new_callable=AsyncMock,
+        ) as active_config,
+    ):
+        mock_chat.side_effect = [
+            (
+                '大丈夫です。まず休みましょう。\n\n<control>{"phase":"triage",'
+                '"phase_complete":false,"route":null,"report":{}}</control>'
+            ),
+            (
+                '疲れが、あります。\n\n<control>{"phase":"triage",'
+                '"phase_complete":false,"route":null,"report":{}}</control>'
+            ),
+        ]
+        build_context.return_value = None
+        active_config.return_value = (
+            {
+                "system_prompt": "system prompt",
+                "use_langgraph": False,
+                "use_gemini_fallback": True,
+            },
+            "prompt-v1",
+        )
+
+        response = auth_client.post("/coach", json={"message": "今日は疲れた"})
+
+    assert response.status_code == 200
+    assert response.json()["data"]["message"] == "疲れが、あります。"
+    assert mock_chat.await_count == 2
+    retry_context = mock_chat.await_args_list[1].kwargs["context_block"]
+    assert "前回応答の機械検証" in retry_context
+    assistant_write = mock_firestore._mock_subcollection.document.return_value.set
+    assistant_payload = assistant_write.await_args_list[-1].args[0]
+    assert assistant_payload["metadata"]["coach_lint_regenerated"] is True
+    assert assistant_payload["metadata"]["coach_lint_violations"] == []
+
+
 def test_coach_stream_filters_control_block(auth_client, mock_firestore):
     """SSE should not stream the hidden control block to the client."""
 

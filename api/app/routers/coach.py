@@ -17,6 +17,7 @@ from app.models.coach import CoachData, CoachMetadata, CoachRequest
 from app.services import (
     ai_usage_service,
     coach_phase_service,
+    coach_response_lint,
     coach_service,
     context_service,
     prompt_service,
@@ -129,34 +130,53 @@ async def chat(
 
     system_prompt = str(prompt_config["system_prompt"])
 
-    # コーチ応答を取得（LangGraph or シンプル呼び出し）
-    detected_emotion = None
-    response_cycle_element = None
-
-    if bool(prompt_config.get("use_langgraph")):
-        flow_result = await run_coach_flow(
-            user_message=body.message,
-            history=history,
-            diary_content=effective_diary_content,
-            context_block=context_block,
-            system_prompt=system_prompt,
-            config=prompt_config,
-        )
-        response_text = flow_result["response"]
-        detected_emotion = flow_result.get("detected_emotion")
-        response_cycle_element = flow_result.get("cycle_element")
-    else:
-        response_text = await coach_service.chat(
-            user_message=body.message,
-            history=history,
-            diary_content=effective_diary_content,
-            context_block=context_block,
-            system_prompt=system_prompt,
-            config=prompt_config,
-        )
+    generation = await _generate_coach_response(
+        body=body,
+        history=history,
+        diary_content=effective_diary_content,
+        context_block=context_block,
+        system_prompt=system_prompt,
+        prompt_config=prompt_config,
+    )
+    response_text = str(generation["response_text"])
+    detected_emotion = generation.get("detected_emotion")
+    response_cycle_element = generation.get("response_cycle_element")
     visible_response_text, coach_control = coach_phase_service.extract_control_block(
         response_text
     )
+    coach_lint_violations = coach_response_lint.lint_visible_response(
+        visible_response_text,
+        raw_state=session_data.get("coach_state"),
+        control=coach_control,
+    )
+    coach_lint_regenerated = False
+    if coach_lint_violations:
+        retry_context_block = context_service.join_context_blocks(
+            [
+                context_block,
+                coach_response_lint.build_retry_context(coach_lint_violations),
+            ]
+        )
+        retry_generation = await _generate_coach_response(
+            body=body,
+            history=history,
+            diary_content=effective_diary_content,
+            context_block=retry_context_block,
+            system_prompt=system_prompt,
+            prompt_config=prompt_config,
+        )
+        response_text = str(retry_generation["response_text"])
+        detected_emotion = retry_generation.get("detected_emotion")
+        response_cycle_element = retry_generation.get("response_cycle_element")
+        visible_response_text, coach_control = (
+            coach_phase_service.extract_control_block(response_text)
+        )
+        coach_lint_regenerated = True
+        coach_lint_violations = coach_response_lint.lint_visible_response(
+            visible_response_text,
+            raw_state=session_data.get("coach_state"),
+            control=coach_control,
+        )
 
     # ユーザーメッセージを保存
     user_msg_id = str(uuid.uuid4())
@@ -208,6 +228,8 @@ async def chat(
                 "prompt_version_id": prompt_version_id,
                 "coach_control": coach_control,
                 "created_task_id": created_task_id,
+                "coach_lint_regenerated": coach_lint_regenerated,
+                "coach_lint_violations": coach_lint_violations,
             },
             "created_at": assistant_now,
         }
@@ -317,6 +339,45 @@ async def _remember_diary_context(
     session_data["diary_context"] = diary_context
     session_data["has_diary_context"] = diary_context is not None
     return diary_context
+
+
+async def _generate_coach_response(
+    *,
+    body: CoachRequest,
+    history: list[dict[str, str]],
+    diary_content: str | None,
+    context_block: str | None,
+    system_prompt: str,
+    prompt_config: dict[str, Any],
+) -> dict[str, Any]:
+    if bool(prompt_config.get("use_langgraph")):
+        flow_result = await run_coach_flow(
+            user_message=body.message,
+            history=history,
+            diary_content=diary_content,
+            context_block=context_block,
+            system_prompt=system_prompt,
+            config=prompt_config,
+        )
+        return {
+            "response_text": flow_result["response"],
+            "detected_emotion": flow_result.get("detected_emotion"),
+            "response_cycle_element": flow_result.get("cycle_element"),
+        }
+
+    response_text = await coach_service.chat(
+        user_message=body.message,
+        history=history,
+        diary_content=diary_content,
+        context_block=context_block,
+        system_prompt=system_prompt,
+        config=prompt_config,
+    )
+    return {
+        "response_text": response_text,
+        "detected_emotion": None,
+        "response_cycle_element": None,
+    }
 
 
 async def _try_update_summary(
