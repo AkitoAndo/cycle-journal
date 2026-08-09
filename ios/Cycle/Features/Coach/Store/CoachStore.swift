@@ -164,50 +164,16 @@ class CoachStore: ObservableObject {
         await MainActor.run {
             isLoading = true
             error = nil
+            lastAPIError = nil
         }
 
         do {
             if useAPI {
-                await MainActor.run { addEmptyCoachMessage() }
-
-                let stream = coachService.sendMessageStream(
+                try await streamCoachResponse(
                     message: content,
                     sessionId: currentSession?.serverId ?? currentSession?.id.uuidString
                 )
-
-                var accumulated = ""
-                var receivedError: String?
-                for try await event in stream {
-                    switch event {
-                    case .session(let sid):
-                        await MainActor.run {
-                            if currentSession?.serverId == nil {
-                                currentSession?.serverId = sid
-                                if let current = currentSession { updateSession(current) }
-                            }
-                        }
-                    case .chunk(let text):
-                        accumulated += text
-                        await MainActor.run { setLastCoachMessageContent(accumulated) }
-                    case .error(let reason):
-                        receivedError = reason
-                    case .done:
-                        break
-                    }
-                }
-
                 await MainActor.run {
-                    // 1文字も届かずに終わった場合は空の吹き出しを残さない
-                    if accumulated.isEmpty {
-                        removeLastCoachMessageIfEmpty()
-                        if receivedError == nil {
-                            self.error = "コーチからの応答を受け取れませんでした。もう一度お試しください。"
-                        }
-                    }
-                    if let session = currentSession { updateSession(session) }
-                    if let reason = receivedError {
-                        self.error = "コーチ応答が中断されました (\(reason))"
-                    }
                     isLoading = false
                 }
             } else {
@@ -221,24 +187,78 @@ class CoachStore: ObservableObject {
                 }
             }
         } catch {
-            let isUserCancelled = error is CancellationError || (error as? URLError)?.code == .cancelled
-            await MainActor.run {
-                // 失敗時は空のままのコーチ吹き出しを会話に残さない
-                removeLastCoachMessageIfEmpty()
-                if isUserCancelled {
-                    // ユーザーによる停止: 途中までの応答は残し、エラーにはしない
-                    if let session = currentSession { updateSession(session) }
-                } else {
-                    let apiError = (error as? APIError) ?? .networkError(error)
-                    self.lastAPIError = apiError
-                    self.error = apiError.errorDescription
-                    if apiError.requiresReauth {
-                        self.showReauthPrompt = true
+            await MainActor.run { handleCoachRequestFailure(error) }
+        }
+    }
+
+    /// SSE 経由でコーチ応答を受信し、最後のコーチ吹き出しを逐次更新する
+    private func streamCoachResponse(
+        message: String,
+        sessionId: String?,
+        diaryContent: String? = nil
+    ) async throws {
+        await MainActor.run { addEmptyCoachMessage() }
+
+        let stream = coachService.sendMessageStream(
+            message: message,
+            sessionId: sessionId,
+            diaryContent: diaryContent
+        )
+
+        var accumulated = ""
+        var receivedError: String?
+        for try await event in stream {
+            switch event {
+            case .session(let sid):
+                await MainActor.run {
+                    if currentSession?.serverId == nil {
+                        currentSession?.serverId = sid
+                        if let current = currentSession { updateSession(current) }
                     }
                 }
-                isLoading = false
+            case .chunk(let text):
+                accumulated += text
+                await MainActor.run { setLastCoachMessageContent(accumulated) }
+            case .error(let reason):
+                receivedError = reason
+            case .done:
+                break
             }
         }
+
+        await MainActor.run {
+            // 1文字も届かずに終わった場合は空の吹き出しを残さない
+            if accumulated.isEmpty {
+                removeLastCoachMessageIfEmpty()
+                if receivedError == nil {
+                    self.error = "コーチからの応答を受け取れませんでした。もう一度お試しください。"
+                }
+            }
+            if let session = currentSession { updateSession(session) }
+            if let reason = receivedError {
+                self.error = "コーチ応答が中断されました (\(reason))"
+            }
+        }
+    }
+
+    @MainActor
+    private func handleCoachRequestFailure(_ error: Error) {
+        let isUserCancelled = error is CancellationError || (error as? URLError)?.code == .cancelled
+
+        // 失敗時は空のままのコーチ吹き出しを会話から取り除く
+        removeLastCoachMessageIfEmpty()
+        if isUserCancelled {
+            // ユーザーによる停止: 途中までの応答は残し、エラーにはしない
+            if let session = currentSession { updateSession(session) }
+        } else {
+            let apiError = (error as? APIError) ?? .networkError(error)
+            self.lastAPIError = apiError
+            self.error = apiError.errorDescription
+            if apiError.requiresReauth {
+                self.showReauthPrompt = true
+            }
+        }
+        isLoading = false
     }
 
     /// エラーを消去
@@ -253,38 +273,23 @@ class CoachStore: ObservableObject {
         // 先にローディング状態にしてからセッションを作成
         isLoading = true
         error = nil
+        lastAPIError = nil
 
         let session = startNewSession(withContext: diaryContent)
         currentSession = session
 
         do {
             if useAPI {
-                // API呼び出し - 日記内容を含めて最初のメッセージを送信
+                // API呼び出し - 日記内容を含めて最初のメッセージをSSEで送信
                 let initialUserMessage = "この日記について話したいです"
                 addUserMessage(initialUserMessage)
 
-                let response = try await coachService.sendMessage(
+                try await streamCoachResponse(
                     message: initialUserMessage,
                     sessionId: session.serverId ?? session.id.uuidString,
                     diaryContent: diaryContent
                 )
 
-                let metadata = MessageMetadata(
-                    cycleElement: response.metadata?.cycleElement,
-                    emotionDetected: response.metadata?.detectedEmotion,
-                    suggestedAction: nil
-                )
-
-                // サーバーから返されたsessionIdを保持
-                if let serverSessionId = response.sessionId,
-                   currentSession?.serverId == nil {
-                    currentSession?.serverId = serverSessionId
-                    if let current = currentSession {
-                        updateSession(current)
-                    }
-                }
-
-                addCoachMessage(response.message, metadata: metadata)
                 isLoading = false
             } else {
                 // モックレスポンス
@@ -296,12 +301,7 @@ class CoachStore: ObservableObject {
                 isLoading = false
             }
         } catch {
-            // エラー時はモックレスポンスを返す
-            let initialMessage = "日記を読ませてもらったよ。\n\n「\(diaryContent.prefix(50))...」\n\nこの中で、特に心に残っている部分はどこかな？"
-
-            self.error = error.localizedDescription
-            addCoachMessage(initialMessage)
-            isLoading = false
+            handleCoachRequestFailure(error)
         }
     }
 
