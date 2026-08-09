@@ -53,6 +53,12 @@ variable "use_langgraph" {
   default     = false
 }
 
+variable "claude_max_tokens" {
+  description = "Claude max output tokens for API runtime"
+  type        = number
+  default     = 2000
+}
+
 variable "google_client_id" {
   description = "Google OAuth Client ID for iOS Sign-In"
   type        = string
