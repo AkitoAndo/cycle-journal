@@ -68,6 +68,7 @@ def _safe_items(value: Any) -> list[dict[str, Any]]:
                     "text": str(item.get("text")),
                     "status": item.get("status"),
                     "task_permission": bool(item.get("task_permission", False)),
+                    "task_id": item.get("task_id"),
                 }
             )
     return items
@@ -261,14 +262,72 @@ def _apply_report_items(
     if not item_text or placement not in {"片づく", "残る"}:
         return current_items
 
+    existing_task_id = next(
+        (
+            item.get("task_id")
+            for item in current_items
+            if item.get("text") == str(item_text) and item.get("task_id")
+        ),
+        None,
+    )
     next_item = {
         "text": str(item_text),
         "status": placement,
         "task_permission": bool(report.get("task_permission", False)),
+        "task_id": existing_task_id,
     }
     items = [item for item in current_items if item.get("text") != next_item["text"]]
     items.append(next_item)
     return items
+
+
+def task_write_candidate(
+    raw_state: Any,
+    control: dict[str, Any] | None,
+) -> dict[str, str] | None:
+    if not control:
+        return None
+    report = control.get("report") if isinstance(control.get("report"), dict) else {}
+    item_text = str(report.get("item") or "").strip()
+    if not item_text:
+        return None
+    if report.get("placement") != "片づく" or not bool(
+        report.get("task_permission", False)
+    ):
+        return None
+
+    state = normalize_state(raw_state)
+    for item in state["items"]:
+        if item.get("text") == item_text and item.get("task_id"):
+            return None
+    return {"title": item_text}
+
+
+def attach_task_to_state(
+    raw_state: Any,
+    *,
+    item_text: str,
+    task_id: str,
+) -> dict[str, Any]:
+    state = normalize_state(raw_state)
+    items = []
+    found = False
+    for item in state["items"]:
+        if item.get("text") == item_text:
+            item = {**item, "task_id": task_id}
+            found = True
+        items.append(item)
+    if not found:
+        items.append(
+            {
+                "text": item_text,
+                "status": "片づく",
+                "task_permission": True,
+                "task_id": task_id,
+            }
+        )
+    state["items"] = items
+    return state
 
 
 def detect_boundary_route(message: str) -> dict[str, str] | None:
