@@ -149,6 +149,7 @@ export interface PromptConfig {
   coachActionCoreChecklist?: string | null;
   coachLayer8CrisisPrompt?: string | null;
   coachProfessionalBoundaryPrompt?: string | null;
+  coachVocabularyLintEnabled?: boolean;
 }
 
 export interface PromptTestData {

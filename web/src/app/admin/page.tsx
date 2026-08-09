@@ -367,6 +367,19 @@ function PromptAdmin({
                   <div className="text-[12px] font-semibold text-muted-foreground">
                     Coach runtime prompts
                   </div>
+                  <label className="flex items-center gap-2 text-[13px] font-semibold">
+                    <input
+                      type="checkbox"
+                      checked={config.coachVocabularyLintEnabled ?? true}
+                      onChange={(event) =>
+                        setConfig({
+                          ...config,
+                          coachVocabularyLintEnabled: event.target.checked
+                        })
+                      }
+                    />
+                    Vocabulary lint
+                  </label>
                   <PromptArea
                     label="Action core checklist"
                     value={config.coachActionCoreChecklist ?? ""}

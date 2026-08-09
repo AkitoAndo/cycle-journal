@@ -130,53 +130,22 @@ async def chat(
 
     system_prompt = str(prompt_config["system_prompt"])
 
-    generation = await _generate_coach_response(
+    generation = await _generate_linted_coach_response(
         body=body,
         history=history,
         diary_content=effective_diary_content,
         context_block=context_block,
+        memory_context_block=memory_context_block,
         system_prompt=system_prompt,
         prompt_config=prompt_config,
+        raw_state=session_data.get("coach_state"),
     )
-    response_text = str(generation["response_text"])
+    visible_response_text = str(generation["visible_response_text"])
+    coach_control = generation.get("coach_control")
     detected_emotion = generation.get("detected_emotion")
     response_cycle_element = generation.get("response_cycle_element")
-    visible_response_text, coach_control = coach_phase_service.extract_control_block(
-        response_text
-    )
-    coach_lint_violations = coach_response_lint.lint_visible_response(
-        visible_response_text,
-        raw_state=session_data.get("coach_state"),
-        control=coach_control,
-    )
-    coach_lint_regenerated = False
-    if coach_lint_violations:
-        retry_context_block = context_service.join_context_blocks(
-            [
-                context_block,
-                coach_response_lint.build_retry_context(coach_lint_violations),
-            ]
-        )
-        retry_generation = await _generate_coach_response(
-            body=body,
-            history=history,
-            diary_content=effective_diary_content,
-            context_block=retry_context_block,
-            system_prompt=system_prompt,
-            prompt_config=prompt_config,
-        )
-        response_text = str(retry_generation["response_text"])
-        detected_emotion = retry_generation.get("detected_emotion")
-        response_cycle_element = retry_generation.get("response_cycle_element")
-        visible_response_text, coach_control = (
-            coach_phase_service.extract_control_block(response_text)
-        )
-        coach_lint_regenerated = True
-        coach_lint_violations = coach_response_lint.lint_visible_response(
-            visible_response_text,
-            raw_state=session_data.get("coach_state"),
-            control=coach_control,
-        )
+    coach_lint_regenerated = bool(generation.get("coach_lint_regenerated"))
+    coach_lint_violations = generation.get("coach_lint_violations")
 
     # ユーザーメッセージを保存
     user_msg_id = str(uuid.uuid4())
@@ -380,6 +349,100 @@ async def _generate_coach_response(
     }
 
 
+async def _generate_linted_coach_response(
+    *,
+    body: CoachRequest,
+    history: list[dict[str, str]],
+    diary_content: str | None,
+    context_block: str | None,
+    memory_context_block: str | None,
+    system_prompt: str,
+    prompt_config: dict[str, Any],
+    raw_state: Any,
+) -> dict[str, Any]:
+    generation = await _generate_coach_response(
+        body=body,
+        history=history,
+        diary_content=diary_content,
+        context_block=context_block,
+        system_prompt=system_prompt,
+        prompt_config=prompt_config,
+    )
+    response_text = str(generation["response_text"])
+    visible_text, coach_control = coach_phase_service.extract_control_block(
+        response_text
+    )
+    vocabulary_sources = _vocabulary_sources(
+        body=body,
+        history=history,
+        diary_content=diary_content,
+        memory_context_block=memory_context_block,
+    )
+    lint_violations = coach_response_lint.lint_visible_response(
+        visible_text,
+        raw_state=raw_state,
+        control=coach_control,
+        vocabulary_sources=vocabulary_sources,
+        enable_vocabulary_lint=bool(
+            prompt_config.get("coach_vocabulary_lint_enabled") is True
+        ),
+    )
+    regenerated = False
+
+    if lint_violations:
+        retry_context_block = context_service.join_context_blocks(
+            [
+                context_block,
+                coach_response_lint.build_retry_context(lint_violations),
+            ]
+        )
+        generation = await _generate_coach_response(
+            body=body,
+            history=history,
+            diary_content=diary_content,
+            context_block=retry_context_block,
+            system_prompt=system_prompt,
+            prompt_config=prompt_config,
+        )
+        response_text = str(generation["response_text"])
+        visible_text, coach_control = coach_phase_service.extract_control_block(
+            response_text
+        )
+        regenerated = True
+        lint_violations = coach_response_lint.lint_visible_response(
+            visible_text,
+            raw_state=raw_state,
+            control=coach_control,
+            vocabulary_sources=vocabulary_sources,
+            enable_vocabulary_lint=bool(
+                prompt_config.get("coach_vocabulary_lint_enabled") is True
+            ),
+        )
+
+    return {
+        **generation,
+        "visible_response_text": visible_text,
+        "coach_control": coach_control,
+        "coach_lint_regenerated": regenerated,
+        "coach_lint_violations": lint_violations,
+    }
+
+
+def _vocabulary_sources(
+    *,
+    body: CoachRequest,
+    history: list[dict[str, str]],
+    diary_content: str | None,
+    memory_context_block: str | None,
+) -> list[str | None]:
+    return [
+        *(item["content"] for item in history if item.get("role") == "user"),
+        diary_content,
+        memory_context_block,
+        body.message,
+    ]
+
+
 async def _try_update_summary(
     *,
     session_doc,
@@ -579,32 +642,22 @@ async def chat_stream(
     async def event_source():
         # SSE 起動メッセージ
         yield f"event: session\ndata: {json.dumps({'session_id': session_id})}\n\n"
-        accumulated = ""
-        control_filter = coach_phase_service.ControlBlockStreamFilter()
+        generation = None
         try:
-
-            async def consume():
-                nonlocal accumulated
-                async for chunk in coach_service.chat_stream(
-                    user_message=body.message,
+            async with asyncio.timeout(settings.coach_stream_timeout_seconds):
+                generation = await _generate_linted_coach_response(
+                    body=body,
                     history=history,
                     diary_content=effective_diary_content,
                     context_block=context_block,
+                    memory_context_block=memory_context_block,
                     system_prompt=system_prompt,
-                    config=prompt_config,
-                ):
-                    accumulated += chunk
-                    visible_chunk = control_filter.feed(chunk)
-                    if visible_chunk:
-                        yield visible_chunk
-                visible_tail = control_filter.flush()
-                if visible_tail:
-                    yield visible_tail
-
-            async for chunk in _with_timeout(
-                consume(), settings.coach_stream_timeout_seconds
-            ):
-                yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+                    prompt_config=prompt_config,
+                    raw_state=session_data.get("coach_state"),
+                )
+            visible_response_text = str(generation["visible_response_text"])
+            if visible_response_text:
+                yield f"data: {json.dumps({'chunk': visible_response_text})}\n\n"
         except TimeoutError:
             logger.warning("coach stream timeout", extra={"session_id": session_id})
             yield f"event: error\ndata: {json.dumps({'reason': 'timeout'})}\n\n"
@@ -616,11 +669,9 @@ async def chat_stream(
                 + "\n\n"
             )
         finally:
-            # 完了後に assistant メッセージを保存（部分応答でも残す）
-            if accumulated:
-                visible_response_text, coach_control = (
-                    coach_phase_service.extract_control_block(accumulated)
-                )
+            if generation:
+                visible_response_text = str(generation["visible_response_text"])
+                coach_control = generation.get("coach_control")
                 coach_state = coach_phase_service.apply_control_state(
                     session_data.get("coach_state"),
                     coach_control,
@@ -660,6 +711,12 @@ async def chat_stream(
                             "prompt_version_id": prompt_version_id,
                             "coach_control": coach_control,
                             "created_task_id": created_task_id,
+                            "coach_lint_regenerated": bool(
+                                generation.get("coach_lint_regenerated")
+                            ),
+                            "coach_lint_violations": generation.get(
+                                "coach_lint_violations"
+                            ),
                         },
                         "created_at": assistant_now,
                     }

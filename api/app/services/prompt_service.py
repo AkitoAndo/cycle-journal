@@ -41,6 +41,7 @@ def default_config() -> dict[str, Any]:
         "coach_professional_boundary_prompt": (
             coach_prompt_core.PROFESSIONAL_BOUNDARY_PROMPT
         ),
+        "coach_vocabulary_lint_enabled": True,
     }
 
 
