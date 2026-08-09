@@ -133,6 +133,48 @@ struct ReflectionData: Decodable {
     let createdAt: Date
 }
 
+// MARK: - Journal API Models
+
+struct JournalSyncItem: Codable {
+    let journalId: String
+    let text: String
+    let tags: [String]
+    let entryDate: Date
+    let deletedAt: Date?
+    let createdAt: Date?
+    let updatedAt: Date?
+}
+
+struct JournalSyncRequest: Encodable {
+    let journals: [JournalSyncItem]
+    let deletedJournalIds: [String]
+    let lastPulledAt: Date?
+}
+
+struct JournalData: Decodable {
+    let journalId: String
+    let text: String
+    let tags: [String]
+    let entryDate: Date
+    let deletedAt: Date?
+    let createdAt: Date
+    let updatedAt: Date
+}
+
+struct JournalListData: Decodable {
+    let journals: [JournalData]
+    let total: Int
+}
+
+struct JournalSyncData: Decodable {
+    let journals: [JournalData]
+    let serverTime: Date
+    let pushedCount: Int
+    let pulledCount: Int
+    let deletedCount: Int
+    let conflictCount: Int
+}
+
 // MARK: - User API Models
 
 struct UserData: Decodable {

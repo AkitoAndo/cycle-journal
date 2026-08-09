@@ -40,6 +40,12 @@ struct JournalEntryTests {
         #expect(decoded.tags == ["タグ1"])
         #expect(decoded.id == entry.id)
     }
+
+    @Test func syncUpdatedAtFallsBackToDate() {
+        let date = Date(timeIntervalSince1970: 100)
+        let entry = JournalEntry(date: date, text: "同期")
+        #expect(entry.syncUpdatedAt == date)
+    }
 }
 
 // MARK: - JournalViewModel Tests
@@ -94,6 +100,15 @@ struct JournalViewModelTests {
         #expect(updated?.tags == ["更新"])
     }
 
+    @Test func updateEntryTouchesUpdatedAt() {
+        let vm = JournalViewModel()
+        vm.addEntry(text: "元のテキスト")
+        guard let entry = vm.entries.last else { return }
+        vm.updateEntry(entry, newText: "更新後テキスト", newTags: [])
+        let updated = vm.entries.first { $0.id == entry.id }
+        #expect(updated?.updatedAt != nil)
+    }
+
     @Test func deleteEntry() {
         let vm = JournalViewModel()
         vm.addEntry(text: "削除対象")
@@ -120,6 +135,53 @@ struct JournalViewModelTests {
         let id = entry.id
         vm.permanentlyDeleteEntry(entry)
         #expect(vm.entries.contains { $0.id == id } == false)
+    }
+
+    @Test func permanentlyDeleteQueuesPendingSyncDelete() {
+        JournalStore.savePendingDeletedEntryIDs([])
+        let vm = JournalViewModel()
+        vm.addEntry(text: "同期削除対象")
+        guard let entry = vm.entries.last else { return }
+        vm.permanentlyDeleteEntry(entry)
+        #expect(JournalStore.loadPendingDeletedEntryIDs().contains(entry.id))
+        JournalStore.savePendingDeletedEntryIDs([])
+    }
+
+    @Test func syncWithServerAddsRemoteEntry() async {
+        JournalStore.savePendingDeletedEntryIDs([])
+        let id = UUID()
+        let entryDate = Date(timeIntervalSince1970: 100)
+        let updatedAt = Date(timeIntervalSince1970: 200)
+        let remote = JournalData(
+            journalId: id.uuidString,
+            text: "remote",
+            tags: ["server"],
+            entryDate: entryDate,
+            deletedAt: nil,
+            createdAt: entryDate,
+            updatedAt: updatedAt
+        )
+        let vm = JournalViewModel(
+            journalService: MockJournalSyncer(
+                response: JournalSyncData(
+                    journals: [remote],
+                    serverTime: updatedAt,
+                    pushedCount: 0,
+                    pulledCount: 1,
+                    deletedCount: 0,
+                    conflictCount: 0
+                )
+            )
+        )
+
+        APIClient.shared.setAuthToken("test-token")
+        defer { APIClient.shared.setAuthToken(nil) }
+
+        await vm.syncWithServer()
+
+        let synced = vm.entries.first { $0.id == id }
+        #expect(synced?.text == "remote")
+        #expect(synced?.tags == ["server"])
     }
 
     @Test func deletedEntriesNotInAllEntries() {
@@ -193,6 +255,22 @@ struct JournalViewModelTests {
         let targetDate = Calendar.current.date(byAdding: .day, value: -14, to: Date())!
         vm.jumpToDate(targetDate)
         #expect(Calendar.current.isDate(vm.selectedDate, inSameDayAs: targetDate))
+    }
+}
+
+private final class MockJournalSyncer: JournalSyncing {
+    let response: JournalSyncData
+
+    init(response: JournalSyncData) {
+        self.response = response
+    }
+
+    func sync(
+        entries: [JournalEntry],
+        deletedEntryIds: [UUID],
+        lastPulledAt: Date?
+    ) async throws -> JournalSyncData {
+        response
     }
 }
 
