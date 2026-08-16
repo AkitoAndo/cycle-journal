@@ -59,11 +59,26 @@ async def create_task(
 ):
     """新しいタスクを作成."""
     ref = tasks_ref(db)
-    task_id = str(uuid.uuid4())
+    # iOSのローカルUUIDからユーザー固有の決定的IDを生成し、通信断後の再送を
+    # 二重作成にしない。旧クライアントは従来どおりランダムIDを使う。
+    task_id = (
+        str(uuid.uuid5(uuid.NAMESPACE_URL, f"cycle:{user_id}:{body.client_task_id}"))
+        if body.client_task_id
+        else str(uuid.uuid4())
+    )
+    task_doc = ref.document(task_id)
+    existing = await task_doc.get()
+    if existing.exists:
+        existing_data = existing.to_dict() or {}
+        if existing_data.get("user_id") != user_id:
+            raise NotFoundError("Task")
+        return {"data": _doc_to_task(task_id, existing_data)}
+
     now = datetime.now(UTC)
 
     task_data = {
         "user_id": user_id,
+        "client_task_id": body.client_task_id,
         "title": body.title,
         "description": body.description,
         "status": "pending",
@@ -74,7 +89,7 @@ async def create_task(
         "created_at": now,
         "updated_at": now,
     }
-    await ref.document(task_id).set(task_data)
+    await task_doc.set(task_data)
 
     return {"data": _doc_to_task(task_id, task_data)}
 
@@ -107,8 +122,7 @@ async def update_task(
         updates["description"] = body.description
     if body.status is not None:
         updates["status"] = body.status
-        if body.status == "completed":
-            updates["completed_at"] = now
+        updates["completed_at"] = now if body.status == "completed" else None
     if body.due_date is not None:
         updates["due_date"] = body.due_date
 

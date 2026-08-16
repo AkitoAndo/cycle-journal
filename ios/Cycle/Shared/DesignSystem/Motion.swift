@@ -9,6 +9,18 @@
 
 import SwiftUI
 
+private struct CycleTabIsActiveKey: EnvironmentKey {
+    static let defaultValue = true
+}
+
+extension EnvironmentValues {
+    /// カスタムタブバー配下で、現在画面に表示されているタブかどうか。
+    var cycleTabIsActive: Bool {
+        get { self[CycleTabIsActiveKey.self] }
+        set { self[CycleTabIsActiveKey.self] = newValue }
+    }
+}
+
 /// 押下時にわずかに縮んで沈み込むボタンスタイル
 ///
 /// 使用例:
@@ -56,6 +68,7 @@ private struct StaggeredAppear: ViewModifier {
     private let maxStagger = 8
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.cycleTabIsActive) private var cycleTabIsActive
     @State private var shown = false
 
     func body(content: Content) -> some View {
@@ -63,22 +76,31 @@ private struct StaggeredAppear: ViewModifier {
             .opacity(shown ? 1 : 0)
             .offset(y: shown ? 0 : (reduceMotion ? 0 : 14))
             .onAppear {
-                if reduceMotion {
-                    shown = true
-                    return
-                }
-                if let group = group, StaggerSessionMemory.hasPlayed(group) {
-                    shown = true
-                    return
-                }
-                let delay = Double(min(index, maxStagger)) * baseDelay
-                withAnimation(DesignSystem.Timing.spring.delay(delay)) {
-                    shown = true
-                }
-                if let group = group {
-                    StaggerSessionMemory.markPlayed(group)
-                }
+                revealIfNeeded()
             }
+            .onChange(of: cycleTabIsActive) { _, isActive in
+                guard isActive else { return }
+                revealIfNeeded()
+            }
+    }
+
+    private func revealIfNeeded() {
+        guard cycleTabIsActive, !shown else { return }
+        if reduceMotion {
+            shown = true
+            return
+        }
+        if let group = group, StaggerSessionMemory.hasPlayed(group) {
+            shown = true
+            return
+        }
+        let delay = Double(min(index, maxStagger)) * baseDelay
+        withAnimation(DesignSystem.Timing.spring.delay(delay)) {
+            shown = true
+        }
+        if let group = group {
+            StaggerSessionMemory.markPlayed(group)
+        }
     }
 }
 

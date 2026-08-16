@@ -51,7 +51,17 @@ struct JournalEntryTests {
 // MARK: - JournalViewModel Tests
 
 @MainActor
+@Suite(.serialized)
 struct JournalViewModelTests {
+    init() {
+        JournalStore.saveAll([])
+        JournalStore.savePendingDeletedEntryIDs([])
+        JournalStore.saveLastSyncedAt(nil)
+        UserDefaults.standard.removeObject(
+            forKey: UserDataScope.scopedDefaultsKey("availableTags")
+        )
+    }
+
     @Test func addEntry() {
         let vm = JournalViewModel()
         let initialCount = vm.entries.count
@@ -312,7 +322,15 @@ struct TaskItemTests {
 // MARK: - TaskViewModel Tests
 
 @MainActor
+@Suite(.serialized)
 struct TaskViewModelTests {
+    init() {
+        TaskStore.saveAll([])
+        TaskArchiveStore.saveAll([])
+        TaskTemplateStore.saveAll([])
+        TaskSyncMutationStore.removeAll()
+    }
+
     @Test func addTask() {
         let vm = TaskViewModel()
         let initialCount = vm.tasks.count
@@ -490,6 +508,51 @@ struct TaskViewModelTests {
         let id = task.id
         vm.archiveTask(task)
         #expect(vm.tasks.contains { $0.id == id } == true)
+    }
+
+    @Test func homeTasksIncludesIncompleteTasksOnlyForToday() {
+        let calendar = Calendar(identifier: .gregorian)
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: now)!
+        let incomplete = TaskItem(title: "今日進める")
+
+        let todayTasks = TaskViewModel.homeTasks(
+            on: now,
+            now: now,
+            tasks: [incomplete],
+            archives: [],
+            calendar: calendar
+        )
+        let pastTasks = TaskViewModel.homeTasks(
+            on: yesterday,
+            now: now,
+            tasks: [incomplete],
+            archives: [],
+            calendar: calendar
+        )
+
+        #expect(todayTasks.map(\.id).contains(incomplete.id))
+        #expect(!pastTasks.map(\.id).contains(incomplete.id))
+    }
+
+    @Test func homeTasksIncludesCompletedAndArchivedTasksForSelectedDay() {
+        let calendar = Calendar(identifier: .gregorian)
+        let selectedDate = Date(timeIntervalSince1970: 1_700_000_000)
+        var completed = TaskItem(title: "完了済み", isCompleted: true)
+        completed.completedAt = selectedDate
+        let archived = TaskItem(title: "アーカイブ済み", isCompleted: true)
+        let archive = TaskArchive(date: selectedDate, completedTasks: [archived])
+
+        let result = TaskViewModel.homeTasks(
+            on: selectedDate,
+            now: selectedDate,
+            tasks: [completed],
+            archives: [archive],
+            calendar: calendar
+        )
+
+        #expect(result.map(\.id).contains(completed.id))
+        #expect(result.map(\.id).contains(archived.id))
     }
 }
 

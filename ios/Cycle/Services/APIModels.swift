@@ -86,6 +86,7 @@ struct MessageMetadataData: Decodable {
 
 struct CreateTaskRequest: Encodable {
     let title: String
+    let clientTaskId: String?
     let description: String?
     let sessionId: String?
     let cycleElement: String?

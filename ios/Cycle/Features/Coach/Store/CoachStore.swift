@@ -21,8 +21,13 @@ class CoachStore: ObservableObject {
     @Published var shouldOpenChat: Bool = false
 
     private let userDefaults = UserDefaults.standard
-    private let sessionsKey = "CoachSessions"
+    private var sessionsKey: String {
+        UserDataScope.scopedDefaultsKey("CoachSessions")
+    }
     private let coachService = CoachService()
+    private var cancellables = Set<AnyCancellable>()
+    private var deletionTask: Task<Void, Never>?
+    private var isFlushingDeletions = false
 
     /// APIを使用するかどうか（falseの場合やトークン未設定時はモックを使用）
     var useAPI: Bool {
@@ -31,6 +36,15 @@ class CoachStore: ObservableObject {
 
     init() {
         loadSessions()
+        NotificationCenter.default.publisher(for: .localDataScopeDidChange)
+            .sink { [weak self] _ in
+                self?.currentSession = nil
+                self?.deletionTask?.cancel()
+                self?.isFlushingDeletions = false
+                self?.lastSessionsSyncAt = nil
+                self?.loadSessions()
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Persistence
@@ -39,6 +53,8 @@ class CoachStore: ObservableObject {
         if let data = userDefaults.data(forKey: sessionsKey),
            let decoded = try? JSONDecoder().decode([CoachSession].self, from: data) {
             sessions = decoded.sorted { $0.updatedAt > $1.updatedAt }
+        } else {
+            sessions = []
         }
     }
 
@@ -85,11 +101,15 @@ class CoachStore: ObservableObject {
 
     /// セッションを削除
     func deleteSession(_ session: CoachSession) {
+        if let serverID = session.serverId {
+            CoachSessionDeletionStore.add(serverID)
+        }
         sessions.removeAll { $0.id == session.id }
         if currentSession?.id == session.id {
             currentSession = nil
         }
         saveSessions()
+        schedulePendingSessionDeletes()
     }
 
     // MARK: - Message Management
@@ -337,6 +357,8 @@ class CoachStore: ObservableObject {
         }
         #endif
 
+        await flushPendingSessionDeletes()
+
         // 直近に同期済みなら自動同期はスキップ（サーバ負荷とバッテリーの節約）
         if !force,
            let last = lastSessionsSyncAt,
@@ -352,17 +374,30 @@ class CoachStore: ObservableObject {
             let serverList = try await coachService.getSessions(limit: 50)
 
             await MainActor.run {
-                // サーバーにしか存在しないセッションをローカルに追加
+                let suppressedServerIDs = CoachSessionDeletionStore.load()
                 let localServerIds = Set(sessions.compactMap { $0.serverId })
                 let newSessions = serverList.sessions
-                    .filter { !localServerIds.contains($0.sessionId) }
+                    .filter {
+                        !localServerIds.contains($0.sessionId)
+                            && !suppressedServerIDs.contains($0.sessionId)
+                    }
                     .map { CoachSession.from($0) }
 
-                if !newSessions.isEmpty {
-                    sessions.append(contentsOf: newSessions)
-                    sessions.sort { $0.updatedAt > $1.updatedAt }
-                    saveSessions()
+                for serverSession in serverList.sessions
+                    where !suppressedServerIDs.contains(serverSession.sessionId) {
+                    guard let index = sessions.firstIndex(where: {
+                        $0.serverId == serverSession.sessionId
+                    }) else { continue }
+                    let remote = CoachSession.from(serverSession)
+                    if remote.updatedAt >= sessions[index].updatedAt {
+                        sessions[index].summary = remote.summary
+                        sessions[index].updatedAt = remote.updatedAt
+                    }
                 }
+
+                sessions.append(contentsOf: newSessions)
+                sessions.sort { $0.updatedAt > $1.updatedAt }
+                saveSessions()
                 lastSessionsSyncAt = Date()
                 isLoading = false
             }
@@ -375,6 +410,37 @@ class CoachStore: ObservableObject {
                     self.showReauthPrompt = true
                 }
                 isLoading = false
+            }
+        }
+    }
+
+    private func schedulePendingSessionDeletes() {
+        deletionTask?.cancel()
+        deletionTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 250_000_000)
+            await self?.flushPendingSessionDeletes()
+        }
+    }
+
+    func flushPendingSessionDeletes() async {
+        guard APIClient.shared.getAuthToken() != nil, !isFlushingDeletions else { return }
+        isFlushingDeletions = true
+        defer { isFlushingDeletions = false }
+
+        for serverID in CoachSessionDeletionStore.load() {
+            do {
+                do {
+                    try await coachService.deleteSession(sessionId: serverID)
+                } catch APIError.httpError(let statusCode, _) where statusCode == 404 {
+                    // 既に削除済みなら完了扱い。
+                }
+                CoachSessionDeletionStore.remove(serverID)
+            } catch {
+                let apiError = (error as? APIError) ?? .networkError(error)
+                lastAPIError = apiError
+                self.error = apiError.errorDescription
+                if apiError.requiresReauth { showReauthPrompt = true }
+                break
             }
         }
     }

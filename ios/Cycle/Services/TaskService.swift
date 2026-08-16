@@ -5,7 +5,25 @@
 
 import Foundation
 
-class TaskService {
+protocol TaskSyncing {
+    func getTasks(status: String?, limit: Int, offset: Int) async throws -> TaskListData
+    func createTask(
+        title: String,
+        clientTaskId: String?,
+        description: String?,
+        sessionId: String?,
+        cycleElement: String?
+    ) async throws -> TaskData
+    func updateTask(
+        taskId: String,
+        title: String?,
+        description: String?,
+        status: String?
+    ) async throws -> TaskData
+    func deleteTask(taskId: String) async throws
+}
+
+class TaskService: TaskSyncing {
     private let apiClient = APIClient.shared
 
     // MARK: - Tasks
@@ -33,12 +51,14 @@ class TaskService {
     /// タスクを作成
     func createTask(
         title: String,
+        clientTaskId: String? = nil,
         description: String? = nil,
         sessionId: String? = nil,
         cycleElement: String? = nil
     ) async throws -> TaskData {
         let request = CreateTaskRequest(
             title: title,
+            clientTaskId: clientTaskId,
             description: description,
             sessionId: sessionId,
             cycleElement: cycleElement

@@ -196,7 +196,7 @@ struct BreathingSessionView: View {
     private func maybeRequestReview() {
         guard !TestDataProvider.isUITesting else { return }
 
-        let key = "breathingCompletedCount"
+        let key = UserDataScope.scopedDefaultsKey("breathingCompletedCount")
         let count = UserDefaults.standard.integer(forKey: key) + 1
         UserDefaults.standard.set(count, forKey: key)
 

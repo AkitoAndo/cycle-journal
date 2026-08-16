@@ -10,14 +10,16 @@ class MeditationStore: ObservableObject {
     @Published var logs: [MeditationLog] = []
 
     private let userDefaults = UserDefaults.standard
-    private let logsKey = "MeditationLogs"
+    private var logsKey: String {
+        UserDataScope.scopedDefaultsKey("MeditationLogs")
+    }
+    private var cancellables = Set<AnyCancellable>()
 
     init() {
-        let stored = userDefaults.data(forKey: logsKey)
-        if let data = stored,
-           let decoded = try? JSONDecoder().decode([MeditationLog].self, from: data) {
-            logs = decoded.sorted { $0.date > $1.date }
-        }
+        loadLogs()
+        NotificationCenter.default.publisher(for: .localDataScopeDidChange)
+            .sink { [weak self] _ in self?.loadLogs() }
+            .store(in: &cancellables)
     }
     
     func loadLogs() {
@@ -25,6 +27,8 @@ class MeditationStore: ObservableObject {
         if let data = stored,
            let decoded = try? JSONDecoder().decode([MeditationLog].self, from: data) {
             logs = decoded.sorted { $0.date > $1.date }
+        } else {
+            logs = []
         }
     }
 

@@ -6,7 +6,7 @@
 # Requires:
 #   - macOS with Xcode 26+ installed
 #   - gcloud authenticated for project cycle-journal
-#   - Local.xcconfig with DEVELOPMENT_TEAM and PRODUCT_BUNDLE_IDENTIFIER
+#   - ios/Local.xcconfig with DEVELOPMENT_TEAM and PRODUCT_BUNDLE_IDENTIFIER
 #   - GCP Secret Manager secrets: app-store-connect-{api-key,key-id,issuer-id}
 
 set -euo pipefail
@@ -19,6 +19,9 @@ BUILD_DIR="${BUILD_DIR:-${PROJECT_ROOT}/build}"
 ARCHIVE_PATH="${BUILD_DIR}/Cycle.xcarchive"
 EXPORT_DIR="${BUILD_DIR}/export"
 PRIVATE_KEYS_DIR="${HOME}/.appstoreconnect/private_keys"
+LOCAL_XCCONFIG="${PROJECT_ROOT}/ios/Local.xcconfig"
+RELEASE_MARKETING_VERSION="${MARKETING_VERSION:-1.0.10}"
+RELEASE_BUILD_NUMBER="${CURRENT_PROJECT_VERSION:-$(date +%s)}"
 
 echo "→ fetch ASC API credentials from Secret Manager"
 KEY_ID=$(gcloud secrets versions access latest --secret=app-store-connect-key-id --project="${GCP_PROJECT}" 2>/dev/null)
@@ -34,8 +37,9 @@ cleanup() {
 }
 trap cleanup EXIT
 
-TEAM_ID_OVERRIDE=$(grep -E '^DEVELOPMENT_TEAM' "${PROJECT_ROOT}/Local.xcconfig" | awk '{print $3}')
+TEAM_ID_OVERRIDE=$(grep -E '^DEVELOPMENT_TEAM' "${LOCAL_XCCONFIG}" | awk '{print $3}')
 echo "→ DEVELOPMENT_TEAM=${TEAM_ID_OVERRIDE}"
+echo "→ version=${RELEASE_MARKETING_VERSION} build=${RELEASE_BUILD_NUMBER}"
 
 echo "→ resolve packages"
 xcodebuild \
@@ -58,8 +62,8 @@ xcodebuild archive \
   -authenticationKeyIssuerID "${ISSUER_ID}" \
   CODE_SIGN_STYLE=Automatic \
   DEVELOPMENT_TEAM="${TEAM_ID_OVERRIDE}" \
-  MARKETING_VERSION="${MARKETING_VERSION:-1.0.1}" \
-  CURRENT_PROJECT_VERSION="${CURRENT_PROJECT_VERSION:-$(date +%s)}" \
+  MARKETING_VERSION="${RELEASE_MARKETING_VERSION}" \
+  CURRENT_PROJECT_VERSION="${RELEASE_BUILD_NUMBER}" \
   | xcbeautify 2>/dev/null || \
 xcodebuild archive \
   -project "${PROJECT_ROOT}/ios/Cycle.xcodeproj" \
@@ -73,12 +77,12 @@ xcodebuild archive \
   -authenticationKeyIssuerID "${ISSUER_ID}" \
   CODE_SIGN_STYLE=Automatic \
   DEVELOPMENT_TEAM="${TEAM_ID_OVERRIDE}" \
-  MARKETING_VERSION="${MARKETING_VERSION:-1.0.1}" \
-  CURRENT_PROJECT_VERSION="${CURRENT_PROJECT_VERSION:-$(date +%s)}"
+  MARKETING_VERSION="${RELEASE_MARKETING_VERSION}" \
+  CURRENT_PROJECT_VERSION="${RELEASE_BUILD_NUMBER}"
 
 echo "→ generate ExportOptions.plist"
 EXPORT_PLIST="${BUILD_DIR}/ExportOptions.plist"
-TEAM_ID=$(grep -E '^DEVELOPMENT_TEAM' "${PROJECT_ROOT}/Local.xcconfig" | awk '{print $3}')
+TEAM_ID=$(grep -E '^DEVELOPMENT_TEAM' "${LOCAL_XCCONFIG}" | awk '{print $3}')
 cat > "${EXPORT_PLIST}" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

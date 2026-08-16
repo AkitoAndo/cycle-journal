@@ -13,8 +13,12 @@ import Foundation
 /// ローカルストレージに保存・読み込み
 enum JournalStore {
     private static let file = "journals.json"
-    private static let lastSyncedAtKey = "journalLastSyncedAt"
-    private static let pendingDeletedIDsKey = "journalPendingDeletedIDs"
+    private static var lastSyncedAtKey: String {
+        UserDataScope.scopedDefaultsKey("journalLastSyncedAt")
+    }
+    private static var pendingDeletedIDsKey: String {
+        UserDataScope.scopedDefaultsKey("journalPendingDeletedIDs")
+    }
 
     /// 全てのジャーナルエントリを読み込み
     /// - Returns: 保存されているエントリの配列（失敗時は空配列）

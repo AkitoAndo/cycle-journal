@@ -72,12 +72,25 @@ final class JournalViewModel: ObservableObject {
                 self?.scheduleSync()
             }
             .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: .localDataScopeDidChange)
+            .sink { [weak self] _ in
+                self?.reloadForCurrentUser()
+            }
+            .store(in: &cancellables)
     }
 
     /// データをリロード（外部からのデータ変更後に呼ぶ）
     func reloadData() {
         entries = JournalStore.loadAll()
         availableTags = loadAvailableTags()
+    }
+
+    private func reloadForCurrentUser() {
+        syncTask?.cancel()
+        isSyncing = false
+        syncError = nil
+        reloadData()
     }
 
     // MARK: - Computed Properties
@@ -410,7 +423,9 @@ final class JournalViewModel: ObservableObject {
 
     /// UserDefaultsから利用可能なタグを読み込み
     private func loadAvailableTags() -> [String] {
-        guard let data = UserDefaults.standard.data(forKey: "availableTags"),
+        guard let data = UserDefaults.standard.data(
+            forKey: UserDataScope.scopedDefaultsKey("availableTags")
+        ),
               let tags = try? JSONDecoder().decode([String].self, from: data) else {
             return []
         }
@@ -420,7 +435,10 @@ final class JournalViewModel: ObservableObject {
     /// 利用可能なタグをUserDefaultsに保存
     private func saveAvailableTags() {
         if let data = try? JSONEncoder().encode(availableTags) {
-            UserDefaults.standard.set(data, forKey: "availableTags")
+            UserDefaults.standard.set(
+                data,
+                forKey: UserDataScope.scopedDefaultsKey("availableTags")
+            )
         }
     }
 }

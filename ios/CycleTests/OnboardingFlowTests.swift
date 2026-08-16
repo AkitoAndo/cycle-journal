@@ -126,4 +126,19 @@ struct OnboardingFlowTests {
         #expect(flow.step == .done)
         #expect(flow.isComplete == true)
     }
+
+    @Test func skipIntroductionKeepsActivationSteps() {
+        let flow = OnboardingFlow()
+        flow.skipIntroduction()
+        #expect(flow.step == .signIn)
+        flow.advance()
+        #expect(flow.step == .firstJournal)
+    }
+
+    @Test func goalCannotBeSkipped() {
+        let flow = OnboardingFlow()
+        flow.step = .goal
+        flow.skipIntroduction()
+        #expect(flow.step == .goal)
+    }
 }

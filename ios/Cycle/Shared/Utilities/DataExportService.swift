@@ -222,6 +222,20 @@ enum DataExportService {
         }
     }
 
+    /// アカウント削除時などに、共有シート用の機微な一時ファイルを消去する。
+    static func removeTemporaryExportFiles() {
+        let fileManager = FileManager.default
+        let tempDir = fileManager.temporaryDirectory
+        guard let files = try? fileManager.contentsOfDirectory(
+            at: tempDir,
+            includingPropertiesForKeys: nil
+        ) else { return }
+
+        for file in files where file.lastPathComponent.hasPrefix("CycleJournal_Export_") {
+            try? fileManager.removeItem(at: file)
+        }
+    }
+
     // MARK: - Private Helpers
 
     private static func csvEscape(_ value: String) -> String {

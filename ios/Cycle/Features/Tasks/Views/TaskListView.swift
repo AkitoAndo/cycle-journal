@@ -13,6 +13,7 @@ struct TaskListView: View {
     // MARK: - Properties
 
     @EnvironmentObject var vm: TaskViewModel
+    @Environment(\.cycleTabIsActive) private var cycleTabIsActive
     @State private var showNewTask = false
     @State private var editingTask: TaskItem?
     @State private var previewingTask: TaskItem?
@@ -24,7 +25,8 @@ struct TaskListView: View {
     /// チェック（完了）直後に事後情報フォームを出す対象タスク
     @State private var postActionTask: TaskItem?
     /// マイページの「完了時に事後情報を記入」設定
-    @AppStorage("isPostActionPromptEnabled") private var isPostActionPromptEnabled = true
+    @AppStorage(UserDataScope.scopedDefaultsKey("isPostActionPromptEnabled"))
+    private var isPostActionPromptEnabled = true
 
     // MARK: - Body
 
@@ -32,7 +34,8 @@ struct TaskListView: View {
         content
             .navigationBarHidden(true)
             .environment(\.editMode, .constant(isReorderMode ? .active : .inactive))
-            .task {
+            .task(id: cycleTabIsActive) {
+                guard cycleTabIsActive else { return }
                 await vm.fetchServerTasks()
             }
             .sheet(isPresented: $showNewTask) {

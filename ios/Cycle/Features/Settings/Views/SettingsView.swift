@@ -10,10 +10,12 @@ struct SettingsView: View {
     @EnvironmentObject var journalViewModel: JournalViewModel
     @EnvironmentObject var taskViewModel: TaskViewModel
     @EnvironmentObject var coachStore: CoachStore
+    @Environment(\.cycleTabIsActive) private var cycleTabIsActive
 
     @State private var notificationSettings = NotificationSettingsStore.load()
     /// タスク完了チェック時に事後情報フォームを出すか（TaskListView と共有）
-    @AppStorage("isPostActionPromptEnabled") private var isPostActionPromptEnabled = true
+    @AppStorage(UserDataScope.scopedDefaultsKey("isPostActionPromptEnabled"))
+    private var isPostActionPromptEnabled = true
     @State private var systemPermissionGranted = false
     @State private var showingDataExport = false
     @State private var showingSignOutAlert = false
@@ -127,8 +129,8 @@ struct SettingsView: View {
                 }
                 .listRowBackground(GlassListRowBackground())
 
-                // Premium セクション
-                Section("Premium") {
+                // 料金プラン
+                Section("料金プラン") {
                     premiumRow
                 }
                 .listRowBackground(GlassListRowBackground())
@@ -310,13 +312,14 @@ struct SettingsView: View {
             } message: {
                 Text("アカウントとすべてのデータ（日記・タスク・コーチ会話）がサーバーから完全に削除されます。\nこの操作は取り消せません。")
             }
-            .task {
+            .task(id: cycleTabIsActive) {
+                guard cycleTabIsActive else { return }
                 await checkNotificationPermission()
             }
         }
     }
 
-    // MARK: - Premium Row
+    // MARK: - Plan Row
 
     @ViewBuilder
     private var premiumRow: some View {
@@ -324,9 +327,9 @@ struct SettingsView: View {
             Image(systemName: "checkmark.seal.fill")
                 .foregroundColor(DesignSystem.Colors.accent)
             VStack(alignment: .leading) {
-                Text("Cycle Premium")
+                Text("Cycle 無料版")
                     .font(DesignSystem.Fonts.button)
-                Text("MVP期間中は無料で利用できます")
+                Text("現在、すべての機能を無料で利用できます")
                     .font(DesignSystem.Fonts.caption)
                     .foregroundColor(.secondary)
             }

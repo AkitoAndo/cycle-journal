@@ -161,4 +161,12 @@ class CoachService {
 
         return response.data
     }
+
+    /// セッションと配下のメッセージをサーバーから削除
+    func deleteSession(sessionId: String) async throws {
+        try await apiClient.delete(
+            path: "/sessions/\(sessionId)",
+            requiresAuth: true
+        )
+    }
 }
