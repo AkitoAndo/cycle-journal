@@ -11,13 +11,17 @@ function destinationPath(state: FormDataEntryValue | null): "/" | "/admin" {
 }
 
 function errorRedirect(
-  request: NextRequest,
   destination: "/" | "/admin",
   code: "csrf" | "credential" | "exchange" | "unexpected"
 ) {
-  const url = new URL(destination, request.url);
-  url.searchParams.set("auth_error", code);
-  return NextResponse.redirect(url, 303);
+  const query = new URLSearchParams({ auth_error: code });
+  return new NextResponse(null, {
+    status: 303,
+    headers: {
+      Location: `${destination}?${query.toString()}`,
+      "Cache-Control": "no-store, max-age=0"
+    }
+  });
 }
 
 function authHandoffPage(
@@ -67,19 +71,26 @@ export async function POST(request: NextRequest) {
   try {
     form = await request.formData();
   } catch {
-    return errorRedirect(request, "/", "unexpected");
+    return errorRedirect("/", "unexpected");
   }
 
   const destination = destinationPath(form.get("state"));
-  const csrfCookie = request.cookies.get("g_csrf_token")?.value;
   const csrfBody = form.get("g_csrf_token");
-  if (!csrfCookie || typeof csrfBody !== "string" || csrfCookie !== csrfBody) {
-    return errorRedirect(request, destination, "csrf");
+  const csrfCookies = request.cookies.getAll("g_csrf_token");
+  const csrfMatches =
+    typeof csrfBody === "string" &&
+    csrfCookies.some(({ value }) => value === csrfBody);
+  if (!csrfMatches) {
+    console.warn("Google auth callback rejected by CSRF validation", {
+      csrfCookieCount: csrfCookies.length,
+      hasCsrfBody: typeof csrfBody === "string"
+    });
+    return errorRedirect(destination, "csrf");
   }
 
   const credential = form.get("credential");
   if (typeof credential !== "string" || !credential) {
-    return errorRedirect(request, destination, "credential");
+    return errorRedirect(destination, "credential");
   }
 
   try {
@@ -88,14 +99,14 @@ export async function POST(request: NextRequest) {
       destination === "/admin" ? ADMIN_API_BASE_URL : undefined
     );
     if (!auth.accessToken || !auth.refreshToken) {
-      return errorRedirect(request, destination, "exchange");
+      return errorRedirect(destination, "exchange");
     }
     return authHandoffPage(auth.accessToken, auth.refreshToken, destination);
   } catch {
-    return errorRedirect(request, destination, "exchange");
+    return errorRedirect(destination, "exchange");
   }
 }
 
-export function GET(request: NextRequest) {
-  return errorRedirect(request, "/", "credential");
+export function GET() {
+  return errorRedirect("/", "credential");
 }
