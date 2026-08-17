@@ -27,6 +27,19 @@ Authorized JavaScript origins:
 - `http://127.0.0.1:3001`
 - `https://cycle-web-dev-1031235624127.asia-northeast1.run.app`
 
+Authorized redirect URIs:
+
+- `http://localhost:3000/auth/google/callback`
+- `http://127.0.0.1:3000/auth/google/callback`
+- `http://localhost:3001/auth/google/callback`
+- `http://127.0.0.1:3001/auth/google/callback`
+- `https://cycle-web-dev-1031235624127.asia-northeast1.run.app/auth/google/callback`
+
+Web版はGoogle Identity Servicesのredirect UXを使用する。GoogleからのPOSTは
+`g_csrf_token`のCookie・フォーム値を照合した後、APIの`/auth/google`でID Tokenを
+検証する。ポップアップ方式へ戻す場合も、ブラウザ互換性のためredirect UXを
+フォールバックとして維持する。
+
 Secret Manager から値を確認する場合（権限保持者のみ）:
 
 ```bash
@@ -65,6 +78,11 @@ Production Client Secretは`google-oauth-web-production`に保存する。
 Web は `cycle-web-prod` Cloud Run service として公開する。GitHub の
 `api-prod` environment には公開値の変数
 `GOOGLE_OAUTH_WEB_CLIENT_ID` を設定する。
+
+Production clientには、公開originに加えて次をAuthorized redirect URIとして
+登録する。
+
+- `https://<production-origin>/auth/google/callback`
 
 初回の手動ビルドは `web/cloudbuild.yaml` を使う。`.gcloudignore` により
 `.env.local`、`node_modules`、`.next` はCloud Buildへ送信されない。

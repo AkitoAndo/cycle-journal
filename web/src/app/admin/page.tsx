@@ -23,8 +23,7 @@ import {
   getPromptDeployment,
   listPromptVersions,
   logout,
-  testPrompt,
-  verifyGoogle
+  testPrompt
 } from "@/lib/api";
 import type {
   AuthTokens,
@@ -40,6 +39,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { loadAuth, saveAuth } from "@/lib/storage";
+import { GoogleSignInButton } from "@/components/google-sign-in-button";
 
 const DEFAULT_MESSAGE = "今日は少し疲れています。自分のペースを取り戻したいです。";
 const TEST_SCENARIOS = [
@@ -91,7 +91,7 @@ export default function AdminPage() {
   }
 
   if (!tokens) {
-    return <AdminSignIn onAuth={handleAuth} />;
+    return <AdminSignIn />;
   }
 
   return <PromptAdmin tokens={tokens} onAuth={handleAuth} />;
@@ -679,41 +679,8 @@ function PromptArea({
   );
 }
 
-function AdminSignIn({ onAuth }: { onAuth: (tokens: AuthTokens) => void }) {
-  const [error, setError] = useState<string | null>(null);
+function AdminSignIn() {
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-
-  useEffect(() => {
-    if (!googleClientId) return;
-    const script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.defer = true;
-    script.onload = () => {
-      const google = (window as unknown as GoogleWindow).google;
-      google?.accounts.id.initialize({
-        client_id: googleClientId,
-        callback: async (response) => {
-          try {
-            const auth = await verifyGoogle(response.credential, ADMIN_API_BASE_URL);
-            onAuth({ accessToken: auth.accessToken, refreshToken: auth.refreshToken });
-          } catch (err) {
-            setError(err instanceof Error ? err.message : "Googleログインに失敗しました");
-          }
-        }
-      });
-      google?.accounts.id.renderButton(document.getElementById("admin-google-signin"), {
-        theme: "outline",
-        size: "large",
-        width: 280,
-        text: "signin_with"
-      });
-    };
-    document.head.appendChild(script);
-    return () => {
-      script.remove();
-    };
-  }, [googleClientId, onAuth]);
 
   return (
     <main className="grid min-h-dvh place-items-center px-4">
@@ -727,32 +694,15 @@ function AdminSignIn({ onAuth }: { onAuth: (tokens: AuthTokens) => void }) {
             <p className="text-[13px] text-muted-foreground">Googleログインが必要です</p>
           </div>
         </div>
-        <div id="admin-google-signin" className="min-h-[44px]" />
+        {googleClientId && (
+          <GoogleSignInButton clientId={googleClientId} destination="admin" width={280} />
+        )}
         {!googleClientId && (
           <div className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-[13px] text-amber-900">
             NEXT_PUBLIC_GOOGLE_CLIENT_ID が未設定です。
           </div>
         )}
-        {error && <div className="mt-4 rounded-md bg-destructive/10 px-3 py-2 text-[13px] text-destructive">{error}</div>}
       </Card>
     </main>
   );
-}
-
-interface GoogleCredentialResponse {
-  credential: string;
-}
-
-interface GoogleWindow {
-  google?: {
-    accounts: {
-      id: {
-        initialize: (options: {
-          client_id: string;
-          callback: (response: GoogleCredentialResponse) => void;
-        }) => void;
-        renderButton: (element: HTMLElement | null, options: Record<string, unknown>) => void;
-      };
-    };
-  };
 }

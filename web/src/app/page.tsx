@@ -48,7 +48,6 @@ import {
   sendCoachMessageStream,
   syncJournals,
   updateTask,
-  verifyGoogle
 } from "@/lib/api";
 import {
   clearLocalUserData,
@@ -92,6 +91,7 @@ import { Separator } from "@/components/ui/separator";
 import { WeekCalendar, toDateKey } from "@/components/ui/week-calendar";
 import { HomeView } from "@/features/home/home-view";
 import { MindfulnessView } from "@/features/mindfulness/mindfulness-view";
+import { GoogleSignInButton } from "@/components/google-sign-in-button";
 
 type Tab = "home" | "journal" | "coach" | "tasks" | "settings";
 
@@ -275,7 +275,6 @@ function SignInView({ onAuth }: { onAuth: (tokens: AuthTokens) => void }) {
   const [manualAccessToken, setManualAccessToken] = useState("");
   const [manualRefreshToken, setManualRefreshToken] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
   const enableDeveloperLogin =
     process.env.NODE_ENV !== "production" &&
@@ -289,58 +288,6 @@ function SignInView({ onAuth }: { onAuth: (tokens: AuthTokens) => void }) {
     }).catch(() => undefined);
     return () => controller.abort();
   }, []);
-
-  useEffect(() => {
-    if (!googleClientId) return;
-    let active = true;
-    const renderGoogleButton = () => {
-      if (!active) return;
-      const target = document.getElementById("google-signin");
-      const google = (window as unknown as GoogleWindow).google;
-      if (!target || !google) return;
-      if (target.dataset.gsiReady === "true") return;
-      target.dataset.gsiReady = "true";
-      target.replaceChildren();
-      google?.accounts.id.initialize({
-        client_id: googleClientId,
-        callback: async (response) => {
-          setError(null);
-          setIsAuthenticating(true);
-          try {
-            const auth = await verifyGoogle(response.credential);
-            onAuth({ accessToken: auth.accessToken, refreshToken: auth.refreshToken });
-          } catch (err) {
-            setError(err instanceof Error ? err.message : "Googleログインに失敗しました");
-          } finally {
-            if (active) setIsAuthenticating(false);
-          }
-        }
-      });
-      google.accounts.id.renderButton(target, {
-        theme: "outline",
-        size: "large",
-        width: 260,
-        text: "signin_with"
-      });
-    };
-
-    const existingScript = document.getElementById("google-identity-services") as HTMLScriptElement | null;
-    const script = existingScript ?? document.createElement("script");
-    if (!existingScript) {
-      script.id = "google-identity-services";
-      script.src = "https://accounts.google.com/gsi/client";
-      script.async = true;
-      script.defer = true;
-      document.head.appendChild(script);
-    }
-    if ((window as unknown as GoogleWindow).google) renderGoogleButton();
-    else script.addEventListener("load", renderGoogleButton);
-
-    return () => {
-      active = false;
-      script.removeEventListener("load", renderGoogleButton);
-    };
-  }, [googleClientId, onAuth]);
 
   const submitManual = () => {
     if (!manualAccessToken.trim()) {
@@ -386,24 +333,13 @@ function SignInView({ onAuth }: { onAuth: (tokens: AuthTokens) => void }) {
             </div>
 
             {googleClientId ? (
-              <div id="google-signin" className="mt-4 min-h-[44px]" />
+              <GoogleSignInButton clientId={googleClientId} />
             ) : (
               <div className="mt-4 rounded-xl bg-amber-50 px-3 py-2.5 text-[13px] leading-relaxed text-amber-900">
                 Web用Google Client ID が未設定です。<br />
                 <code className="rounded bg-amber-100 px-1">.env.local</code> に{" "}
                 <code className="rounded bg-amber-100 px-1">NEXT_PUBLIC_GOOGLE_CLIENT_ID</code>{" "}
                 を設定してください。
-              </div>
-            )}
-
-            {isAuthenticating && (
-              <div
-                role="status"
-                aria-live="polite"
-                className="mt-3 flex items-center gap-2 rounded-xl bg-primary/10 px-3 py-2.5 text-[13px] font-medium text-primary-strong"
-              >
-                <RefreshCw size={15} className="animate-spin" />
-                ログインしています。初回は数秒かかることがあります…
               </div>
             )}
 
@@ -2126,25 +2062,4 @@ function formatTime(value: string): string {
     hour: "2-digit",
     minute: "2-digit"
   }).format(new Date(value));
-}
-
-interface GoogleCredentialResponse {
-  credential: string;
-}
-
-interface GoogleWindow {
-  google?: {
-    accounts: {
-      id: {
-        initialize(options: {
-          client_id: string;
-          callback: (response: GoogleCredentialResponse) => void;
-        }): void;
-        renderButton(
-          element: HTMLElement | null,
-          options: { theme: string; size: string; width: number; text: string }
-        ): void;
-      };
-    };
-  };
 }

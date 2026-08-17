@@ -22,7 +22,10 @@ NEXT_PUBLIC_ENABLE_DEV_LOGIN=false
 ```
 
 `NEXT_PUBLIC_GOOGLE_CLIENT_ID` must be a Web OAuth client ID. The existing iOS
-client ID is not enough for browser Google Sign-In.
+client ID is not enough for browser Google Sign-In. Register the exact callback
+URL (`<web-origin>/auth/google/callback`) as an Authorized redirect URI. The Web
+app uses Google Identity Services redirect UX so sign-in does not depend on a
+popup window.
 
 The manual token form is hidden by default. To use it only during local
 development, set `NEXT_PUBLIC_ENABLE_DEV_LOGIN=true`; production builds ignore
