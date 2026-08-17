@@ -3,6 +3,14 @@ provider "google" {
   region  = var.region
 }
 
+module "web" {
+  source = "../../modules/web"
+
+  project_id                     = var.project_id
+  environment                    = "dev"
+  github_actions_service_account = "github-actions-deploy@${var.project_id}.iam.gserviceaccount.com"
+}
+
 module "api" {
   source = "../../modules/api"
 

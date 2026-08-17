@@ -87,6 +87,7 @@ jobs:
 
           echo "environment=${target}" >> "$GITHUB_OUTPUT"
           echo "service=cycle-web-${target}" >> "$GITHUB_OUTPUT"
+          echo "runtime_service_account=cycle-web-${target}@${PROJECT_ID}.iam.gserviceaccount.com" >> "$GITHUB_OUTPUT"
           echo "api_base_url=https://cycle-api-${target}-1031235624127.asia-northeast1.run.app" >> "$GITHUB_OUTPUT"
           echo "image=${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/web:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
 
@@ -129,6 +130,7 @@ jobs:
             --image "${{ steps.target.outputs.image }}" \
             --region "${REGION}" \
             --project "${PROJECT_ID}" \
+            --service-account "${{ steps.target.outputs.runtime_service_account }}" \
             --allow-unauthenticated \
             --port 8080 \
             --cpu 1 \
