@@ -78,7 +78,7 @@ const PROMPT_VARIABLES = {
   elements: {
     token: "{elements}",
     meaning: "分類先として選べるCycle要素の一覧です。",
-    source: "APIが管理する固定のCycle要素一覧から取得します。"
+    source: "アプリが管理する固定のCycle要素一覧から取得します。"
   },
   detectedEmotion: {
     token: "{detected_emotion}",
@@ -93,7 +93,7 @@ const PROMPT_VARIABLES = {
   response: {
     token: "{response}",
     meaning: "コーチが生成した、ユーザーへ表示する直前の返答です。",
-    source: "コーチモデルの生成結果から取得します。"
+    source: "コーチが返答を作った結果から取得します。"
   }
 } as const satisfies Record<string, PromptVariable>;
 const CLAUDE_MODEL_OPTIONS = [
@@ -372,7 +372,7 @@ function PromptAdmin({
 
   const deploySelectedVersion = async () => {
     if (!selectedVersionId || deployment?.environment !== "dev") return;
-    if (!window.confirm("このバージョンをDev環境の通常コーチへ適用しますか？")) return;
+    if (!window.confirm("選択したバージョンを開発環境のコーチへ適用しますか？")) return;
     setError(null);
     setLoading(true);
     try {
@@ -382,7 +382,7 @@ function PromptAdmin({
       setBaselineConfig(config ? { ...config, systemPrompt: prompt } : null);
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Dev環境へ適用できませんでした");
+      setError(err instanceof Error ? err.message : "開発環境へ適用できませんでした");
     } finally {
       setLoading(false);
     }
@@ -500,7 +500,7 @@ function PromptAdmin({
             <CardContent>
               <div className="mb-3 rounded-xl bg-primary/8 px-3 py-2.5 text-[12px] text-muted-foreground">
                 <div className="font-semibold text-primary-strong">
-                  {deployment?.environment === "dev" ? "Devで使用中" : "現在使用中"}
+                  {deployment?.environment === "dev" ? "開発環境で使用中" : "現在使用中"}
                 </div>
                 <div className="mt-0.5 truncate text-[11px]">{deployedVersionTitle}</div>
               </div>
@@ -787,7 +787,7 @@ function PromptAdmin({
                   title="先にバージョンを保存してください"
                 >
                   <Rocket size={16} />
-                  保存済み版をDevへ適用
+                  選択した版を開発環境へ適用
                 </Button>
                 <Button
                   onClick={saveVersion}
@@ -866,7 +866,7 @@ function PromptAdmin({
                   }
                 >
                   <GitCompareArrows size={16} />
-                  現行版と比較
+                  現在の設定と比較
                 </Button>
               </div>
               {error && (
@@ -876,14 +876,14 @@ function PromptAdmin({
               )}
               {baselineResponse && (
                 <div className="rounded-xl border border-border bg-card px-3 py-3">
-                  <div className="mb-2 text-[12px] font-semibold text-muted-foreground">現行版</div>
+                  <div className="mb-2 text-[12px] font-semibold text-muted-foreground">現在の設定</div>
                   <div className="min-h-[120px] whitespace-pre-wrap text-[14px] leading-relaxed">
                     {baselineResponse}
                   </div>
                 </div>
               )}
               <div className="rounded-xl border border-primary/15 bg-primary/5 px-3 py-3">
-                <div className="mb-2 text-[12px] font-semibold text-primary-strong">下書き版</div>
+                <div className="mb-2 text-[12px] font-semibold text-primary-strong">編集中の設定</div>
                 <div className="min-h-[160px] whitespace-pre-wrap text-[14px] leading-relaxed">
                   {response || "テスト結果がここに表示されます。"}
                 </div>
