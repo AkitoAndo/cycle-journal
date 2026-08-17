@@ -37,6 +37,66 @@ def test_admin_rejects_non_allowlisted_email():
     assert response.status_code == 403
 
 
+def test_admin_access_accepts_allowlisted_email():
+    app = _client(_admin_db())
+    with patch("app.routers.admin.get_current_user_id", new_callable=AsyncMock) as user:
+        user.return_value = "google-user"
+        with TestClient(app) as client:
+            response = client.get("/admin/access")
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["data"]["is_admin"] is True
+
+
+def test_admin_can_deploy_prompt_version_in_dev(monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "environment", "dev")
+    app = _client(_admin_db())
+    with patch(
+        "app.routers.admin.get_current_user_id",
+        new_callable=AsyncMock,
+    ) as user, patch(
+        "app.routers.admin.prompt_service.deploy_version",
+        new_callable=AsyncMock,
+    ) as deploy_version:
+        user.return_value = "google-user"
+        deploy_version.return_value = {
+            "environment": "dev",
+            "version_id": "version-1",
+            "deployed_by": "google-user",
+            "deployed_at": "2026-08-17T00:00:00+00:00",
+        }
+        with TestClient(app) as client:
+            response = client.post(
+                "/admin/prompts/deployment",
+                json={"version_id": "version-1"},
+            )
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["data"]["version_id"] == "version-1"
+    deploy_version.assert_awaited_once()
+
+
+def test_admin_cannot_deploy_prompt_version_directly_in_prod(monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "environment", "prod")
+    app = _client(_admin_db())
+    with patch("app.routers.admin.get_current_user_id", new_callable=AsyncMock) as user:
+        user.return_value = "google-user"
+        with TestClient(app) as client:
+            response = client.post(
+                "/admin/prompts/deployment",
+                json={"version_id": "version-1"},
+            )
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 403
+
+
 def test_admin_prompt_test_uses_prompt_override_and_logs():
     app = _client(_admin_db())
     with patch(

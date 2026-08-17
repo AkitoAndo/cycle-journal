@@ -32,6 +32,10 @@ class PromptVersionCreateRequest(BaseModel):
     notes: str | None = None
 
 
+class PromptDeploymentRequest(BaseModel):
+    version_id: str = Field(..., min_length=1)
+
+
 class PromptTestRequest(BaseModel):
     message: str = Field(..., min_length=1)
     version_id: str | None = None

@@ -10,6 +10,7 @@ from app.middleware.auth_middleware import get_current_user_id
 from app.models.admin import (
     PromptCurrentData,
     PromptDeploymentData,
+    PromptDeploymentRequest,
     PromptTestData,
     PromptTestRequest,
     PromptVersionCreateRequest,
@@ -46,6 +47,11 @@ async def get_admin_user(
     return user_id
 
 
+@router.get("/access")
+async def get_admin_access(_: str = Depends(get_admin_user)):
+    return {"data": {"is_admin": True}}
+
+
 @router.get("/prompts/versions")
 async def list_prompt_versions(
     _: str = Depends(get_admin_user),
@@ -78,6 +84,31 @@ async def get_prompt_deployment(
     db: AsyncClient = Depends(get_firestore),
 ):
     deployment = await prompt_service.get_deployment(db)
+    return {"data": PromptDeploymentData(**deployment)}
+
+
+@router.post("/prompts/deployment")
+async def deploy_prompt_version(
+    body: PromptDeploymentRequest,
+    user_id: str = Depends(get_admin_user),
+    db: AsyncClient = Depends(get_firestore),
+):
+    if settings.environment != "dev":
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "production prompt deployment requires the controlled release "
+                "workflow"
+            ),
+        )
+    try:
+        deployment = await prompt_service.deploy_version(
+            db,
+            version_id=body.version_id,
+            deployed_by=user_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     return {"data": PromptDeploymentData(**deployment)}
 
 

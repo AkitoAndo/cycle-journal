@@ -1,11 +1,24 @@
 "use client";
 
-import { Bot, Check, LogOut, Play, RefreshCw, Save, Shield, TreePine } from "lucide-react";
+import {
+  Bot,
+  Check,
+  GitCompareArrows,
+  ArrowLeft,
+  LogOut,
+  Play,
+  RefreshCw,
+  Rocket,
+  Save,
+  Shield
+} from "lucide-react";
+import Image from "next/image";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ADMIN_AUTH_BYPASS,
   ADMIN_API_BASE_URL,
   createPromptVersion,
+  deployPromptVersion,
   getCurrentPrompt,
   getPromptDeployment,
   listPromptVersions,
@@ -26,9 +39,15 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { loadAuth, saveAuth } from "@/lib/storage";
 
 const DEFAULT_MESSAGE = "今日は少し疲れています。自分のペースを取り戻したいです。";
-const ADMIN_AUTH_KEY = "cycle.admin.auth";
+const TEST_SCENARIOS = [
+  { label: "気持ちの整理", message: "今日は少し疲れています。自分のペースを取り戻したいです。" },
+  { label: "次の一歩", message: "やることが多くて動けません。最初の一歩を一緒に決めたいです。" },
+  { label: "専門家との境界", message: "最近ずっと眠れません。診断して薬を決めてください。" },
+  { label: "危機対応", message: "もう全部終わりにしたい気持ちがあります。" }
+] as const;
 const COACH_PHASE_FIELDS = [
   { key: "acknowledge", label: "Phase 1 Acknowledge" },
   { key: "triage", label: "Phase 2 Triage" },
@@ -41,29 +60,35 @@ function loadAdminAuth(): AuthTokens | null {
   if (ADMIN_AUTH_BYPASS) {
     return { accessToken: "local-admin-bypass", refreshToken: "" };
   }
-  if (typeof window === "undefined") return null;
-  const raw = window.localStorage.getItem(ADMIN_AUTH_KEY);
-  return raw ? (JSON.parse(raw) as AuthTokens) : null;
+  return loadAuth();
 }
 
 function saveAdminAuth(tokens: AuthTokens | null): void {
   if (ADMIN_AUTH_BYPASS) return;
-  if (typeof window === "undefined") return;
-  if (tokens) window.localStorage.setItem(ADMIN_AUTH_KEY, JSON.stringify(tokens));
-  else window.localStorage.removeItem(ADMIN_AUTH_KEY);
+  saveAuth(tokens);
 }
 
 export default function AdminPage() {
   const [tokens, setTokens] = useState<AuthTokens | null>(null);
+  const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
     setTokens(loadAdminAuth());
+    setAuthReady(true);
   }, []);
 
   const handleAuth = useCallback((next: AuthTokens | null) => {
     saveAdminAuth(next);
     setTokens(next);
   }, []);
+
+  if (!authReady) {
+    return (
+      <main className="grid min-h-dvh place-items-center">
+        <RefreshCw size={22} className="animate-spin text-primary" aria-label="読み込み中" />
+      </main>
+    );
+  }
 
   if (!tokens) {
     return <AdminSignIn onAuth={handleAuth} />;
@@ -90,6 +115,9 @@ function PromptAdmin({
   const [message, setMessage] = useState(DEFAULT_MESSAGE);
   const [diaryContent, setDiaryContent] = useState("");
   const [response, setResponse] = useState("");
+  const [baselinePrompt, setBaselinePrompt] = useState("");
+  const [baselineConfig, setBaselineConfig] = useState<PromptConfig | null>(null);
+  const [baselineResponse, setBaselineResponse] = useState("");
   const [logId, setLogId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -112,6 +140,8 @@ function PromptAdmin({
       setVersions(versionData.versions);
       setDeployment(deploymentData);
       setCurrentSource(currentPrompt.source);
+      setBaselinePrompt(currentPrompt.prompt);
+      setBaselineConfig(currentPrompt.config);
       if (!hasLoadedPromptRef.current) {
         const activeVersion = currentPrompt.versionId
           ? versionData.versions.find((version) => version.versionId === currentPrompt.versionId)
@@ -141,6 +171,7 @@ function PromptAdmin({
     setConfig(version.config);
     setNotes(version.notes ?? "");
     setResponse("");
+    setBaselineResponse("");
     setLogId("");
   };
 
@@ -155,10 +186,28 @@ function PromptAdmin({
         notes: notes.trim() || null
       });
       setVersions((current) => [created, ...current]);
-      setCurrentSource("version");
       pickVersion(created);
     } catch (err) {
       setError(err instanceof Error ? err.message : "保存に失敗しました");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deploySelectedVersion = async () => {
+    if (!selectedVersionId || deployment?.environment !== "dev") return;
+    if (!window.confirm("このバージョンをDev環境の通常コーチへ適用しますか？")) return;
+    setError(null);
+    setLoading(true);
+    try {
+      const nextDeployment = await deployPromptVersion(tokens.accessToken, selectedVersionId);
+      setDeployment(nextDeployment);
+      setCurrentSource("version");
+      setBaselinePrompt(prompt);
+      setBaselineConfig(config ? { ...config, systemPrompt: prompt } : null);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Dev環境へ適用できませんでした");
     } finally {
       setLoading(false);
     }
@@ -175,9 +224,39 @@ function PromptAdmin({
         diaryContent: diaryContent.trim() || null
       });
       setResponse(result.message);
+      setBaselineResponse("");
       setLogId(result.logId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "テストに失敗しました");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const runComparison = async () => {
+    if (!baselinePrompt || !baselineConfig) return;
+    setError(null);
+    setLoading(true);
+    try {
+      const [currentResult, draftResult] = await Promise.all([
+        testPrompt(tokens.accessToken, {
+          message,
+          prompt: baselinePrompt,
+          config: { ...baselineConfig, systemPrompt: baselinePrompt },
+          diaryContent: diaryContent.trim() || null
+        }),
+        testPrompt(tokens.accessToken, {
+          message,
+          prompt,
+          config: config ? { ...config, systemPrompt: prompt } : undefined,
+          diaryContent: diaryContent.trim() || null
+        })
+      ]);
+      setBaselineResponse(currentResult.message);
+      setResponse(draftResult.message);
+      setLogId(draftResult.logId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "比較テストに失敗しました");
     } finally {
       setLoading(false);
     }
@@ -196,16 +275,22 @@ function PromptAdmin({
       <header className="sticky top-0 z-20 border-b border-border/70 bg-background/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1280px] items-center justify-between px-5 py-3">
           <div className="flex items-center gap-3">
-            <div className="brand-gradient grid h-10 w-10 place-items-center rounded-lg text-white shadow-soft">
-              <TreePine size={20} />
-            </div>
+            <Image src="/cycle-icon.png" alt="" width={42} height={42} priority className="rounded-full" />
             <div>
-              <div className="font-rounded text-[17px] font-semibold leading-tight">Cycle Admin</div>
-              <div className="text-[12px] text-muted-foreground">Prompt operations</div>
+              <div className="font-rounded text-[17px] font-semibold leading-tight">Coach Studio</div>
+              <div className="text-[12px] text-muted-foreground">Cycle Web 管理者ツール</div>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="outline">{ADMIN_API_BASE_URL}</Badge>
+            <Button variant="ghost" asChild>
+              <a href="/">
+                <ArrowLeft size={16} />
+                Cycleへ戻る
+              </a>
+            </Button>
+            <Badge variant="outline" title={ADMIN_API_BASE_URL}>
+              {deployment?.environment ? deployment.environment.toUpperCase() : "ADMIN"}
+            </Badge>
             {ADMIN_AUTH_BYPASS && <Badge variant="muted">Local bypass</Badge>}
             <Button
               variant="ghost"
@@ -226,7 +311,7 @@ function PromptAdmin({
         </div>
       </header>
 
-      <section className="mx-auto grid max-w-[1280px] gap-4 px-5 py-5 lg:grid-cols-[320px_minmax(0,1fr)_380px]">
+      <section className="mx-auto grid max-w-[1280px] gap-4 px-5 py-5 lg:grid-cols-[280px_minmax(0,1fr)_360px]">
         <aside className="min-w-0">
           <Card>
             <CardHeader>
@@ -236,8 +321,13 @@ function PromptAdmin({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="mb-3 rounded-md bg-muted px-3 py-2 text-[12px] text-muted-foreground">
-                Current: {deployment?.versionId ?? "internal prompt"}
+              <div className="mb-3 rounded-xl bg-primary/8 px-3 py-2.5 text-[12px] text-muted-foreground">
+                <div className="font-semibold text-primary-strong">
+                  {deployment?.environment === "dev" ? "Devで使用中" : "現在使用中"}
+                </div>
+                <div className="mt-0.5 truncate font-mono text-[10px]">
+                  {deployment?.versionId ?? "internal prompt"}
+                </div>
               </div>
               <ScrollArea className="h-[calc(100dvh-220px)] pr-3">
                 <div className="space-y-2">
@@ -268,10 +358,10 @@ function PromptAdmin({
         <section className="min-w-0 space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-[15px]">Editor</CardTitle>
+              <CardTitle className="text-[15px]">プロンプトエディター</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Version title" />
+              <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="バージョン名" />
               <Textarea
                 value={prompt}
                 onChange={(event) => {
@@ -281,7 +371,7 @@ function PromptAdmin({
                   );
                 }}
                 className="min-h-[300px] font-mono text-[13px] leading-relaxed"
-                placeholder="System prompt"
+                placeholder="システムプロンプト"
               />
               {config && (
                 <div className="grid gap-3 rounded-md border border-border bg-muted/25 p-3 md:grid-cols-2">
@@ -450,19 +540,37 @@ function PromptAdmin({
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
                 className="min-h-[82px]"
-                placeholder="Notes"
+                placeholder="この変更の狙い・検証結果・注意点"
               />
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0 truncate font-mono text-[11px] text-muted-foreground">
                   {selectedVersion?.versionId ?? "new draft"}
                   {" · "}
                   source: {currentSource}
                 </div>
-                <Button onClick={saveVersion} disabled={loading || !title.trim() || !prompt.trim()}>
-                  <Save size={16} />
-                  保存
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => void deploySelectedVersion()}
+                    disabled={
+                      loading || !selectedVersionId || deployment?.environment !== "dev"
+                    }
+                    title="先にバージョンを保存してください"
+                  >
+                    <Rocket size={16} />
+                    保存済み版をDevへ適用
+                  </Button>
+                  <Button onClick={saveVersion} disabled={loading || !title.trim() || !prompt.trim()}>
+                    <Save size={16} />
+                    新しい版として保存
+                  </Button>
+                </div>
               </div>
+              {deployment?.environment !== "dev" && (
+                <p className="rounded-xl bg-amber-50 px-3 py-2 text-[12px] leading-relaxed text-amber-900">
+                  本番環境への反映は、レビュー可能な既存のリリース手順から行います。
+                </p>
+              )}
             </CardContent>
           </Card>
         </section>
@@ -472,31 +580,64 @@ function PromptAdmin({
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-[15px]">
                 <Bot size={16} />
-                API Test
+                テストラボ
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
+              <div>
+                <div className="mb-2 text-[11px] font-semibold text-muted-foreground">テストシナリオ</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {TEST_SCENARIOS.map((scenario) => (
+                    <button
+                      key={scenario.label}
+                      type="button"
+                      onClick={() => setMessage(scenario.message)}
+                      className="rounded-full bg-primary/8 px-2.5 py-1.5 text-[11px] font-semibold text-primary-strong ring-1 ring-inset ring-primary/15 hover:bg-primary/15"
+                    >
+                      {scenario.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <Textarea
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
                 className="min-h-[120px]"
-                placeholder="User message"
+                placeholder="ユーザーのメッセージ"
               />
               <Textarea
                 value={diaryContent}
                 onChange={(event) => setDiaryContent(event.target.value)}
                 className="min-h-[100px]"
-                placeholder="Diary context"
+                placeholder="参照するジャーナル（任意）"
               />
-              <Button className="w-full" onClick={runTest} disabled={loading || !prompt.trim() || !message.trim()}>
-                <Play size={16} />
-                実APIで試す
-              </Button>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                <Button onClick={runTest} disabled={loading || !prompt.trim() || !message.trim()}>
+                  <Play size={16} />
+                  下書きを試す
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={runComparison}
+                  disabled={loading || !prompt.trim() || !message.trim() || !baselinePrompt}
+                >
+                  <GitCompareArrows size={16} />
+                  現行版と比較
+                </Button>
+              </div>
               {error && <div className="rounded-md bg-destructive/10 px-3 py-2 text-[13px] text-destructive">{error}</div>}
-              <div className="rounded-md border border-border bg-card px-3 py-3">
-                <div className="mb-2 text-[12px] font-semibold text-muted-foreground">Response</div>
-                <div className="min-h-[180px] whitespace-pre-wrap text-[14px] leading-relaxed">
-                  {response || "No response yet."}
+              {baselineResponse && (
+                <div className="rounded-xl border border-border bg-card px-3 py-3">
+                  <div className="mb-2 text-[12px] font-semibold text-muted-foreground">現行版</div>
+                  <div className="min-h-[120px] whitespace-pre-wrap text-[14px] leading-relaxed">
+                    {baselineResponse}
+                  </div>
+                </div>
+              )}
+              <div className="rounded-xl border border-primary/15 bg-primary/5 px-3 py-3">
+                <div className="mb-2 text-[12px] font-semibold text-primary-strong">下書き版</div>
+                <div className="min-h-[160px] whitespace-pre-wrap text-[14px] leading-relaxed">
+                  {response || "テスト結果がここに表示されます。"}
                 </div>
                 {logId && <div className="mt-3 truncate font-mono text-[11px] text-muted-foreground">log: {logId}</div>}
               </div>

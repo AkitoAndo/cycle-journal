@@ -27,7 +27,7 @@ const API_BASE_URL =
 
 const ADMIN_API_BASE_URL =
   process.env.NEXT_PUBLIC_ADMIN_API_BASE_URL ??
-  "https://cycle-api-dev-1031235624127.asia-northeast1.run.app";
+  API_BASE_URL;
 
 const ADMIN_AUTH_BYPASS = process.env.NEXT_PUBLIC_ADMIN_AUTH_BYPASS === "true";
 
@@ -358,6 +358,14 @@ export async function listPromptVersions(accessToken: string): Promise<PromptVer
   return response.data;
 }
 
+export async function checkAdminAccess(accessToken: string): Promise<boolean> {
+  const response = await request<ApiEnvelope<{ isAdmin: boolean }>>("/admin/access", {
+    accessToken,
+    apiBaseUrl: ADMIN_API_BASE_URL
+  });
+  return response.data.isAdmin;
+}
+
 export async function createPromptVersion(
   accessToken: string,
   body: { title: string; prompt: string; config?: unknown; notes?: string | null }
@@ -375,6 +383,19 @@ export async function getPromptDeployment(accessToken: string): Promise<PromptDe
   const response = await request<ApiEnvelope<PromptDeploymentData>>("/admin/prompts/deployment", {
     accessToken,
     apiBaseUrl: ADMIN_API_BASE_URL
+  });
+  return response.data;
+}
+
+export async function deployPromptVersion(
+  accessToken: string,
+  versionId: string
+): Promise<PromptDeploymentData> {
+  const response = await request<ApiEnvelope<PromptDeploymentData>>("/admin/prompts/deployment", {
+    method: "POST",
+    accessToken,
+    apiBaseUrl: ADMIN_API_BASE_URL,
+    body: JSON.stringify(snakeize({ versionId }))
   });
   return response.data;
 }

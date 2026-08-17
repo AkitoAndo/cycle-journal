@@ -10,6 +10,7 @@ import {
   CheckSquare,
   Circle,
   Clock3,
+  FlaskConical,
   House,
   Leaf,
   LogOut,
@@ -33,6 +34,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   API_BASE_URL,
+  checkAdminAccess,
   createTask,
   createTaskReflection,
   deleteMe,
@@ -134,6 +136,7 @@ function useWebReminder(authenticated: boolean) {
 export default function Home() {
   const [tokens, setTokens] = useState<AuthTokens | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("home");
+  const [isAdmin, setIsAdmin] = useState(false);
   useWebReminder(Boolean(tokens));
   const todayLabel = useMemo(
     () =>
@@ -148,6 +151,24 @@ export default function Home() {
   useEffect(() => {
     setTokens(loadAuth());
   }, []);
+
+  useEffect(() => {
+    if (!tokens) {
+      setIsAdmin(false);
+      return;
+    }
+    let active = true;
+    void checkAdminAccess(tokens.accessToken)
+      .then((allowed) => {
+        if (active) setIsAdmin(allowed);
+      })
+      .catch(() => {
+        if (active) setIsAdmin(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [tokens]);
 
   useEffect(() => {
     if (!tokens) return;
@@ -182,6 +203,16 @@ export default function Home() {
         </div>
         <div className="flex items-center gap-3">
           <span className="hidden text-[12px] font-medium text-muted-foreground md:inline">{todayLabel}</span>
+          {isAdmin && (
+            <a
+              href="/admin"
+              className="flex h-8 items-center gap-1.5 rounded-full bg-white/35 px-3 text-[12px] font-semibold text-primary-strong outline-none ring-1 ring-inset ring-primary/20 transition-colors hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary/45"
+            >
+              <FlaskConical size={14} />
+              <span className="hidden sm:inline">Coach Studio</span>
+              <span className="sm:hidden">Studio</span>
+            </a>
+          )}
           <Badge variant="outline" className="gap-1.5 bg-white/35 px-3 py-1">
             <ShieldCheck size={12} />
             <span className="hidden sm:inline">プライベート</span>
