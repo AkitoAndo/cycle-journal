@@ -99,6 +99,89 @@ export interface JournalEntry {
   tags: string[];
   date: string;
   deletedAt?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface JournalData {
+  journalId: string;
+  text: string;
+  tags: string[];
+  entryDate: string;
+  deletedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface JournalSyncData {
+  journals: JournalData[];
+  serverTime: string;
+  pushedCount: number;
+  pulledCount: number;
+  deletedCount: number;
+  conflictCount: number;
+}
+
+export interface TaskReflectionData {
+  reflectionId: string;
+  taskId: string;
+  whatIDid: string;
+  whatINoticed: string;
+  whatIWantToTry?: string | null;
+  overallFeeling?: string | null;
+  createdAt: string;
+}
+
+export interface UserData {
+  userId: string;
+  appleUserId: string;
+  email?: string | null;
+  displayName?: string | null;
+  settings: {
+    notificationEnabled: boolean;
+    reminderTime?: string | null;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ScheduleEvent {
+  id: string;
+  title: string;
+  startDate: string;
+  endDate: string;
+  isAllDay: boolean;
+  notes: string;
+  createdAt: string;
+}
+
+export interface MeditationLog {
+  id: string;
+  date: string;
+  duration: number;
+}
+
+export interface TaskTemplate {
+  id: string;
+  title: string;
+  description: string;
+  intent: string;
+  achievementVision: string;
+  notes: string;
+  createdAt: string;
+}
+
+export interface TaskLocalDetails {
+  taskId: string;
+  intent: string;
+  achievementVision: string;
+  notes: string;
+  updatedAt: string;
+}
+
+export interface WebPreferences {
+  notificationEnabled: boolean;
+  reminderTime: string;
 }
 
 export interface PromptVersionData {

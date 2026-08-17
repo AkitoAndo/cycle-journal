@@ -10,11 +10,19 @@ module "api" {
   region                = var.region
   environment           = "dev"
   firestore_database_id = "dev-db"
-  apple_team_id         = var.apple_team_id
-  apple_key_id          = var.apple_key_id
-  apple_apns_key_id     = var.apple_apns_key_id
-  apple_iap_issuer_id   = var.apple_iap_issuer_id
-  apple_iap_key_id      = var.apple_iap_key_id
-  apple_iap_env         = "Sandbox"
-  apple_apns_env        = "Sandbox"
+  google_client_ids     = "1031235624127-j358em4cvl8hll11p4kg3pd650chj82f.apps.googleusercontent.com"
+  cors_allowed_origins = join(",", [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    "https://cycle-web-dev-1031235624127.asia-northeast1.run.app",
+  ])
+  apple_team_id       = var.apple_team_id
+  apple_key_id        = var.apple_key_id
+  apple_apns_key_id   = var.apple_apns_key_id
+  apple_iap_issuer_id = var.apple_iap_issuer_id
+  apple_iap_key_id    = var.apple_iap_key_id
+  apple_iap_env       = "Sandbox"
+  apple_apns_env      = "Sandbox"
 }

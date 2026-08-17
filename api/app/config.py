@@ -9,7 +9,14 @@ class Settings(BaseSettings):
     gcp_region: str = "asia-northeast1"
     firestore_database_id: str = "(default)"
     apple_bundle_id: str = "com.akitoando.CycleJournal"
-    google_client_id: str = ""  # iOS用Google OAuth Client ID
+    # Legacy single-client setting. Keep it for existing iOS deployments.
+    google_client_id: str = ""
+    # Additional comma-separated OAuth audiences (Web dev/prod, admin, etc.).
+    google_client_ids: str = ""
+    cors_allowed_origins: str = (
+        "http://localhost:3000,http://127.0.0.1:3000,"
+        "http://localhost:3001,http://127.0.0.1:3001"
+    )
     admin_google_emails: str = "takeshiogata1105@gmail.com,28ww.lo.ol.ww28@gmail.com"
     admin_auth_bypass: bool = False
 
@@ -103,6 +110,23 @@ class Settings(BaseSettings):
     apple_apns_key_id: str = ""
     apple_apns_private_key: str = ""
     apple_apns_env: str = "Sandbox"
+
+    @property
+    def google_oauth_client_ids(self) -> list[str]:
+        """Return every accepted Google OAuth audience without duplicates."""
+        values = [self.google_client_id, *self.google_client_ids.split(",")]
+        return list(dict.fromkeys(value.strip() for value in values if value.strip()))
+
+    @property
+    def cors_origins(self) -> list[str]:
+        """Return the explicit browser origins allowed to call the API."""
+        return list(
+            dict.fromkeys(
+                value.strip()
+                for value in self.cors_allowed_origins.split(",")
+                if value.strip()
+            )
+        )
 
     model_config = {"env_prefix": "", "case_sensitive": False}
 

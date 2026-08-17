@@ -1,0 +1,138 @@
+name: Web CI/CD
+
+on:
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - web/**
+      - .github/workflows/web-ci-cd.yml
+  push:
+    branches: [develop, main]
+    paths:
+      - web/**
+      - .github/workflows/web-ci-cd.yml
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deploy target"
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: web-${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+env:
+  PROJECT_ID: cycle-journal
+  REGION: asia-northeast1
+  REPOSITORY: cycle-web
+
+jobs:
+  web-test:
+    name: Web typecheck and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+  deploy:
+    name: Deploy Web
+    needs: web-test
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'push' && (github.ref_name == 'develop' || github.ref_name == 'main')) ||
+      github.event_name == 'workflow_dispatch'
+    environment: api-${{ github.event_name == 'workflow_dispatch' && inputs.environment || (github.ref_name == 'main' && 'prod' || 'dev') }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve target
+        id: target
+        env:
+          GOOGLE_OAUTH_CLIENT_ID: ${{ vars.GOOGLE_OAUTH_WEB_CLIENT_ID }}
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            target="${{ inputs.environment }}"
+          elif [[ "${{ github.ref_name }}" == "main" ]]; then
+            target="prod"
+          else
+            target="dev"
+          fi
+
+          if [[ -z "${GOOGLE_OAUTH_CLIENT_ID}" ]]; then
+            echo "GOOGLE_OAUTH_WEB_CLIENT_ID is not configured for api-${target}." >&2
+            exit 1
+          fi
+
+          echo "environment=${target}" >> "$GITHUB_OUTPUT"
+          echo "service=cycle-web-${target}" >> "$GITHUB_OUTPUT"
+          echo "api_base_url=https://cycle-api-${target}-1031235624127.asia-northeast1.run.app" >> "$GITHUB_OUTPUT"
+          echo "image=${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/web:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Ensure Artifact Registry repository
+        run: |
+          gcloud artifacts repositories describe "${REPOSITORY}" \
+            --location "${REGION}" \
+            --project "${PROJECT_ID}" >/dev/null 2>&1 || \
+          gcloud artifacts repositories create "${REPOSITORY}" \
+            --repository-format docker \
+            --location "${REGION}" \
+            --project "${PROJECT_ID}" \
+            --description "Cycle Journal Web images"
+
+      - name: Configure Docker auth
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Build and push image
+        env:
+          GOOGLE_OAUTH_CLIENT_ID: ${{ vars.GOOGLE_OAUTH_WEB_CLIENT_ID }}
+        run: |
+          docker build \
+            --build-arg "NEXT_PUBLIC_API_BASE_URL=${{ steps.target.outputs.api_base_url }}" \
+            --build-arg "NEXT_PUBLIC_GOOGLE_CLIENT_ID=${GOOGLE_OAUTH_CLIENT_ID}" \
+            --tag "${{ steps.target.outputs.image }}" \
+            web
+          docker push "${{ steps.target.outputs.image }}"
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy "${{ steps.target.outputs.service }}" \
+            --image "${{ steps.target.outputs.image }}" \
+            --region "${REGION}" \
+            --project "${PROJECT_ID}" \
+            --allow-unauthenticated \
+            --port 8080 \
+            --cpu 1 \
+            --memory 512Mi \
+            --min 0 \
+            --max 2 \
+            --quiet

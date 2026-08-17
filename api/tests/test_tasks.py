@@ -65,3 +65,31 @@ def test_reopening_task_clears_completed_at(auth_client, mock_firestore):
     updates = mock_firestore._mock_doc.update.await_args.args[0]
     assert updates["status"] == "pending"
     assert updates["completed_at"] is None
+
+
+def test_update_task_can_clear_due_date(auth_client, mock_firestore):
+    now = datetime.now(UTC)
+    existing = MagicMock()
+    existing.exists = True
+    existing.to_dict.return_value = {
+        "user_id": "test-user-123",
+        "title": "期限つき",
+        "status": "pending",
+        "due_date": now,
+        "created_at": now,
+        "updated_at": now,
+    }
+    updated = MagicMock()
+    updated.to_dict.return_value = {
+        **existing.to_dict.return_value,
+        "due_date": None,
+        "updated_at": now,
+    }
+    mock_firestore._mock_doc.get.side_effect = [existing, updated]
+
+    response = auth_client.put("/tasks/task-1", json={"due_date": None})
+
+    assert response.status_code == 200
+    updates = mock_firestore._mock_doc.update.await_args.args[0]
+    assert "due_date" in updates
+    assert updates["due_date"] is None

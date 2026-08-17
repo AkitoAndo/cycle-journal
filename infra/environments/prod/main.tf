@@ -10,6 +10,8 @@ module "api" {
   region                = var.region
   environment           = "prod"
   firestore_database_id = "(default)"
+  google_client_ids     = var.google_client_ids
+  cors_allowed_origins  = var.cors_allowed_origins
   apple_team_id         = var.apple_team_id
   apple_key_id          = var.apple_key_id
   apple_apns_key_id     = var.apple_apns_key_id

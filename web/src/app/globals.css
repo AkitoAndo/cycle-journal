@@ -4,33 +4,33 @@
 
 @layer base {
   :root {
-    --background: 60 20% 98%;
-    --background-2: 50 15% 95%;
-    --foreground: 30 4% 15%;
+    --background: 48 33% 97%;
+    --background-2: 42 22% 93%;
+    --foreground: 150 12% 15%;
 
-    --surface: 36 12% 94%;
-    --surface-strong: 34 11% 92%;
+    --surface: 46 22% 94%;
+    --surface-strong: 43 18% 90%;
 
-    --card: 36 12% 96%;
-    --card-foreground: 30 4% 15%;
+    --card: 48 30% 97%;
+    --card-foreground: 150 12% 15%;
 
-    --primary: 26 22% 45%;
+    --primary: 151 26% 35%;
     --primary-foreground: 0 0% 100%;
-    --primary-soft: 30 24% 78%;
-    --primary-strong: 28 24% 28%;
+    --primary-soft: 139 26% 79%;
+    --primary-strong: 151 34% 21%;
 
-    --muted: 36 12% 92%;
-    --muted-foreground: 30 5% 43%;
+    --muted: 45 18% 91%;
+    --muted-foreground: 142 7% 43%;
 
-    --accent: 26 22% 45%;
+    --accent: 151 26% 35%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 6 41% 49%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 36 10% 87%;
-    --input: 36 10% 87%;
-    --ring: 26 22% 45%;
+    --border: 45 13% 84%;
+    --input: 45 13% 82%;
+    --ring: 151 26% 35%;
 
     --radius: 0.9rem;
   }
@@ -46,8 +46,11 @@
     min-height: 100%;
     margin: 0;
     background:
-      radial-gradient(1200px 600px at 50% -10%, hsl(30 30% 96%) 0%, transparent 55%),
+      radial-gradient(900px 520px at 12% -8%, hsl(136 34% 91% / 0.72) 0%, transparent 58%),
+      radial-gradient(760px 520px at 100% 18%, hsl(39 52% 91% / 0.62) 0%, transparent 62%),
       linear-gradient(180deg, hsl(var(--background)), hsl(var(--background-2)));
+    background-attachment: fixed;
+    font-feature-settings: "palt" 1;
   }
   button,
   input,
@@ -59,12 +62,13 @@
 @layer components {
   .glass-surface {
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0) 22%),
-      hsl(var(--card));
+      linear-gradient(145deg, rgba(255, 255, 255, 0.88) 0%, rgba(255, 255, 255, 0.34) 42%, rgba(255, 255, 255, 0.12) 100%),
+      hsl(var(--card) / 0.88);
+    backdrop-filter: blur(18px);
     box-shadow:
       inset 0 0.5px 0 rgba(255, 255, 255, 0.9),
-      0 1px 2px rgba(89, 71, 56, 0.05),
-      0 12px 30px -12px rgba(89, 71, 56, 0.14);
+      0 1px 2px rgba(33, 65, 51, 0.04),
+      0 18px 42px -26px rgba(33, 65, 51, 0.3);
   }
 
   .hairline {
@@ -72,7 +76,50 @@
   }
 
   .brand-gradient {
-    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary-strong)) 100%);
+    background: linear-gradient(145deg, hsl(148 30% 43%) 0%, hsl(var(--primary-strong)) 100%);
+  }
+
+  .brand-mark {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .brand-mark::after {
+    content: "";
+    position: absolute;
+    inset: -5px;
+    z-index: -1;
+    border-radius: inherit;
+    background: hsl(var(--primary) / 0.12);
+  }
+
+  .app-topbar {
+    background: linear-gradient(180deg, hsl(var(--background) / 0.94), hsl(var(--background) / 0.72));
+    box-shadow: 0 1px 0 hsl(var(--border) / 0.42);
+  }
+
+  .bottom-dock {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.55)),
+      hsl(var(--card) / 0.9);
+    box-shadow:
+      0 18px 60px rgba(25, 54, 40, 0.18),
+      inset 0 0.5px 0 rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(22px);
+  }
+
+  .journal-glow {
+    background:
+      radial-gradient(circle at 82% 0%, hsl(139 34% 84% / 0.6), transparent 42%),
+      linear-gradient(145deg, hsl(var(--primary-strong)), hsl(151 25% 29%));
+  }
+
+  .prompt-chip {
+    @apply rounded-full border border-primary/15 bg-white/55 px-3 py-1.5 text-left text-[12px] font-medium text-primary-strong transition-all;
+  }
+
+  .prompt-chip:hover {
+    @apply -translate-y-0.5 border-primary/30 bg-white/85 shadow-sm;
   }
 
   .chat-bubble-user {
@@ -93,7 +140,7 @@
   .tab-pill-active::before {
     content: "";
     position: absolute;
-    inset: 6px 12px;
+    inset: 5px 10px;
     z-index: -1;
     border-radius: 9999px;
     background: hsl(var(--primary) / 0.1);
@@ -106,6 +153,17 @@
     border-radius: 9999px;
     background: hsl(var(--muted-foreground) / 0.6);
     animation: typing-bounce 1.2s ease-in-out infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 

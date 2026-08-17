@@ -287,6 +287,16 @@ resource "google_cloud_run_v2_service" "api" {
       }
 
       env {
+        name  = "GOOGLE_CLIENT_IDS"
+        value = var.google_client_ids
+      }
+
+      env {
+        name  = "CORS_ALLOWED_ORIGINS"
+        value = var.cors_allowed_origins
+      }
+
+      env {
         name = "JWT_SECRET_KEY"
         value_source {
           secret_key_ref {

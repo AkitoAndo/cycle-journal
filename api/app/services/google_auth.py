@@ -21,11 +21,15 @@ async def verify_google_token(token: str) -> dict:
     Raises:
         ValueError: トークンが無効な場合
     """
+    audiences = settings.google_oauth_client_ids
+    if not audiences:
+        raise ValueError("Google OAuth Client ID is not configured")
+
     try:
         claims = id_token.verify_oauth2_token(
             token,
             google_requests.Request(),
-            audience=settings.google_client_id,
+            audience=audiences,
         )
     except ValueError as e:
         raise ValueError(f"Invalid Google ID token: {e}")

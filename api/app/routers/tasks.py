@@ -123,7 +123,8 @@ async def update_task(
     if body.status is not None:
         updates["status"] = body.status
         updates["completed_at"] = now if body.status == "completed" else None
-    if body.due_date is not None:
+    # 明示的な null は「期限を外す」として扱う。
+    if "due_date" in body.model_fields_set:
         updates["due_date"] = body.due_date
 
     await doc.update(updates)
