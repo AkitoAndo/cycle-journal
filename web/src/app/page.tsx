@@ -21,15 +21,15 @@ import {
   RotateCcw,
   Search,
   ShieldCheck,
-  Settings,
   Sparkles,
   Sprout,
   Trash2,
-  TreePine,
   User,
+  UserRound,
   Wind,
   WalletCards
 } from "lucide-react";
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   API_BASE_URL,
@@ -93,12 +93,17 @@ import { MindfulnessView } from "@/features/mindfulness/mindfulness-view";
 
 type Tab = "home" | "journal" | "coach" | "tasks" | "settings";
 
-const tabs: { id: Tab; label: string; icon: React.ComponentType<{ size?: number; className?: string }> }[] = [
+const tabs: {
+  id: Tab;
+  label: string;
+  icon?: React.ComponentType<{ size?: number; className?: string }>;
+  isBrand?: boolean;
+}[] = [
   { id: "home", label: "ホーム", icon: House },
   { id: "journal", label: "ジャーナル", icon: Leaf },
-  { id: "coach", label: "セッション", icon: MessageCircle },
-  { id: "tasks", label: "タスク", icon: CheckSquare },
-  { id: "settings", label: "設定", icon: Settings }
+  { id: "coach", label: "セッション", isBrand: true },
+  { id: "tasks", label: "タスクリスト", icon: CheckSquare },
+  { id: "settings", label: "マイページ", icon: UserRound }
 ];
 
 const PRIVACY_URL =
@@ -162,9 +167,14 @@ export default function Home() {
     <main className="relative mx-auto grid min-h-dvh max-w-[1220px] grid-rows-[auto_minmax(0,1fr)_auto]">
       <header className="app-topbar sticky top-0 z-10 flex items-center justify-between px-5 py-3 backdrop-blur-xl md:px-7">
         <div className="flex items-center gap-3">
-          <div className="brand-gradient brand-mark grid h-10 w-10 place-items-center rounded-[14px] text-white shadow-soft">
-            <TreePine size={20} />
-          </div>
+          <Image
+            src="/cycle-icon.png"
+            alt=""
+            width={44}
+            height={44}
+            priority
+            className="h-11 w-11 rounded-full shadow-[0_9px_24px_-14px_rgba(89,71,56,0.7)]"
+          />
           <div>
             <div className="font-rounded text-[17px] font-bold leading-tight tracking-[-0.02em]">Cycle</div>
             <div className="text-[11px] text-muted-foreground sm:text-[12px]">自分のリズムを、見つけていく。</div>
@@ -190,7 +200,7 @@ export default function Home() {
       </section>
 
       <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-20 mx-auto flex max-w-[1220px] justify-center px-3 pb-[max(10px,env(safe-area-inset-bottom))]">
-        <div className="bottom-dock pointer-events-auto grid w-full max-w-[720px] grid-cols-5 rounded-[22px] border border-white/70 p-1.5 ring-1 ring-inset ring-border/40">
+        <div className="bottom-dock pointer-events-auto grid w-full max-w-[720px] grid-cols-5 rounded-[24px] border border-white/70 px-1.5 py-1 ring-1 ring-inset ring-primary-strong/5">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const active = activeTab === tab.id;
@@ -199,14 +209,28 @@ export default function Home() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "relative isolate flex h-[56px] flex-col items-center justify-center gap-1 rounded-[17px] text-[10px] font-semibold transition-colors",
+                  "relative isolate flex h-[62px] flex-col items-center justify-center gap-1 rounded-[18px] text-[10px] font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary/45",
+                  tab.isBrand && "cycle-tab-button",
                   active ? "text-primary-strong" : "text-muted-foreground hover:text-foreground",
-                  active && "tab-pill-active"
+                  active && !tab.isBrand && "tab-pill-active"
                 )}
                 aria-current={active ? "page" : undefined}
+                aria-label={tab.label}
               >
-                <Icon size={20} className={cn("transition-transform", active && "scale-110")} />
-                <span>{tab.label}</span>
+                {tab.isBrand ? (
+                  <Image
+                    src="/cycle-icon.png"
+                    alt=""
+                    width={58}
+                    height={58}
+                    className="cycle-tab-logo -translate-y-1.5 rounded-full"
+                  />
+                ) : Icon ? (
+                  <>
+                    <Icon size={20} className={cn("transition-transform", active && "scale-110")} />
+                    <span>{tab.label}</span>
+                  </>
+                ) : null}
               </button>
             );
           })}
@@ -302,9 +326,14 @@ function SignInView({ onAuth }: { onAuth: (tokens: AuthTokens) => void }) {
     <main className="grid min-h-dvh place-items-center px-4 py-10">
       <div className="w-full max-w-[440px]">
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="brand-gradient mb-5 grid h-[104px] w-[104px] place-items-center rounded-full text-white shadow-[0_20px_50px_-12px_rgba(89,71,56,0.35)]">
-            <TreePine size={48} />
-          </div>
+          <Image
+            src="/cycle-icon.png"
+            alt="Cycle"
+            width={112}
+            height={112}
+            priority
+            className="mb-5 h-28 w-28 rounded-full shadow-[0_20px_50px_-18px_rgba(89,71,56,0.55)]"
+          />
           <div className="font-rounded text-2xl font-bold tracking-tight">Cycle</div>
           <div className="mt-1 text-sm text-muted-foreground">自分と向き合う日記アプリ</div>
         </div>
@@ -1489,7 +1518,7 @@ function TasksView({ accessToken }: { accessToken: string }) {
   };
 
   return (
-    <Screen title="タスク" subtitle="やることを小さく整えて、今日の一歩に集中しましょう。">
+    <Screen title="タスクリスト" subtitle="やることを小さく整えて、今日の一歩に集中しましょう。">
       <div className="grid gap-4 lg:grid-cols-[minmax(280px,0.55fr)_minmax(0,1.45fr)]">
         <Card>
           <CardHeader>
@@ -1665,6 +1694,13 @@ function ConversationStarters({
 }) {
   return (
     <div className="grid place-items-center gap-5 py-8 text-center">
+      <Image
+        src="/cycle-icon.png"
+        alt=""
+        width={112}
+        height={112}
+        className="h-28 w-28 rounded-full shadow-[0_20px_46px_-22px_rgba(89,71,56,0.65)]"
+      />
       <div>
         <div className="font-rounded text-[17px] font-semibold">今日はどんな話をしますか？</div>
         <p className="mt-1 text-[13px] text-muted-foreground">
@@ -1803,7 +1839,7 @@ function SettingsView({
   };
 
   return (
-    <Screen title="設定" subtitle="Cycle をあなたらしく使うための設定です。">
+    <Screen title="マイページ" subtitle="Cycle をあなたらしく使うための設定です。">
       <div className="max-w-[720px] space-y-4">
         {error && <ErrorBanner>{error}</ErrorBanner>}
         <Card className="p-0">
@@ -1939,8 +1975,8 @@ function Screen({
 }) {
   return (
     <>
-      <header className="mb-6">
-        <h1 className="font-rounded text-[28px] font-bold tracking-tight">{title}</h1>
+      <header className="mb-7">
+        <h1 className="font-rounded text-[32px] font-bold tracking-[-0.035em] md:text-[34px]">{title}</h1>
         <p className="mt-1.5 text-[14px] text-muted-foreground">{subtitle}</p>
       </header>
       {children}

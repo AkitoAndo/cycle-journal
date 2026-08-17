@@ -14,6 +14,10 @@ export const metadata: Metadata = {
     title: "Cycle — 自分と向き合う日記",
     description: "日々を記録し、振り返り、次の一歩を見つけるためのジャーナル。"
   },
+  icons: {
+    icon: "/cycle-icon.png",
+    apple: "/cycle-icon.png"
+  },
   robots: { index: true, follow: true }
 };
 

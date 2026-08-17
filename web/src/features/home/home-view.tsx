@@ -121,7 +121,7 @@ export function HomeView({ accessToken }: { accessToken: string }) {
   return (
     <>
       <header className="mb-6">
-        <h1 className="font-rounded text-[28px] font-bold tracking-tight">ホーム</h1>
+        <h1 className="font-rounded text-[32px] font-bold tracking-[-0.035em] md:text-[34px]">ホーム</h1>
         <p className="mt-1.5 text-[14px] text-muted-foreground">
           今日の予定と、小さな一歩をひとつの場所で確認できます。
         </p>
