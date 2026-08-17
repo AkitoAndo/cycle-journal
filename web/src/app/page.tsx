@@ -149,10 +149,10 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: "instant" });
   }, [activeTab, tokens]);
 
-  const handleAuth = (next: AuthTokens | null) => {
+  const handleAuth = useCallback((next: AuthTokens | null) => {
     saveAuth(next);
     setTokens(next);
-  };
+  }, []);
 
   if (!tokens) {
     return <SignInView onAuth={handleAuth} />;
@@ -220,10 +220,20 @@ function SignInView({ onAuth }: { onAuth: (tokens: AuthTokens) => void }) {
   const [manualAccessToken, setManualAccessToken] = useState("");
   const [manualRefreshToken, setManualRefreshToken] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
   const enableDeveloperLogin =
     process.env.NODE_ENV !== "production" &&
     process.env.NEXT_PUBLIC_ENABLE_DEV_LOGIN === "true";
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch(`${API_BASE_URL}/health`, {
+      cache: "no-store",
+      signal: controller.signal
+    }).catch(() => undefined);
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     if (!googleClientId) return;
@@ -239,11 +249,15 @@ function SignInView({ onAuth }: { onAuth: (tokens: AuthTokens) => void }) {
       google?.accounts.id.initialize({
         client_id: googleClientId,
         callback: async (response) => {
+          setError(null);
+          setIsAuthenticating(true);
           try {
             const auth = await verifyGoogle(response.credential);
             onAuth({ accessToken: auth.accessToken, refreshToken: auth.refreshToken });
           } catch (err) {
             setError(err instanceof Error ? err.message : "Googleログインに失敗しました");
+          } finally {
+            if (active) setIsAuthenticating(false);
           }
         }
       });
@@ -319,6 +333,17 @@ function SignInView({ onAuth }: { onAuth: (tokens: AuthTokens) => void }) {
                 <code className="rounded bg-amber-100 px-1">.env.local</code> に{" "}
                 <code className="rounded bg-amber-100 px-1">NEXT_PUBLIC_GOOGLE_CLIENT_ID</code>{" "}
                 を設定してください。
+              </div>
+            )}
+
+            {isAuthenticating && (
+              <div
+                role="status"
+                aria-live="polite"
+                className="mt-3 flex items-center gap-2 rounded-xl bg-primary/10 px-3 py-2.5 text-[13px] font-medium text-primary-strong"
+              >
+                <RefreshCw size={15} className="animate-spin" />
+                ログインしています。初回は数秒かかることがあります…
               </div>
             )}
 
