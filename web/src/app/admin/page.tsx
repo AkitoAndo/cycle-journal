@@ -55,6 +55,28 @@ const COACH_PHASE_FIELDS = [
   { key: "naming", label: "Phase 4 Naming" },
   { key: "reflection", label: "Phase 5 Reflection" }
 ] as const;
+const CLAUDE_MODEL_OPTIONS = [
+  {
+    value: "claude-sonnet-4-5@20250929",
+    label: "Claude Sonnet 4.5（高品質・推奨）"
+  },
+  {
+    value: "claude-haiku-4-5@20251001",
+    label: "Claude Haiku 4.5（高速）"
+  }
+] as const;
+const GEMINI_MODEL_OPTIONS = [
+  { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro（高品質）" },
+  { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash（高速）" }
+] as const;
+const TEMPERATURE_OPTIONS = [
+  { value: "0", label: "0.0（安定）" },
+  { value: "0.3", label: "0.3（控えめ）" },
+  { value: "0.7", label: "0.7（バランス・推奨）" },
+  { value: "1", label: "1.0（多様）" },
+  { value: "1.5", label: "1.5（探索的）" }
+] as const;
+const MAX_TOKEN_OPTIONS = [512, 1000, 2000, 3000, 4000] as const;
 
 function loadAdminAuth(): AuthTokens | null {
   if (ADMIN_AUTH_BYPASS) {
@@ -375,58 +397,62 @@ function PromptAdmin({
               />
               {config && (
                 <div className="grid gap-3 rounded-md border border-border bg-muted/25 p-3 md:grid-cols-2">
-                  <FieldLabel label="Coach model">
-                    <Input
+                  <FieldLabel label="Claude：コーチ">
+                    <ConfigSelect
                       value={config.claudeModelCoach}
-                      onChange={(event) =>
-                        setConfig({ ...config, claudeModelCoach: event.target.value })
+                      options={CLAUDE_MODEL_OPTIONS}
+                      onChange={(value) =>
+                        setConfig({ ...config, claudeModelCoach: value })
                       }
-                      className="font-mono text-[12px]"
                     />
                   </FieldLabel>
-                  <FieldLabel label="Quick model">
-                    <Input
+                  <FieldLabel label="Claude：軽量処理">
+                    <ConfigSelect
                       value={config.claudeModelQuick}
-                      onChange={(event) =>
-                        setConfig({ ...config, claudeModelQuick: event.target.value })
+                      options={CLAUDE_MODEL_OPTIONS}
+                      onChange={(value) =>
+                        setConfig({ ...config, claudeModelQuick: value })
                       }
-                      className="font-mono text-[12px]"
                     />
                   </FieldLabel>
-                  <FieldLabel label="Gemini coach">
-                    <Input
+                  <FieldLabel label="Gemini：コーチ">
+                    <ConfigSelect
                       value={config.geminiModelCoach}
-                      onChange={(event) =>
-                        setConfig({ ...config, geminiModelCoach: event.target.value })
+                      options={GEMINI_MODEL_OPTIONS}
+                      onChange={(value) =>
+                        setConfig({ ...config, geminiModelCoach: value })
                       }
-                      className="font-mono text-[12px]"
                     />
                   </FieldLabel>
-                  <FieldLabel label="Gemini quick">
-                    <Input
+                  <FieldLabel label="Gemini：軽量処理">
+                    <ConfigSelect
                       value={config.geminiModelQuick}
-                      onChange={(event) =>
-                        setConfig({ ...config, geminiModelQuick: event.target.value })
+                      options={GEMINI_MODEL_OPTIONS}
+                      onChange={(value) =>
+                        setConfig({ ...config, geminiModelQuick: value })
                       }
-                      className="font-mono text-[12px]"
                     />
                   </FieldLabel>
                   <FieldLabel label="Temperature">
-                    <Input
-                      type="number"
-                      step="0.1"
-                      value={config.temperature}
-                      onChange={(event) =>
-                        setConfig({ ...config, temperature: Number(event.target.value) })
+                    <ConfigSelect
+                      value={String(config.temperature)}
+                      options={TEMPERATURE_OPTIONS}
+                      onChange={(value) =>
+                        setConfig({ ...config, temperature: Number(value) })
                       }
                     />
                   </FieldLabel>
-                  <FieldLabel label="Max tokens">
-                    <Input
-                      type="number"
-                      value={config.maxTokens}
-                      onChange={(event) =>
-                        setConfig({ ...config, maxTokens: Number(event.target.value) })
+                  <FieldLabel label="最大出力トークン">
+                    <ConfigSelect
+                      value={String(config.maxTokens)}
+                      options={MAX_TOKEN_OPTIONS.filter(
+                        (value) => value <= config.outputMaxTokensCap
+                      ).map((value) => ({
+                        value: String(value),
+                        label: `${value.toLocaleString()}${value === 2000 ? "（推奨）" : ""}`
+                      }))}
+                      onChange={(value) =>
+                        setConfig({ ...config, maxTokens: Number(value) })
                       }
                     />
                   </FieldLabel>
@@ -655,6 +681,40 @@ function FieldLabel({ label, children }: { label: string; children: ReactNode })
       <div className="text-[11px] font-semibold text-muted-foreground">{label}</div>
       {children}
     </label>
+  );
+}
+
+function ConfigSelect({
+  value,
+  options,
+  onChange
+}: {
+  value: string;
+  options: ReadonlyArray<{ value: string; label: string }>;
+  onChange: (value: string) => void;
+}) {
+  const hasCurrentValue = options.some((option) => option.value === value);
+  const resolvedOptions = hasCurrentValue
+    ? options
+    : [{ value, label: `${value}（保存済みの値）` }, ...options];
+
+  return (
+    <select
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      className={cn(
+        "flex h-11 w-full rounded-xl border border-input/80 bg-white/65 px-3.5 py-2 text-[13px]",
+        "shadow-[inset_0_1px_1px_rgba(89,71,56,0.03)] outline-none transition-all",
+        "focus-visible:border-primary/70 focus-visible:bg-white/85 focus-visible:ring-4 focus-visible:ring-primary/12",
+        "disabled:cursor-not-allowed disabled:opacity-50"
+      )}
+    >
+      {resolvedOptions.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
   );
 }
 
