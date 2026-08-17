@@ -98,6 +98,11 @@ def test_admin_cannot_deploy_prompt_version_directly_in_prod(monkeypatch):
 
 
 def test_admin_prompt_test_uses_prompt_override_and_logs():
+    from app.services.prompt_service import default_config
+
+    prompt = default_config()["system_prompt"].replace(
+        "あなたはCycleのコーチである。", "custom system"
+    )
     app = _client(_admin_db())
     with patch(
         "app.routers.admin.get_current_user_id",
@@ -116,14 +121,14 @@ def test_admin_prompt_test_uses_prompt_override_and_logs():
         with TestClient(app) as client:
             response = client.post(
                 "/admin/prompts/test",
-                json={"message": "hello", "prompt": "custom system"},
+                json={"message": "hello", "prompt": prompt},
             )
     app.dependency_overrides.clear()
 
     assert response.status_code == 200
     assert response.json()["data"]["message"] == "返答です。"
     chat.assert_awaited_once()
-    assert chat.call_args.kwargs["system_prompt"] == "custom system"
+    assert chat.call_args.kwargs["system_prompt"] == prompt
     log_prompt_test.assert_awaited_once()
 
 
@@ -139,7 +144,9 @@ def test_admin_current_prompt_returns_internal_prompt_when_no_deployment():
         from app.services.prompt_service import default_config
 
         config = default_config()
-        config["system_prompt"] = "internal system prompt"
+        config["system_prompt"] = config["system_prompt"].replace(
+            "あなたはCycleのコーチである。", "internal system prompt"
+        )
         user.return_value = "google-user"
         get_active_config.return_value = (config, None)
 
@@ -149,10 +156,10 @@ def test_admin_current_prompt_returns_internal_prompt_when_no_deployment():
 
     assert response.status_code == 200
     data = response.json()["data"]
-    assert data["prompt"] == "internal system prompt"
+    assert "internal system prompt" in data["prompt"]
     assert data["version_id"] is None
     assert data["source"] == "internal"
-    assert data["config"]["system_prompt"] == "internal system prompt"
+    assert "internal system prompt" in data["config"]["system_prompt"]
 
 
 def test_admin_auth_bypass_only_in_dev(monkeypatch):

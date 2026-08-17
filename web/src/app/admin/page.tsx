@@ -49,12 +49,13 @@ const TEST_SCENARIOS = [
   { label: "危機対応", message: "もう全部終わりにしたい気持ちがあります。" }
 ] as const;
 const COACH_PHASE_FIELDS = [
-  { key: "acknowledge", label: "Phase 1 Acknowledge" },
-  { key: "triage", label: "Phase 2 Triage" },
-  { key: "space", label: "Phase 3 Residue" },
-  { key: "naming", label: "Phase 4 Naming" },
-  { key: "reflection", label: "Phase 5 Reflection" }
+  { key: "acknowledge", label: "フェーズ1：承認", id: "1_承認" },
+  { key: "triage", label: "フェーズ2：トリアージ", id: "2_トリアージ" },
+  { key: "space", label: "フェーズ3：残余", id: "3_残余" },
+  { key: "naming", label: "フェーズ4：命名", id: "4_命名" },
+  { key: "reflection", label: "フェーズ5：反映", id: "5_反映" }
 ] as const;
+type CoachPhase = (typeof COACH_PHASE_FIELDS)[number];
 const CLAUDE_MODEL_OPTIONS = [
   {
     value: "claude-sonnet-4-5@20250929",
@@ -77,6 +78,102 @@ const TEMPERATURE_OPTIONS = [
   { value: "1.5", label: "1.5（探索的）" }
 ] as const;
 const MAX_TOKEN_OPTIONS = [512, 1000, 2000, 3000, 4000] as const;
+const SYSTEM_PROMPT_SECTIONS = ["identity_core", "layer8", "output_spec", "action_core"] as const;
+const TEMPLATE_SPECS = [
+  {
+    key: "analyzeEmotionPrompt",
+    label: "感情分析",
+    allowed: ["user_message"],
+    required: ["user_message"]
+  },
+  {
+    key: "determineCyclePrompt",
+    label: "Cycle分類",
+    allowed: ["elements", "user_message", "detected_emotion"],
+    required: ["elements", "user_message", "detected_emotion"]
+  },
+  {
+    key: "analysisInjectionPrompt",
+    label: "分析結果の注入",
+    allowed: ["detected_emotion", "cycle_element"],
+    required: ["detected_emotion", "cycle_element"]
+  },
+  {
+    key: "safetyFilterPrompt",
+    label: "安全性判定",
+    allowed: ["response"],
+    required: ["response"]
+  }
+] as const satisfies ReadonlyArray<{
+  key: keyof PromptConfig;
+  label: string;
+  allowed: ReadonlyArray<string>;
+  required: ReadonlyArray<string>;
+}>;
+
+function extractPhaseBody(value: string): string {
+  return value
+    .replace(/^\s*<phase_module\s+id="[^"]+">\s*/i, "")
+    .replace(/\s*<\/phase_module>\s*$/i, "")
+    .replace(/\s*\{\{核チェックリスト\}\}\s*/g, "\n\n")
+    .trim();
+}
+
+function buildPhaseModule(phase: CoachPhase, body: string): string {
+  return `<phase_module id="${phase.id}">\n${body.trim()}\n\n{{核チェックリスト}}\n</phase_module>`;
+}
+
+function templateVariables(value: string): string[] {
+  const matches = value.matchAll(/(^|[^\{])\{([a-zA-Z_][a-zA-Z0-9_]*)\}(?!\})/g);
+  return Array.from(matches, (match) => match[2]);
+}
+
+function validatePromptConfiguration(prompt: string, config: PromptConfig): string[] {
+  const errors: string[] = [];
+
+  for (const section of SYSTEM_PROMPT_SECTIONS) {
+    if (!prompt.includes(`<${section}>`) || !prompt.includes(`</${section}>`)) {
+      errors.push(`基本システムプロンプトに固定セクション <${section}> が必要です。`);
+    }
+  }
+  if (!prompt.includes("<control>")) {
+    errors.push("基本システムプロンプトに制御出力 <control> の契約が必要です。");
+  }
+  if (config.maxTokens > config.outputMaxTokensCap) {
+    errors.push("最大出力トークンはシステム上限以下にしてください。");
+  }
+
+  for (const spec of TEMPLATE_SPECS) {
+    const value = String(config[spec.key] ?? "");
+    const variables = templateVariables(value);
+    const allowed = spec.allowed as ReadonlyArray<string>;
+    const required = spec.required as ReadonlyArray<string>;
+    const unknown = variables.filter((variable) => !allowed.includes(variable));
+    const missing = required.filter((variable) => !variables.includes(variable));
+    if (unknown.length > 0) {
+      errors.push(`${spec.label}に未対応の変数があります: ${unknown.map((item) => `{${item}}`).join(", ")}`);
+    }
+    if (missing.length > 0) {
+      errors.push(`${spec.label}に必須変数がありません: ${missing.map((item) => `{${item}}`).join(", ")}`);
+    }
+  }
+
+  for (const phase of COACH_PHASE_FIELDS) {
+    const value = config.coachPhaseModules?.[phase.key];
+    if (!value?.trim()) continue;
+    if (!value.trimStart().startsWith(`<phase_module id="${phase.id}">`)) {
+      errors.push(`${phase.label}の固定IDが一致していません。本文を編集すると自動修復されます。`);
+    }
+    if (!value.trimEnd().endsWith("</phase_module>")) {
+      errors.push(`${phase.label}の終了タグがありません。本文を編集すると自動修復されます。`);
+    }
+    if (!value.includes("{{核チェックリスト}}")) {
+      errors.push(`${phase.label}に共通チェックリストの挿入位置がありません。本文を編集すると自動修復されます。`);
+    }
+  }
+
+  return errors;
+}
 
 function loadAdminAuth(): AuthTokens | null {
   if (ADMIN_AUTH_BYPASS) {
@@ -149,6 +246,16 @@ function PromptAdmin({
     () => versions.find((version) => version.versionId === selectedVersionId) ?? null,
     [selectedVersionId, versions]
   );
+  const validationErrors = useMemo(
+    () => (config ? validatePromptConfiguration(prompt, config) : []),
+    [config, prompt]
+  );
+
+  const canUseDraft = () => {
+    if (validationErrors.length === 0) return true;
+    setError(`設定を確認してください。\n${validationErrors.map((item) => `・${item}`).join("\n")}`);
+    return false;
+  };
 
   const refresh = useCallback(async () => {
     setError(null);
@@ -198,6 +305,7 @@ function PromptAdmin({
   };
 
   const saveVersion = async () => {
+    if (!canUseDraft()) return;
     setError(null);
     setLoading(true);
     try {
@@ -236,6 +344,7 @@ function PromptAdmin({
   };
 
   const runTest = async () => {
+    if (!canUseDraft()) return;
     setError(null);
     setLoading(true);
     try {
@@ -257,6 +366,7 @@ function PromptAdmin({
 
   const runComparison = async () => {
     if (!baselinePrompt || !baselineConfig) return;
+    if (!canUseDraft()) return;
     setError(null);
     setLoading(true);
     try {
@@ -384,7 +494,19 @@ function PromptAdmin({
             </CardHeader>
             <CardContent className="space-y-3">
               <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="バージョン名" />
+              <div className="rounded-xl border border-amber-200 bg-amber-50/70 px-3 py-2.5 text-[12px] leading-relaxed text-amber-950">
+                <div className="mb-1 flex flex-wrap items-center gap-2 font-semibold">
+                  コーチの基本システムプロンプト
+                  <Badge variant="outline" className="border-amber-300 bg-white/60 text-amber-900">
+                    高度な設定
+                  </Badge>
+                </div>
+                <p>
+                  人格と基本原則を編集できます。固定セクションと制御出力契約を削除すると保存・テストできません。
+                </p>
+              </div>
               <Textarea
+                aria-label="コーチの基本システムプロンプト"
                 value={prompt}
                 onChange={(event) => {
                   setPrompt(event.target.value);
@@ -464,7 +586,7 @@ function PromptAdmin({
                         setConfig({ ...config, useGeminiFallback: event.target.checked })
                       }
                     />
-                    Gemini fallback
+                    Geminiを予備モデルとして使用
                   </label>
                   <label className="flex items-center gap-2 text-[13px] font-semibold">
                     <input
@@ -474,14 +596,17 @@ function PromptAdmin({
                         setConfig({ ...config, useLanggraph: event.target.checked })
                       }
                     />
-                    LangGraph
+                    LangGraph分析を使用
                   </label>
                 </div>
               )}
               {config && (
                 <div className="space-y-3 rounded-md border border-border bg-card p-3">
-                  <div className="text-[12px] font-semibold text-muted-foreground">
-                    Coach runtime prompts
+                  <div>
+                    <div className="text-[13px] font-semibold">コーチの進行ルール</div>
+                    <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                      ID・構造タグ・共通チェックリストはシステムが固定管理します。ここではコーチの振る舞いだけを編集します。
+                    </p>
                   </div>
                   <label className="flex items-center gap-2 text-[13px] font-semibold">
                     <input
@@ -494,33 +619,38 @@ function PromptAdmin({
                         })
                       }
                     />
-                    Vocabulary lint
+                    ユーザー由来ではない語彙を自動検査
                   </label>
                   <PromptArea
-                    label="Action core checklist"
+                    label="全フェーズ共通チェックリスト"
+                    description="各フェーズの末尾へ自動挿入されます。フェーズ本文側へ変数を書く必要はありません。"
                     value={config.coachActionCoreChecklist ?? ""}
                     onChange={(value) =>
                       setConfig({ ...config, coachActionCoreChecklist: value })
                     }
                   />
                   <PromptArea
-                    label="Layer8 crisis route"
+                    label="危機対応ルート（Layer8）"
+                    description="自傷・他害・暴力などの兆候を検出した場合に優先される安全上の指示です。"
+                    warning
                     value={config.coachLayer8CrisisPrompt ?? ""}
                     onChange={(value) =>
                       setConfig({ ...config, coachLayer8CrisisPrompt: value })
                     }
                   />
                   <PromptArea
-                    label="Professional boundary route"
+                    label="専門領域への境界ルート"
+                    description="医療・法律・診断など、コーチの管轄外へ案内するための指示です。"
+                    warning
                     value={config.coachProfessionalBoundaryPrompt ?? ""}
                     onChange={(value) =>
                       setConfig({ ...config, coachProfessionalBoundaryPrompt: value })
                     }
                   />
                   {COACH_PHASE_FIELDS.map((phase) => (
-                    <PromptArea
+                    <PhasePromptEditor
                       key={phase.key}
-                      label={phase.label}
+                      phase={phase}
                       value={config.coachPhaseModules?.[phase.key] ?? ""}
                       onChange={(value) =>
                         setConfig({
@@ -536,27 +666,49 @@ function PromptAdmin({
                 </div>
               )}
               {config && (
-                <div className="space-y-3 rounded-md border border-border bg-card p-3">
-                  <div className="text-[12px] font-semibold text-muted-foreground">
-                    LangGraph prompts
+                <div
+                  className={cn(
+                    "space-y-3 rounded-md border border-border bg-card p-3",
+                    !config.useLanggraph && "bg-muted/25"
+                  )}
+                >
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2 text-[13px] font-semibold">
+                      LangGraph分析プロンプト
+                      <Badge variant={config.useLanggraph ? "success" : "muted"}>
+                        {config.useLanggraph ? "使用中" : "現在は未使用"}
+                      </Badge>
+                    </div>
+                    <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                      LangGraph分析が有効な場合だけ実行されます。変数ボタンから安全に挿入できます。
+                    </p>
                   </div>
                   <PromptArea
-                    label="Emotion analysis"
+                    label="感情分析"
+                    description="ユーザーの入力から主な感情を抽出します。"
+                    variables={["{user_message}"]}
                     value={config.analyzeEmotionPrompt}
                     onChange={(value) => setConfig({ ...config, analyzeEmotionPrompt: value })}
                   />
                   <PromptArea
-                    label="Cycle classification"
+                    label="Cycle要素の分類"
+                    description="感情分析の結果と候補一覧を使って、関連するCycle要素を選びます。"
+                    variables={["{elements}", "{user_message}", "{detected_emotion}"]}
                     value={config.determineCyclePrompt}
                     onChange={(value) => setConfig({ ...config, determineCyclePrompt: value })}
                   />
                   <PromptArea
-                    label="Analysis injection"
+                    label="分析結果の注入"
+                    description="分類結果を、コーチへ渡すユーザーメッセージの前に追加します。"
+                    variables={["{detected_emotion}", "{cycle_element}"]}
                     value={config.analysisInjectionPrompt}
                     onChange={(value) => setConfig({ ...config, analysisInjectionPrompt: value })}
                   />
                   <PromptArea
-                    label="Safety filter"
+                    label="応答の安全性判定"
+                    description="生成したコーチ応答を公開前に検査します。"
+                    variables={["{response}"]}
+                    warning
                     value={config.safetyFilterPrompt}
                     onChange={(value) => setConfig({ ...config, safetyFilterPrompt: value })}
                   />
@@ -568,6 +720,16 @@ function PromptAdmin({
                 className="min-h-[82px]"
                 placeholder="この変更の狙い・検証結果・注意点"
               />
+              {validationErrors.length > 0 && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[12px] leading-relaxed text-amber-950">
+                  <div className="font-semibold">保存・テスト前に確認してください</div>
+                  <ul className="mt-1 list-disc space-y-0.5 pl-5">
+                    {validationErrors.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0 truncate font-mono text-[11px] text-muted-foreground">
                   {selectedVersion?.versionId ?? "new draft"}
@@ -586,7 +748,12 @@ function PromptAdmin({
                     <Rocket size={16} />
                     保存済み版をDevへ適用
                   </Button>
-                  <Button onClick={saveVersion} disabled={loading || !title.trim() || !prompt.trim()}>
+                  <Button
+                    onClick={saveVersion}
+                    disabled={
+                      loading || !title.trim() || !prompt.trim() || validationErrors.length > 0
+                    }
+                  >
                     <Save size={16} />
                     新しい版として保存
                   </Button>
@@ -638,20 +805,35 @@ function PromptAdmin({
                 placeholder="参照するジャーナル（任意）"
               />
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                <Button onClick={runTest} disabled={loading || !prompt.trim() || !message.trim()}>
+                <Button
+                  onClick={runTest}
+                  disabled={
+                    loading || !prompt.trim() || !message.trim() || validationErrors.length > 0
+                  }
+                >
                   <Play size={16} />
                   下書きを試す
                 </Button>
                 <Button
                   variant="outline"
                   onClick={runComparison}
-                  disabled={loading || !prompt.trim() || !message.trim() || !baselinePrompt}
+                  disabled={
+                    loading ||
+                    !prompt.trim() ||
+                    !message.trim() ||
+                    !baselinePrompt ||
+                    validationErrors.length > 0
+                  }
                 >
                   <GitCompareArrows size={16} />
                   現行版と比較
                 </Button>
               </div>
-              {error && <div className="rounded-md bg-destructive/10 px-3 py-2 text-[13px] text-destructive">{error}</div>}
+              {error && (
+                <div className="whitespace-pre-line rounded-md bg-destructive/10 px-3 py-2 text-[13px] text-destructive">
+                  {error}
+                </div>
+              )}
               {baselineResponse && (
                 <div className="rounded-xl border border-border bg-card px-3 py-3">
                   <div className="mb-2 text-[12px] font-semibold text-muted-foreground">現行版</div>
@@ -720,22 +902,110 @@ function ConfigSelect({
 
 function PromptArea({
   label,
+  description,
+  variables = [],
+  warning = false,
   value,
   onChange
 }: {
   label: string;
+  description?: string;
+  variables?: ReadonlyArray<string>;
+  warning?: boolean;
   value: string;
   onChange: (value: string) => void;
 }) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const insertVariable = (variable: string) => {
+    const textarea = textareaRef.current;
+    const start = textarea?.selectionStart ?? value.length;
+    const end = textarea?.selectionEnd ?? value.length;
+    const nextValue = `${value.slice(0, start)}${variable}${value.slice(end)}`;
+    onChange(nextValue);
+    window.requestAnimationFrame(() => {
+      textarea?.focus();
+      textarea?.setSelectionRange(start + variable.length, start + variable.length);
+    });
+  };
+
   return (
-    <label className="block space-y-1">
-      <div className="text-[11px] font-semibold text-muted-foreground">{label}</div>
+    <div
+      className={cn(
+        "space-y-1.5 rounded-xl border border-transparent",
+        warning && "border-amber-200 bg-amber-50/50 p-3"
+      )}
+    >
+      <div className="text-[12px] font-semibold">{label}</div>
+      {description && (
+        <p className="text-[11px] leading-relaxed text-muted-foreground">{description}</p>
+      )}
+      {variables.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5" aria-label={`${label}で利用可能な変数`}>
+          <span className="text-[10px] font-semibold text-muted-foreground">利用可能な変数</span>
+          {variables.map((variable) => (
+            <button
+              key={variable}
+              type="button"
+              onClick={() => insertVariable(variable)}
+              className="rounded-md bg-primary/8 px-2 py-1 font-mono text-[10px] font-semibold text-primary-strong ring-1 ring-inset ring-primary/15 hover:bg-primary/15"
+              title={`${variable}をカーソル位置へ挿入`}
+            >
+              {variable}
+            </button>
+          ))}
+        </div>
+      )}
       <Textarea
+        ref={textareaRef}
+        aria-label={label}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className="min-h-[92px] font-mono text-[12px] leading-relaxed"
       />
-    </label>
+    </div>
+  );
+}
+
+function PhasePromptEditor({
+  phase,
+  value,
+  onChange
+}: {
+  phase: CoachPhase;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const body = extractPhaseBody(value);
+
+  return (
+    <div className="space-y-2 rounded-xl border border-border bg-muted/20 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-[13px] font-semibold">{phase.label}</div>
+        <div className="flex flex-wrap gap-1.5">
+          <Badge variant="outline" className="font-mono">
+            ID: {phase.id}
+          </Badge>
+          <Badge variant="muted">構造は固定</Badge>
+        </div>
+      </div>
+      <p className="text-[11px] leading-relaxed text-muted-foreground">
+        目的・規則・退出条件など、AIへ伝える本文だけを編集できます。
+      </p>
+      <div className="rounded-lg bg-surface-strong px-2.5 py-1.5 font-mono text-[10px] text-muted-foreground">
+        {`<phase_module id="${phase.id}">`}
+      </div>
+      <Textarea
+        aria-label={`${phase.label}の本文`}
+        value={body}
+        onChange={(event) => onChange(buildPhaseModule(phase, event.target.value))}
+        className="min-h-[150px] font-mono text-[12px] leading-relaxed"
+      />
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-strong px-2.5 py-1.5 font-mono text-[10px] text-muted-foreground">
+        <span>{"{{核チェックリスト}}（自動挿入）"}</span>
+        <span>{"</phase_module>"}</span>
+      </div>
+    </div>
   );
 }
 
