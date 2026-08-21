@@ -77,6 +77,12 @@ variable "cors_allowed_origins" {
   default     = ""
 }
 
+variable "mcp_service_account_email" {
+  description = "Only service identity allowed to call the internal MCP API router"
+  type        = string
+  default     = ""
+}
+
 variable "apple_bundle_id" {
   description = "Apple app bundle ID"
   type        = string

@@ -108,7 +108,7 @@ def test_admin_prompt_test_uses_prompt_override_and_logs():
         "app.routers.admin.get_current_user_id",
         new_callable=AsyncMock,
     ) as user, patch(
-        "app.routers.admin.coach_service.chat",
+        "app.services.prompt_admin_service.coach_service.chat",
         new_callable=AsyncMock,
     ) as chat, patch(
         "app.routers.admin.prompt_service.log_prompt_test",

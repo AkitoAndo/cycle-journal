@@ -13,6 +13,7 @@ from app.routers import (
     coach,
     health,
     iap,
+    internal_mcp,
     journals,
     sessions,
     tasks,
@@ -41,6 +42,7 @@ app.add_exception_handler(AppError, app_error_handler)
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(admin.router)
+app.include_router(internal_mcp.router)
 app.include_router(coach.router)
 app.include_router(sessions.router)
 app.include_router(tasks.router)
