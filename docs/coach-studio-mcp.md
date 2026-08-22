@@ -58,14 +58,22 @@ identity providerを推奨している。初期構成では、OpenAIの認証済
      `https://cycle-coach-mcp-dev-1031235624127.asia-northeast1.run.app/mcp`
    - Signing Algorithm: `RS256`
 3. API permission `coach:manage` を追加する。
-4. Auth0のCIMD registrationを有効化し、Codex／ChatGPTのCIMD clientを登録する。
-5. User-delegated accessをper-application authorizationにし、登録したMCP clientへ
-   `coach:manage` だけを許可する。
+4. DevではDCRを有効化し、サードパーティーアプリケーションの既定の
+   User-delegated permissionに `coach:manage` だけを許可する。Auth0の新規DCR
+   クライアントはPKCE必須のstrict security controlsを使用する。
+5. 本番ではopen DCRではなくCIMD registrationを有効化し、Codex／ChatGPTの
+   CIMD clientへ `coach:manage` だけを許可する。
 6. Post Login Actionで、許可した2メール以外を拒否し、access tokenへ確認済みメールを
    namespaced claimとして追加する。
 
 ```javascript
 exports.onExecutePostLogin = async (event, api) => {
+  const mcpAudience =
+    "https://cycle-coach-mcp-dev-1031235624127.asia-northeast1.run.app/mcp";
+  if (event.resource_server?.identifier !== mcpAudience) {
+    return;
+  }
+
   const allowed = new Set([
     "28ww.lo.ol.ww28@gmail.com",
     "takeshiogata1105@gmail.com",
