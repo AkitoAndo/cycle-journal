@@ -108,7 +108,7 @@ jobs:
             --repository-format docker \
             --location "${REGION}" \
             --project "${PROJECT_ID}" \
-            --description "Cycle Journal Web images"
+            --description "Treow Web images"
 
       - name: Configure Docker auth
         run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet

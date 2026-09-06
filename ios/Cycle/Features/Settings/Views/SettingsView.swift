@@ -327,7 +327,7 @@ struct SettingsView: View {
             Image(systemName: "checkmark.seal.fill")
                 .foregroundColor(DesignSystem.Colors.accent)
             VStack(alignment: .leading) {
-                Text("Cycle 無料版")
+                Text("Treow 無料版")
                     .font(DesignSystem.Fonts.button)
                 Text("現在、すべての機能を無料で利用できます")
                     .font(DesignSystem.Fonts.caption)

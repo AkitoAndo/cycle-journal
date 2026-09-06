@@ -1,4 +1,4 @@
-# Cycle Journal Infrastructure
+# Treow Infrastructure
 
 Terraform is split by directory and state:
 

@@ -118,7 +118,7 @@ ENVIRONMENT=dev
 GCP_PROJECT_ID=cycle-journal
 GCP_REGION=asia-northeast1
 APPLE_BUNDLE_ID=com.cycle.journal
-USE_LANGGRAPH=false  # true: LangGraphフロー（感情分析・Cycle要素判定・安全フィルター）
+USE_LANGGRAPH=false  # true: LangGraphフロー（感情分析・Treow要素判定・安全フィルター）
 ```
 
 本番環境は Cloud Run の環境変数 + GCP Secret Manager で管理。

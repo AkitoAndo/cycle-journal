@@ -25,7 +25,7 @@ KPI 計測（Trial→Paid 25% / 3ヶ月継続 60% / アクティベーション�
 
 1. Firebase Console → **+ Add app** → iOS アイコン
 2. **iOS bundle ID**: `com.akitoando.CycleJournal`
-3. App nickname: `CycleJournal iOS`
+3. App nickname: `Treow iOS`
 4. App Store ID: 後で入力可
 5. **Register App**
 6. **Download GoogleService-Info.plist** をクリック

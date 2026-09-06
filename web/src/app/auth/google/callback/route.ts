@@ -42,11 +42,11 @@ function authHandoffPage(
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Cycleにログインしています</title>
+    <title>Treowにログインしています</title>
   </head>
   <body style="margin:0;display:grid;min-height:100vh;place-items:center;background:#f8f2e5;color:#4f443b;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif">
     <main style="padding:24px;text-align:center">
-      <h1 style="font-size:20px">Cycleにログインしています…</h1>
+      <h1 style="font-size:20px">Treowにログインしています…</h1>
       <p style="font-size:14px">このまま少しお待ちください。</p>
     </main>
     <script nonce="${nonce}">${script}</script>

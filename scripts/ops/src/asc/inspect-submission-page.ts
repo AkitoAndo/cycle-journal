@@ -14,7 +14,7 @@ async function main() {
   mkdirSync(outDir, { recursive: true });
   const { browser, page } = await launch({ storageState: ASC_STORAGE_STATE });
 
-  // 1) App Review Submissions page (Cycle Journal)
+  // 1) App Review Submissions page (Treow)
   const reviewUrl = `https://appstoreconnect.apple.com/apps/${APP_ID}/distribution/reviewsubmissions`;
   console.log(`→ ${reviewUrl}`);
   await page.goto(reviewUrl, { waitUntil: "domcontentloaded" });

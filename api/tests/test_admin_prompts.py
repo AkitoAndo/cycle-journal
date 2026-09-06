@@ -101,14 +101,14 @@ def test_admin_prompt_test_uses_prompt_override_and_logs():
     from app.services.prompt_service import default_config
 
     prompt = default_config()["system_prompt"].replace(
-        "あなたはCycleのコーチである。", "custom system"
+        "あなたはTreowのコーチである。", "custom system"
     )
     app = _client(_admin_db())
     with patch(
         "app.routers.admin.get_current_user_id",
         new_callable=AsyncMock,
     ) as user, patch(
-        "app.routers.admin.coach_service.chat",
+        "app.services.prompt_admin_service.coach_service.chat",
         new_callable=AsyncMock,
     ) as chat, patch(
         "app.routers.admin.prompt_service.log_prompt_test",
@@ -145,7 +145,7 @@ def test_admin_current_prompt_returns_internal_prompt_when_no_deployment():
 
         config = default_config()
         config["system_prompt"] = config["system_prompt"].replace(
-            "あなたはCycleのコーチである。", "internal system prompt"
+            "あなたはTreowのコーチである。", "internal system prompt"
         )
         user.return_value = "google-user"
         get_active_config.return_value = (config, None)

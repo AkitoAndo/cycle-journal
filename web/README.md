@@ -1,6 +1,6 @@
-# Cycle Journal Web
+# Treow Web
 
-Next.js frontend for the existing Cycle Journal API.
+Next.js frontend for the existing Treow API.
 
 ## Setup
 

@@ -4,7 +4,7 @@
 
 ## 1. iOS基本フロー
 
-- [ ] 新規起動: Welcome → Cycle概念 → Goal選択 → Sign In → 初回ジャーナル → 通知選択 → メイン画面
+- [ ] 新規起動: Welcome → Treow概念 → Goal選択 → Sign In → 初回ジャーナル → 通知選択 → メイン画面
 - [ ] Goal未選択、初回ジャーナル未入力では先へ進めない
 - [ ] Appleでサインインできる
 - [ ] Googleでサインインできる

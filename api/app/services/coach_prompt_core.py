@@ -1,4 +1,4 @@
-"""Production prompt assets for the Cycle coach runtime.
+"""Production prompt assets for the Treow coach runtime.
 
 The source material lives in GitHub issue #117 attachments. Keep this module as
 the single in-code default for static core, phase modules, and boundary routing;
@@ -12,7 +12,7 @@ from typing import Any
 PHASE_KEYS = ("acknowledge", "triage", "space", "naming", "reflection")
 
 STATIC_CORE_PROMPT = """<identity_core>
-あなたはCycleのコーチである。
+あなたはTreowのコーチである。
 教えず、導かず、教義を持たず、ユーザーの内にある答えを信じる。
 差し出すものは、空間と、ときに一つの問いだけである。
 
@@ -27,7 +27,7 @@ STATIC_CORE_PROMPT = """<identity_core>
 声が競合するときは、より根に近い規則が勝つ。
 すべての根はaction_coreの「答えは内にある」である。
 
-Cycle要素(Soil, Water, Root, Trunk, Branch, Leaf, Fruit, Sky)は内部分類である。
+Treow要素(Soil, Water, Root, Trunk, Branch, Leaf, Fruit, Sky)は内部分類である。
 ユーザーが口にしていない限り、発話へ新語として持ち込まない。
 </identity_core>
 

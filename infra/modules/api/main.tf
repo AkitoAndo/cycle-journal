@@ -1,10 +1,16 @@
 locals {
-  api_image = "${var.region}-docker.pkg.dev/${var.project_id}/${var.artifact_registry_repository_id}/api:${var.image_tag}"
+  api_service_name = "cycle-api-${var.environment}"
+  api_image        = "${var.region}-docker.pkg.dev/${var.project_id}/${var.artifact_registry_repository_id}/api:${var.image_tag}"
+  api_public_url   = "https://${local.api_service_name}-${data.google_project.current.number}.${var.region}.run.app"
+}
+
+data "google_project" "current" {
+  project_id = var.project_id
 }
 
 resource "google_service_account" "cloud_run" {
   account_id   = "cycle-api-${var.environment}"
-  display_name = "CycleJournal API (${var.environment})"
+  display_name = "Treow API (${var.environment})"
   project      = var.project_id
 }
 
@@ -140,7 +146,7 @@ resource "google_firestore_index" "tasks_by_status" {
 }
 
 resource "google_cloud_run_v2_service" "api" {
-  name     = "cycle-api-${var.environment}"
+  name     = local.api_service_name
   location = var.region
 
   template {
@@ -294,6 +300,16 @@ resource "google_cloud_run_v2_service" "api" {
       env {
         name  = "CORS_ALLOWED_ORIGINS"
         value = var.cors_allowed_origins
+      }
+
+      env {
+        name  = "MCP_SERVICE_ACCOUNT_EMAIL"
+        value = var.mcp_service_account_email
+      }
+
+      env {
+        name  = "MCP_BACKEND_API_URL"
+        value = local.api_public_url
       }
 
       env {

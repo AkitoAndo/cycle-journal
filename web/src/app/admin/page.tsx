@@ -77,8 +77,8 @@ const PROMPT_VARIABLES = {
   },
   elements: {
     token: "{elements}",
-    meaning: "分類先として選べるCycle要素の一覧です。",
-    source: "アプリが管理する固定のCycle要素一覧から取得します。"
+    meaning: "分類先として選べるTreow要素の一覧です。",
+    source: "アプリが管理する固定のTreow要素一覧から取得します。"
   },
   detectedEmotion: {
     token: "{detected_emotion}",
@@ -87,8 +87,8 @@ const PROMPT_VARIABLES = {
   },
   cycleElement: {
     token: "{cycle_element}",
-    meaning: "ユーザーのメッセージに最も関連すると判定されたCycle要素です。",
-    source: "直前の「Cycle要素の分類」の結果から取得します。"
+    meaning: "ユーザーのメッセージに最も関連すると判定されたTreow要素です。",
+    source: "直前の「Treow要素の分類」の結果から取得します。"
   },
   response: {
     token: "{response}",
@@ -134,7 +134,7 @@ const TEMPLATE_SPECS = [
   },
   {
     key: "determineCyclePrompt",
-    label: "Cycle分類",
+    label: "Treow分類",
     allowed: ["elements", "user_message", "detected_emotion"],
     required: ["elements", "user_message", "detected_emotion"]
   },
@@ -455,14 +455,14 @@ function PromptAdmin({
             <Image src="/cycle-icon.png" alt="" width={42} height={42} priority className="rounded-full" />
             <div>
               <div className="font-rounded text-[17px] font-semibold leading-tight">Coach Studio</div>
-              <div className="text-[12px] text-muted-foreground">Cycle Web 管理者ツール</div>
+              <div className="text-[12px] text-muted-foreground">Treow Web 管理者ツール</div>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="ghost" asChild>
               <a href="/">
                 <ArrowLeft size={16} />
-                Cycleへ戻る
+                Treowへ戻る
               </a>
             </Button>
             <Badge variant="outline" title={ADMIN_API_BASE_URL}>
@@ -636,7 +636,7 @@ function PromptAdmin({
                         setConfig({ ...config, useLanggraph: event.target.checked })
                       }
                     />
-                    返答前に感情とCycle要素を分析
+                    返答前に感情とTreow要素を分析
                   </label>
                 </div>
               )}
@@ -720,7 +720,7 @@ function PromptAdmin({
                       </Badge>
                     </div>
                     <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-                      「返答前に感情とCycle要素を分析」が有効な場合だけ使用されます。変数はボタンから挿入できます。
+                      「返答前に感情とTreow要素を分析」が有効な場合だけ使用されます。変数はボタンから挿入できます。
                     </p>
                   </div>
                   <PromptArea
@@ -731,8 +731,8 @@ function PromptAdmin({
                     onChange={(value) => setConfig({ ...config, analyzeEmotionPrompt: value })}
                   />
                   <PromptArea
-                    label="Cycle要素の分類"
-                    description="感情分析の結果と候補一覧を使って、関連するCycle要素を選びます。"
+                    label="Treow要素の分類"
+                    description="感情分析の結果と候補一覧を使って、関連するTreow要素を選びます。"
                     variables={[
                       PROMPT_VARIABLES.elements,
                       PROMPT_VARIABLES.userMessage,
@@ -1073,7 +1073,7 @@ function AdminSignIn() {
             <Shield size={21} />
           </div>
           <div>
-            <h1 className="font-rounded text-[20px] font-semibold">Cycle Admin</h1>
+            <h1 className="font-rounded text-[20px] font-semibold">Treow Admin</h1>
             <p className="text-[13px] text-muted-foreground">Googleログインが必要です</p>
           </div>
         </div>

@@ -1,7 +1,7 @@
 ---
 layout: home
 hero:
-  name: Cycle Journal
+  name: Treow（トレオ）
   text: 日記・ジャーナルとAIコーチで内省を習慣に
   tagline: 日記を書き、AIコーチとの対話で自己理解を深め、気づきを小さな行動につなげる
   actions:
@@ -23,7 +23,7 @@ features:
     details: Cloud Run + Firestore + Vertex AI のサーバーレス構成
 ---
 
-# Cycle Journal
+# Treow（トレオ）
 
-Cycle Journal は、日記・ジャーナル、AIコーチ、タスクをひとつにつなげる内省アプリです。
+Treow は、日記・ジャーナル、AIコーチ、タスクをひとつにつなげる内省アプリです。
 書いた言葉をAIコーチとの対話に活かし、自己理解から今日の小さな行動までを支えます。

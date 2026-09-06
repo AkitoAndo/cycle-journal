@@ -229,7 +229,7 @@ async def chat(
         now=assistant_now,
     )
 
-    # Cycle要素: LangGraphの判定結果 > リクエストの指定
+    # Treow要素: LangGraphの判定結果 > リクエストの指定
     final_cycle_element = response_cycle_element or (
         body.context.cycle_element if body.context else None
     )

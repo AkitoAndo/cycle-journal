@@ -1,7 +1,7 @@
 resource "google_service_account" "cloud_run" {
   project      = var.project_id
   account_id   = "cycle-web-${var.environment}"
-  display_name = "CycleJournal Web (${var.environment})"
+  display_name = "Treow Web (${var.environment})"
 }
 
 resource "google_service_account_iam_member" "github_actions_act_as" {

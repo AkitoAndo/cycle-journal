@@ -149,7 +149,7 @@ def build_phase_context(
         "session_end": False,
     }
     parts = [
-        "【Cycle進行状態】",
+        "【Treow進行状態】",
         f"現在フェーズ: {state['phase_label']}",
         "次のphase_moduleだけに従う。ほかのフェーズを先取りしない。",
     ]

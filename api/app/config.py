@@ -20,6 +20,25 @@ class Settings(BaseSettings):
     admin_google_emails: str = "takeshiogata1105@gmail.com,28ww.lo.ol.ww28@gmail.com"
     admin_auth_bypass: bool = False
 
+    # Remote MCP resource server for Coach Studio automation.
+    # OAuth is intentionally delegated to an established OAuth 2.1 provider
+    # (Auth0 is the initial supported provider). The MCP service still applies
+    # its own email allowlist as a second authorization gate.
+    mcp_public_url: str = "http://127.0.0.1:8080/mcp"
+    mcp_oauth_issuer: str = "https://example.invalid/"
+    mcp_oauth_audience: str = "http://127.0.0.1:8080/mcp"
+    mcp_oauth_jwks_uri: str = ""
+    mcp_email_claim: str = "https://cycle-journal.app/email"
+    mcp_email_verified_claim: str = "https://cycle-journal.app/email_verified"
+    mcp_allowed_emails: str = (
+        "takeshiogata1105@gmail.com,28ww.lo.ol.ww28@gmail.com"
+    )
+    mcp_required_scope: str = "coach:manage"
+    # Internal service-to-service boundary. The remote MCP service has no
+    # Firestore or Vertex role and can reach only the purpose-built API router.
+    mcp_backend_api_url: str = "http://127.0.0.1:8080"
+    mcp_service_account_email: str = ""
+
     # Sign in with Apple - revoke / token exchange 用
     # 未設定の場合は revoke / code 交換は no-op になる（ローカル開発フォールバック）
     apple_team_id: str = ""
@@ -80,7 +99,7 @@ class Settings(BaseSettings):
     gemini_model_coach: str = "gemini-2.5-pro"  # Sonnet 相当
     gemini_model_quick: str = "gemini-2.5-flash"  # Haiku 相当
 
-    # LangGraphフローを有効にする（感情分析・Cycle要素判定・安全フィルター）
+    # LangGraphフローを有効にする（感情分析・Treow要素判定・安全フィルター）
     use_langgraph: bool = False
 
     # Apple In-App Purchase (App Store Server API / Notifications V2)
@@ -127,6 +146,15 @@ class Settings(BaseSettings):
                 if value.strip()
             )
         )
+
+    @property
+    def mcp_email_allowlist(self) -> set[str]:
+        """Return the exact identities allowed to use the remote MCP server."""
+        return {
+            value.strip().lower()
+            for value in self.mcp_allowed_emails.split(",")
+            if value.strip()
+        }
 
     model_config = {"env_prefix": "", "case_sensitive": False}
 

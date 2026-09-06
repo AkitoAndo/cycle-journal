@@ -16,7 +16,7 @@ STAGE="${1:-dev}"
 APPLE_BUNDLE_ID="${2:-com.cycle.journal}"
 
 echo "========================================"
-echo "  CycleJournal API Deploy Script"
+echo "  Treow API Deploy Script"
 echo "========================================"
 echo ""
 echo "Stage: $STAGE"

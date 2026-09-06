@@ -125,7 +125,7 @@ function useWebReminder(authenticated: boolean) {
       const deliveryKey = `cycle.web.reminder.${toDateKey(now)}.${currentTime}`;
       if (window.sessionStorage.getItem(deliveryKey)) return;
       window.sessionStorage.setItem(deliveryKey, "sent");
-      new Notification("Cycle", { body: "今日のふりかえりを書きましょう。" });
+      new Notification("Treow", { body: "今日のふりかえりを書きましょう。" });
     };
     checkReminder();
     const timer = window.setInterval(checkReminder, 20_000);
@@ -197,7 +197,7 @@ export default function Home() {
             className="h-11 w-11 rounded-full shadow-[0_9px_24px_-14px_rgba(89,71,56,0.7)]"
           />
           <div>
-            <div className="font-rounded text-[17px] font-bold leading-tight tracking-[-0.02em]">Cycle</div>
+            <div className="font-rounded text-[17px] font-bold leading-tight tracking-[-0.02em]">Treow</div>
             <div className="text-[11px] text-muted-foreground sm:text-[12px]">自分のリズムを、見つけていく。</div>
           </div>
         </div>
@@ -306,13 +306,13 @@ function SignInView({ onAuth }: { onAuth: (tokens: AuthTokens) => void }) {
         <div className="mb-8 flex flex-col items-center text-center">
           <Image
             src="/cycle-icon.png"
-            alt="Cycle"
+            alt="Treow"
             width={112}
             height={112}
             priority
             className="mb-5 h-28 w-28 rounded-full shadow-[0_20px_50px_-18px_rgba(89,71,56,0.55)]"
           />
-          <div className="font-rounded text-2xl font-bold tracking-tight">Cycle</div>
+          <div className="font-rounded text-2xl font-bold tracking-tight">Treow</div>
           <div className="mt-1 text-sm text-muted-foreground">自分と向き合う日記アプリ</div>
         </div>
 
@@ -1135,7 +1135,7 @@ function CoachView({ accessToken }: { accessToken: string }) {
                             : "text-muted-foreground"
                         )}
                       >
-                        {message.role === "user" ? "You" : "Cycle"}
+                        {message.role === "user" ? "You" : "Treow"}
                       </div>
                       <div className="whitespace-pre-wrap">{message.content}</div>
                     </div>
@@ -1779,7 +1779,7 @@ function SettingsView({
     const next = { ...preferences, notificationEnabled: true };
     setPreferences(next);
     saveWebPreferences(next);
-    new Notification("Cycle", { body: "毎日の振り返りをお知らせします。" });
+    new Notification("Treow", { body: "毎日の振り返りをお知らせします。" });
   };
 
   const changeReminderTime = (reminderTime: string) => {
@@ -1790,7 +1790,7 @@ function SettingsView({
 
   const removeAccount = async () => {
     const confirmed = window.confirm(
-      "Cycleのアカウントと、サーバー上のジャーナル・セッション・タスクを完全に削除します。この操作は取り消せません。"
+      "Treowのアカウントと、サーバー上のジャーナル・セッション・タスクを完全に削除します。この操作は取り消せません。"
     );
     if (!confirmed) return;
     setDeleting(true);
@@ -1806,7 +1806,7 @@ function SettingsView({
   };
 
   return (
-    <Screen title="マイページ" subtitle="Cycle をあなたらしく使うための設定です。">
+    <Screen title="マイページ" subtitle="Treow をあなたらしく使うための設定です。">
       <div className="max-w-[720px] space-y-4">
         {error && <ErrorBanner>{error}</ErrorBanner>}
         <Card className="p-0">
@@ -1827,7 +1827,7 @@ function SettingsView({
           <SettingsRow
             icon={<Sparkles size={18} />}
             title="接続状態"
-            description={profile ? "Cycle のサービスに接続されています。" : error ? "接続を確認できませんでした。" : "接続を確認しています。"}
+            description={profile ? "Treow のサービスに接続されています。" : error ? "接続を確認できませんでした。" : "接続を確認しています。"}
             trailing={
               <Badge variant={profile ? "success" : "muted"}>
                 {profile && <Check size={11} className="mr-1" />}
@@ -1889,7 +1889,7 @@ function SettingsView({
         <Card className="border-destructive/20">
           <div className="font-rounded text-[15px] font-semibold text-destructive">アカウントの削除</div>
           <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
-            サーバーとこのブラウザに保存されたCycleのデータを完全に削除します。
+            サーバーとこのブラウザに保存されたTreowのデータを完全に削除します。
           </p>
           <Button
             variant="destructive-ghost"

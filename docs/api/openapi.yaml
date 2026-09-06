@@ -1,12 +1,12 @@
 openapi: 3.0.3
 info:
-  title: CycleJournal API
+  title: Treow API
   description: |
-    CycleJournal APIは、AIコーチング機能を提供するRESTful APIです。
-    Cycleモデル（土・水・根・幹・枝・葉・実・空）に基づいた内省支援を行います。
+    Treow APIは、AIコーチング機能を提供するRESTful APIです。
+    Treowモデル（土・水・根・幹・枝・葉・実・空）に基づいた内省支援を行います。
   version: 1.0.0
   contact:
-    name: CycleJournal Team
+    name: Treow Team
 
 servers:
   - url: https://cycle-api-dev-1031235624127.asia-northeast1.run.app
@@ -481,7 +481,7 @@ components:
       type: string
       enum: [soil, water, root, trunk, branch, leaf, fruit, sky]
       description: |
-        Cycle要素:
+        Treow要素:
         - soil: 土（記憶・環境）
         - water: 水（会話の流れ）
         - root: 根（価値観・信念）

@@ -15,7 +15,7 @@ PROJECT_ID="cycle-journal"
 REGION="asia-northeast1"
 
 echo "========================================"
-echo "  CycleJournal - GCP ローカルセットアップ"
+echo "  Treow - GCP ローカルセットアップ"
 echo "========================================"
 echo ""
 

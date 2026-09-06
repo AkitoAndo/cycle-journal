@@ -1,7 +1,8 @@
-project_id    = "cycle-journal"
-region        = "asia-northeast1"
-apple_team_id = "AXSR25N22T"
-apple_key_id  = "TXTX42VXG4"
+project_id       = "cycle-journal"
+region           = "asia-northeast1"
+apple_team_id    = "AXSR25N22T"
+apple_key_id     = "TXTX42VXG4"
+mcp_oauth_issuer = "https://dev-q3zfq5kiz5swprbg.us.auth0.com/"
 
 # IAP 専用キー (Sign in with Apple とは別物)
 apple_iap_issuer_id = "c7bb6896-6c4c-42cf-b6aa-29ed753a86bf"
