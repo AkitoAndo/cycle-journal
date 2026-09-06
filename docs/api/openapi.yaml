@@ -11,8 +11,8 @@ info:
 servers:
   - url: https://cycle-api-dev-1031235624127.asia-northeast1.run.app
     description: Development server (Cloud Run)
-  - url: https://api.cyclejournal.app
-    description: Production server (planned)
+  - url: https://cycle-api-prod-1031235624127.asia-northeast1.run.app
+    description: Production server (Cloud Run)
 
 tags:
   - name: System
