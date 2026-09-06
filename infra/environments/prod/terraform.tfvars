@@ -1,7 +1,9 @@
-project_id    = "cycle-journal"
-region        = "asia-northeast1"
-apple_team_id = "AXSR25N22T"
-apple_key_id  = "TXTX42VXG4"
+project_id           = "cycle-journal"
+region               = "asia-northeast1"
+apple_team_id        = "AXSR25N22T"
+apple_key_id         = "TXTX42VXG4"
+google_client_ids    = "1031235624127-j358em4cvl8hll11p4kg3pd650chj82f.apps.googleusercontent.com"
+cors_allowed_origins = "https://cycle-web-prod-1031235624127.asia-northeast1.run.app"
 
 # IAP 専用キー (Sign in with Apple とは別物。issuer/key id は環境共通)
 apple_iap_issuer_id = "c7bb6896-6c4c-42cf-b6aa-29ed753a86bf"
