@@ -5,14 +5,14 @@
 #   ./scripts/take-screenshots.sh [simulator-name]
 #
 # 例:
-#   ./scripts/take-screenshots.sh "iPhone 16"
-#   ./scripts/take-screenshots.sh  # デフォルト: iPhone 16
+#   ./scripts/take-screenshots.sh "iPhone 17 Pro"
+#   ./scripts/take-screenshots.sh  # デフォルト: iPhone 17 Pro
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-SIMULATOR="${1:-iPhone 16}"
+SIMULATOR="${1:-iPhone 17 Pro}"
 RESULT_BUNDLE="$PROJECT_DIR/TestResults.xcresult"
 DEST_DIR="$PROJECT_DIR/docs/public/screenshots"
 
@@ -32,17 +32,17 @@ xcodebuild test \
     -destination "platform=iOS Simulator,name=$SIMULATOR" \
     -only-testing:CycleUITests/CycleUITests/testScreenshots_Journal_01_List \
     -only-testing:CycleUITests/CycleUITests/testScreenshots_Journal_02_NewEntry \
-    -only-testing:CycleUITests/CycleUITests/testScreenshots_Journal_03_EditEntry \
-    -only-testing:CycleUITests/CycleUITests/testScreenshots_Journal_04_Search \
-    -only-testing:CycleUITests/CycleUITests/testScreenshots_Journal_05_TagManagement \
-    -only-testing:CycleUITests/CycleUITests/testScreenshots_Journal_06_Trash \
-    -only-testing:CycleUITests/CycleUITests/testScreenshots_Journal_07_Calendar \
+    -only-testing:CycleUITests/CycleUITests/testScreenshots_Journal_03_Search \
+    -only-testing:CycleUITests/CycleUITests/testScreenshots_Journal_04_TagManagement \
+    -only-testing:CycleUITests/CycleUITests/testScreenshots_Journal_05_Trash \
+    -only-testing:CycleUITests/CycleUITests/testScreenshots_Journal_06_Calendar \
     -only-testing:CycleUITests/CycleUITests/testScreenshots_Tasks_01_List \
     -only-testing:CycleUITests/CycleUITests/testScreenshots_Tasks_02_NewEntry \
     -only-testing:CycleUITests/CycleUITests/testScreenshots_Tasks_03_Reorder \
     -only-testing:CycleUITests/CycleUITests/testScreenshots_Tasks_04_Archive \
     -only-testing:CycleUITests/CycleUITests/testScreenshots_Tasks_05_Trash \
     -only-testing:CycleUITests/CycleUITests/testScreenshots_Coach_01_Home \
+    -only-testing:CycleUITests/CycleUITests/testScreenshots_Coach_02_Chat \
     -only-testing:CycleUITests/CycleUITests/testScreenshots_Settings_01_Main \
     -only-testing:CycleUITests/CycleUITests/testScreenshots_Tabs \
     -resultBundlePath "$RESULT_BUNDLE" \
