@@ -1,168 +1,82 @@
 # App Store リリース手順
 
-## 前提条件
+現在の対象は **Treow v1.0.10 無料MVP**。App Store Connectのアプリレコードを正とし、Bundle ID、バージョン、ビルド番号、料金表記を提出直前に照合する。
 
-| 項目 | 状態 |
-|------|------|
-| Apple Developer Program（年$99） | 必須 |
-| Xcode 16+ | 必須 |
-| App Store Connect アカウント | 必須 |
+## 1. 提出前のコード確認
 
----
+1. `ios/Local.xcconfig.template` を `ios/Local.xcconfig` へコピーし、Apple Developer TeamとApp Store Connectに登録済みのBundle IDを設定する
+2. XcodeのCycleターゲットでSigning & Capabilitiesにエラーがないことを確認する
+3. Releaseビルドが `MARKETING_VERSION = 1.0.10` であることを確認する
+4. `CURRENT_PROJECT_VERSION` はApp Store Connect上の同バージョンの既存ビルドより大きくする
+5. `PrivacyInfo.xcprivacy` がCycleターゲットへ含まれることを確認する
 
-## 1. 署名証明書の取得
-
-App StoreにアップロードするにはApple Distribution証明書が必要。
-
-### 手順
-
-1. **Xcode** を開く
-2. **Xcode → Settings → Accounts**
-3. Apple IDでサインイン（未サインインの場合）
-4. Team ID `784249657M` を選択
-5. **Manage Certificates** をクリック
-6. 左下の **+** → **Apple Distribution** を選択
-
-確認コマンド:
-
-```bash
-security find-identity -v -p codesigning
-# "Apple Distribution: ..." が表示されればOK
-```
-
----
-
-## 2. App Store Connect APIキーの作成
-
-CLIからApp Store Connectを操作するために必要。
-
-### 手順
-
-1. https://appstoreconnect.apple.com/access/integrations/api を開く
-2. **「キーを生成」** をクリック
-3. 名前: `CLI`
-4. アクセス: **Admin**
-5. **「生成」** をクリック
-
-### 取得する3つの値
-
-| 値 | 場所 | 例 |
-|----|------|-----|
-| **Issuer ID** | ページ上部に表示 | `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` |
-| **Key ID** | 作成したキーの横 | `XXXXXXXXXX` |
-| **秘密鍵 (.p8)** | ダウンロードボタン | `AuthKey_XXXXXXXXXX.p8` |
-
-> **注意**: `.p8`ファイルのダウンロードは**1回のみ**。紛失したら再作成が必要。
-
-### 秘密鍵の配置
-
-```bash
-mkdir -p ~/.private_keys
-mv ~/Downloads/AuthKey_XXXXXXXXXX.p8 ~/.private_keys/
-```
-
-### 環境変数の設定（オプション）
-
-```bash
-# ~/.zshrc に追加
-export APP_STORE_CONNECT_ISSUER_ID="your-issuer-id"
-export APP_STORE_CONNECT_KEY_ID="your-key-id"
-export APP_STORE_CONNECT_KEY_PATH="$HOME/.private_keys/AuthKey_XXXXXXXXXX.p8"
-```
-
----
-
-## 3. App Store Connectでアプリ登録（初回のみ）
-
-1. https://appstoreconnect.apple.com/apps を開く
-2. **「+」→「新規App」**
-3. プラットフォーム: **iOS**
-4. 名前: `Cycle Journal`（またはApp Store上の表示名）
-5. プライマリ言語: **日本語**
-6. バンドルID: `com.wisdomhills.Cycle`
-7. SKU: `cycle-journal`（任意の一意な文字列）
-
----
-
-## 4. ビルド＆アップロード（CLI）
-
-以下はCLIで自動実行可能:
+設定値の確認:
 
 ```bash
 cd ios
+xcodebuild -project Cycle.xcodeproj -scheme Cycle -configuration Release -showBuildSettings \
+  | rg 'PRODUCT_BUNDLE_IDENTIFIER|DEVELOPMENT_TEAM|MARKETING_VERSION|CURRENT_PROJECT_VERSION'
+```
 
-# アーカイブ
+## 2. 品質確認
+
+```bash
+cd ios
+xcodebuild test \
+  -project Cycle.xcodeproj \
+  -scheme Cycle \
+  -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
+```
+
+加えて実機またはTestFlightで、サインイン、全タブ、同期、オフライン復帰、サインアウト時のユーザー分離、アカウント削除、通知、データエクスポートを確認する。
+
+## 3. アーカイブとアップロード
+
+Xcodeで次を実行する。
+
+1. 実行先を **Any iOS Device (arm64)** にする
+2. **Product → Archive**
+3. Organizerで **Validate App** を実行し、Privacy Manifest・署名・entitlementの警告を解消する
+4. **Distribute App → App Store Connect → Upload**
+5. シンボルを含めてアップロードし、App Store Connectで処理完了を待つ
+
+CLIでアーカイブだけ作る場合:
+
+```bash
+cd ios
 xcodebuild archive \
   -project Cycle.xcodeproj \
   -scheme Cycle \
+  -configuration Release \
   -archivePath build/Cycle.xcarchive \
   -destination 'generic/platform=iOS'
-
-# IPA書き出し
-xcodebuild -exportArchive \
-  -archivePath build/Cycle.xcarchive \
-  -exportPath build/export \
-  -exportOptionsPlist ExportOptions.plist
-
-# App Store Connectにアップロード
-xcrun altool --upload-app \
-  -f build/export/Cycle.ipa \
-  -t ios \
-  --apiKey $APP_STORE_CONNECT_KEY_ID \
-  --apiIssuer $APP_STORE_CONNECT_ISSUER_ID
 ```
 
-### ExportOptions.plist
+## 4. App Store Connect入力
 
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
-  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>method</key>
-  <string>app-store</string>
-  <key>teamID</key>
-  <string>784249657M</string>
-  <key>uploadSymbols</key>
-  <true/>
-  <key>uploadBitcode</key>
-  <false/>
-</dict>
-</plist>
-```
+- アプリ名、サブタイトル、キーワード、説明文: `docs/product/store-description.md`
+- プライバシーポリシー: https://akitoando.github.io/cycle-journal/legal/PRIVACY_POLICY.html
+- 利用規約: https://akitoando.github.io/cycle-journal/legal/TERMS_OF_SERVICE.html
+- 料金: 無料。Paywall、サブスクリプション、無料トライアルの記載は入れない
+- App Privacy: Privacy Manifestおよび実際の通信内容と一致させる
+- Review Notes: Apple / Googleサインイン手順、AIコーチは医療・診断・治療目的ではないこと、課金がないことを明記する
 
----
-
-## 5. 審査提出
-
-アップロード後、App Store Connect上で:
-
-1. ビルドを選択
-2. スクリーンショットを追加（6.7インチ + 6.1インチ必須）
-3. アプリの説明文、キーワード、カテゴリを入力
-4. 輸出コンプライアンス情報を回答
-5. **「審査に提出」** をクリック
-
----
-
-## スクリーンショット自動生成
+## 5. スクリーンショット
 
 ```bash
-# シミュレータでスクリーンショット取得
 ./scripts/take-screenshots.sh
 ```
 
----
+App Store Connectが要求する最新のiPhoneサイズを登録する。CycleターゲットはiPhone・iPad対応 (`TARGETED_DEVICE_FAMILY = 1,2`) のため、iPad対応を維持する場合は要求されるiPadサイズも登録し、主要画面が崩れていないことを確認する。iPad品質を保証できない場合は、提出直前に黙って対象外へ変更せず、製品判断として対応端末を決め直す。
 
-## チェックリスト
+## 6. 最終提出
 
-- [ ] Apple Distribution証明書を取得
-- [ ] App Store Connect APIキーを作成・配置
-- [ ] App Store Connectでアプリを登録
-- [ ] ExportOptions.plist を作成
-- [ ] アーカイブ＆IPA書き出し
-- [ ] App Store Connectにアップロード
-- [ ] スクリーンショット追加
-- [ ] メタデータ入力（説明文、カテゴリ、キーワード）
-- [ ] 審査提出
+- [ ] 処理済みビルドをv1.0.10へ選択
+- [ ] 輸出コンプライアンス、コンテンツ権利、年齢区分へ回答
+- [ ] サポートURL・Privacy URLが公開状態で開く
+- [ ] 全スクリーンショットと説明文が現在のUI・無料提供と一致する
+- [ ] TestFlightでRelease相当ビルドのスモークテストが完了
+- [ ] **Add for Review** 前に差分を再確認
+- [ ] **Submit for Review** は外部公開操作として実行直前に最終確認する
+
+詳細な機能確認は [verification-checklist.md](37-deployment-setup/verification-checklist.md) を参照する。

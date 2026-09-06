@@ -208,7 +208,7 @@ enum DataExportService {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
         let dateString = dateFormatter.string(from: Date())
-        let fileName = "CycleJournal_Export_\(dateString).\(format.fileExtension)"
+        let fileName = "Treow_Export_\(dateString).\(format.fileExtension)"
 
         let tempDir = FileManager.default.temporaryDirectory
         let fileURL = tempDir.appendingPathComponent(fileName)
@@ -219,6 +219,21 @@ enum DataExportService {
         } catch {
             print("Error writing export file: \(error)")
             return nil
+        }
+    }
+
+    /// アカウント削除時などに、共有シート用の機微な一時ファイルを消去する。
+    static func removeTemporaryExportFiles() {
+        let fileManager = FileManager.default
+        let tempDir = fileManager.temporaryDirectory
+        guard let files = try? fileManager.contentsOfDirectory(
+            at: tempDir,
+            includingPropertiesForKeys: nil
+        ) else { return }
+
+        let exportPrefixes = ["Treow_Export_", "CycleJournal_Export_"]
+        for file in files where exportPrefixes.contains(where: { file.lastPathComponent.hasPrefix($0) }) {
+            try? fileManager.removeItem(at: file)
         }
     }
 

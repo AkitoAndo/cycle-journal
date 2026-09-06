@@ -9,6 +9,18 @@ variable "region" {
   default     = "asia-northeast1"
 }
 
+variable "google_client_ids" {
+  description = "Additional comma-separated Google OAuth Client IDs"
+  type        = string
+  default     = ""
+}
+
+variable "cors_allowed_origins" {
+  description = "Comma-separated browser origins allowed by API CORS"
+  type        = string
+  default     = ""
+}
+
 variable "apple_team_id" {
   description = "Apple Developer Team ID"
   type        = string

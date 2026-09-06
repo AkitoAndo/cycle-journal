@@ -53,10 +53,34 @@ variable "use_langgraph" {
   default     = false
 }
 
+variable "claude_max_tokens" {
+  description = "Claude max output tokens for API runtime"
+  type        = number
+  default     = 2000
+}
+
 variable "google_client_id" {
   description = "Google OAuth Client ID for iOS Sign-In"
   type        = string
   default     = "1031235624127-6fgcbv1khltu4snpktpdd0cab025coab.apps.googleusercontent.com"
+}
+
+variable "google_client_ids" {
+  description = "Additional comma-separated Google OAuth Client IDs"
+  type        = string
+  default     = ""
+}
+
+variable "cors_allowed_origins" {
+  description = "Comma-separated browser origins allowed by API CORS"
+  type        = string
+  default     = ""
+}
+
+variable "mcp_service_account_email" {
+  description = "Only service identity allowed to call the internal MCP API router"
+  type        = string
+  default     = ""
 }
 
 variable "apple_bundle_id" {

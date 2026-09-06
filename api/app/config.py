@@ -9,9 +9,35 @@ class Settings(BaseSettings):
     gcp_region: str = "asia-northeast1"
     firestore_database_id: str = "(default)"
     apple_bundle_id: str = "com.akitoando.CycleJournal"
-    google_client_id: str = ""  # iOS用Google OAuth Client ID
+    # Legacy single-client setting. Keep it for existing iOS deployments.
+    google_client_id: str = ""
+    # Additional comma-separated OAuth audiences (Web dev/prod, admin, etc.).
+    google_client_ids: str = ""
+    cors_allowed_origins: str = (
+        "http://localhost:3000,http://127.0.0.1:3000,"
+        "http://localhost:3001,http://127.0.0.1:3001"
+    )
     admin_google_emails: str = "takeshiogata1105@gmail.com,28ww.lo.ol.ww28@gmail.com"
     admin_auth_bypass: bool = False
+
+    # Remote MCP resource server for Coach Studio automation.
+    # OAuth is intentionally delegated to an established OAuth 2.1 provider
+    # (Auth0 is the initial supported provider). The MCP service still applies
+    # its own email allowlist as a second authorization gate.
+    mcp_public_url: str = "http://127.0.0.1:8080/mcp"
+    mcp_oauth_issuer: str = "https://example.invalid/"
+    mcp_oauth_audience: str = "http://127.0.0.1:8080/mcp"
+    mcp_oauth_jwks_uri: str = ""
+    mcp_email_claim: str = "https://cycle-journal.app/email"
+    mcp_email_verified_claim: str = "https://cycle-journal.app/email_verified"
+    mcp_allowed_emails: str = (
+        "takeshiogata1105@gmail.com,28ww.lo.ol.ww28@gmail.com"
+    )
+    mcp_required_scope: str = "coach:manage"
+    # Internal service-to-service boundary. The remote MCP service has no
+    # Firestore or Vertex role and can reach only the purpose-built API router.
+    mcp_backend_api_url: str = "http://127.0.0.1:8080"
+    mcp_service_account_email: str = ""
 
     # Sign in with Apple - revoke / token exchange 用
     # 未設定の場合は revoke / code 交換は no-op になる（ローカル開発フォールバック）
@@ -44,6 +70,16 @@ class Settings(BaseSettings):
     coach_input_max_chars: int = 10_000
     coach_output_max_tokens_cap: int = 4_000  # 暴走時の hard cap
     coach_stream_timeout_seconds: int = 60
+    coach_context_history_max_messages: int = 50
+    coach_context_history_max_chars: int = 24_000
+    coach_context_summary_limit: int = 5
+    coach_context_summary_max_chars: int = 600
+    coach_context_diary_max_chars: int = 8_000
+    coach_summary_generation_enabled: bool = True
+    coach_summary_min_user_messages: int = 1
+    coach_summary_refresh_message_interval: int = 4
+    coach_summary_source_max_messages: int = 40
+    coach_summary_max_chars: int = 360
 
     # AI monthly usage budget guardrail
     # MVP の上限は 1 user あたり月 1,000 円程度。価格・為替は変わるため env で上書き可。
@@ -63,7 +99,7 @@ class Settings(BaseSettings):
     gemini_model_coach: str = "gemini-2.5-pro"  # Sonnet 相当
     gemini_model_quick: str = "gemini-2.5-flash"  # Haiku 相当
 
-    # LangGraphフローを有効にする（感情分析・Cycle要素判定・安全フィルター）
+    # LangGraphフローを有効にする（感情分析・Treow要素判定・安全フィルター）
     use_langgraph: bool = False
 
     # Apple In-App Purchase (App Store Server API / Notifications V2)
@@ -93,6 +129,32 @@ class Settings(BaseSettings):
     apple_apns_key_id: str = ""
     apple_apns_private_key: str = ""
     apple_apns_env: str = "Sandbox"
+
+    @property
+    def google_oauth_client_ids(self) -> list[str]:
+        """Return every accepted Google OAuth audience without duplicates."""
+        values = [self.google_client_id, *self.google_client_ids.split(",")]
+        return list(dict.fromkeys(value.strip() for value in values if value.strip()))
+
+    @property
+    def cors_origins(self) -> list[str]:
+        """Return the explicit browser origins allowed to call the API."""
+        return list(
+            dict.fromkeys(
+                value.strip()
+                for value in self.cors_allowed_origins.split(",")
+                if value.strip()
+            )
+        )
+
+    @property
+    def mcp_email_allowlist(self) -> set[str]:
+        """Return the exact identities allowed to use the remote MCP server."""
+        return {
+            value.strip().lower()
+            for value in self.mcp_allowed_emails.split(",")
+            if value.strip()
+        }
 
     model_config = {"env_prefix": "", "case_sensitive": False}
 

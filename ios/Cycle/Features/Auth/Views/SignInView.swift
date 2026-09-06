@@ -69,7 +69,7 @@ struct SignInView: View {
                     .foregroundStyle(DesignSystem.Colors.accent)
             }
 
-            Text("Cycle")
+            Text("Treow")
                 .font(DesignSystem.Fonts.largeTitle)
                 .fontWeight(.bold)
         }

@@ -21,8 +21,13 @@ class CoachStore: ObservableObject {
     @Published var shouldOpenChat: Bool = false
 
     private let userDefaults = UserDefaults.standard
-    private let sessionsKey = "CoachSessions"
+    private var sessionsKey: String {
+        UserDataScope.scopedDefaultsKey("CoachSessions")
+    }
     private let coachService = CoachService()
+    private var cancellables = Set<AnyCancellable>()
+    private var deletionTask: Task<Void, Never>?
+    private var isFlushingDeletions = false
 
     /// APIを使用するかどうか（falseの場合やトークン未設定時はモックを使用）
     var useAPI: Bool {
@@ -31,6 +36,15 @@ class CoachStore: ObservableObject {
 
     init() {
         loadSessions()
+        NotificationCenter.default.publisher(for: .localDataScopeDidChange)
+            .sink { [weak self] _ in
+                self?.currentSession = nil
+                self?.deletionTask?.cancel()
+                self?.isFlushingDeletions = false
+                self?.lastSessionsSyncAt = nil
+                self?.loadSessions()
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Persistence
@@ -39,6 +53,8 @@ class CoachStore: ObservableObject {
         if let data = userDefaults.data(forKey: sessionsKey),
            let decoded = try? JSONDecoder().decode([CoachSession].self, from: data) {
             sessions = decoded.sorted { $0.updatedAt > $1.updatedAt }
+        } else {
+            sessions = []
         }
     }
 
@@ -85,11 +101,15 @@ class CoachStore: ObservableObject {
 
     /// セッションを削除
     func deleteSession(_ session: CoachSession) {
+        if let serverID = session.serverId {
+            CoachSessionDeletionStore.add(serverID)
+        }
         sessions.removeAll { $0.id == session.id }
         if currentSession?.id == session.id {
             currentSession = nil
         }
         saveSessions()
+        schedulePendingSessionDeletes()
     }
 
     // MARK: - Message Management
@@ -164,50 +184,16 @@ class CoachStore: ObservableObject {
         await MainActor.run {
             isLoading = true
             error = nil
+            lastAPIError = nil
         }
 
         do {
             if useAPI {
-                await MainActor.run { addEmptyCoachMessage() }
-
-                let stream = coachService.sendMessageStream(
+                try await streamCoachResponse(
                     message: content,
                     sessionId: currentSession?.serverId ?? currentSession?.id.uuidString
                 )
-
-                var accumulated = ""
-                var receivedError: String?
-                for try await event in stream {
-                    switch event {
-                    case .session(let sid):
-                        await MainActor.run {
-                            if currentSession?.serverId == nil {
-                                currentSession?.serverId = sid
-                                if let current = currentSession { updateSession(current) }
-                            }
-                        }
-                    case .chunk(let text):
-                        accumulated += text
-                        await MainActor.run { setLastCoachMessageContent(accumulated) }
-                    case .error(let reason):
-                        receivedError = reason
-                    case .done:
-                        break
-                    }
-                }
-
                 await MainActor.run {
-                    // 1文字も届かずに終わった場合は空の吹き出しを残さない
-                    if accumulated.isEmpty {
-                        removeLastCoachMessageIfEmpty()
-                        if receivedError == nil {
-                            self.error = "コーチからの応答を受け取れませんでした。もう一度お試しください。"
-                        }
-                    }
-                    if let session = currentSession { updateSession(session) }
-                    if let reason = receivedError {
-                        self.error = "コーチ応答が中断されました (\(reason))"
-                    }
                     isLoading = false
                 }
             } else {
@@ -221,24 +207,78 @@ class CoachStore: ObservableObject {
                 }
             }
         } catch {
-            let isUserCancelled = error is CancellationError || (error as? URLError)?.code == .cancelled
-            await MainActor.run {
-                // 失敗時は空のままのコーチ吹き出しを会話に残さない
-                removeLastCoachMessageIfEmpty()
-                if isUserCancelled {
-                    // ユーザーによる停止: 途中までの応答は残し、エラーにはしない
-                    if let session = currentSession { updateSession(session) }
-                } else {
-                    let apiError = (error as? APIError) ?? .networkError(error)
-                    self.lastAPIError = apiError
-                    self.error = apiError.errorDescription
-                    if apiError.requiresReauth {
-                        self.showReauthPrompt = true
+            await MainActor.run { handleCoachRequestFailure(error) }
+        }
+    }
+
+    /// SSE 経由でコーチ応答を受信し、最後のコーチ吹き出しを逐次更新する
+    private func streamCoachResponse(
+        message: String,
+        sessionId: String?,
+        diaryContent: String? = nil
+    ) async throws {
+        await MainActor.run { addEmptyCoachMessage() }
+
+        let stream = coachService.sendMessageStream(
+            message: message,
+            sessionId: sessionId,
+            diaryContent: diaryContent
+        )
+
+        var accumulated = ""
+        var receivedError: String?
+        for try await event in stream {
+            switch event {
+            case .session(let sid):
+                await MainActor.run {
+                    if currentSession?.serverId == nil {
+                        currentSession?.serverId = sid
+                        if let current = currentSession { updateSession(current) }
                     }
                 }
-                isLoading = false
+            case .chunk(let text):
+                accumulated += text
+                await MainActor.run { setLastCoachMessageContent(accumulated) }
+            case .error(let reason):
+                receivedError = reason
+            case .done:
+                break
             }
         }
+
+        await MainActor.run {
+            // 1文字も届かずに終わった場合は空の吹き出しを残さない
+            if accumulated.isEmpty {
+                removeLastCoachMessageIfEmpty()
+                if receivedError == nil {
+                    self.error = "コーチからの応答を受け取れませんでした。もう一度お試しください。"
+                }
+            }
+            if let session = currentSession { updateSession(session) }
+            if let reason = receivedError {
+                self.error = "コーチ応答が中断されました (\(reason))"
+            }
+        }
+    }
+
+    @MainActor
+    private func handleCoachRequestFailure(_ error: Error) {
+        let isUserCancelled = error is CancellationError || (error as? URLError)?.code == .cancelled
+
+        // 失敗時は空のままのコーチ吹き出しを会話から取り除く
+        removeLastCoachMessageIfEmpty()
+        if isUserCancelled {
+            // ユーザーによる停止: 途中までの応答は残し、エラーにはしない
+            if let session = currentSession { updateSession(session) }
+        } else {
+            let apiError = (error as? APIError) ?? .networkError(error)
+            self.lastAPIError = apiError
+            self.error = apiError.errorDescription
+            if apiError.requiresReauth {
+                self.showReauthPrompt = true
+            }
+        }
+        isLoading = false
     }
 
     /// エラーを消去
@@ -253,38 +293,23 @@ class CoachStore: ObservableObject {
         // 先にローディング状態にしてからセッションを作成
         isLoading = true
         error = nil
+        lastAPIError = nil
 
         let session = startNewSession(withContext: diaryContent)
         currentSession = session
 
         do {
             if useAPI {
-                // API呼び出し - 日記内容を含めて最初のメッセージを送信
+                // API呼び出し - 日記内容を含めて最初のメッセージをSSEで送信
                 let initialUserMessage = "この日記について話したいです"
                 addUserMessage(initialUserMessage)
 
-                let response = try await coachService.sendMessage(
+                try await streamCoachResponse(
                     message: initialUserMessage,
                     sessionId: session.serverId ?? session.id.uuidString,
                     diaryContent: diaryContent
                 )
 
-                let metadata = MessageMetadata(
-                    cycleElement: response.metadata?.cycleElement,
-                    emotionDetected: response.metadata?.detectedEmotion,
-                    suggestedAction: nil
-                )
-
-                // サーバーから返されたsessionIdを保持
-                if let serverSessionId = response.sessionId,
-                   currentSession?.serverId == nil {
-                    currentSession?.serverId = serverSessionId
-                    if let current = currentSession {
-                        updateSession(current)
-                    }
-                }
-
-                addCoachMessage(response.message, metadata: metadata)
                 isLoading = false
             } else {
                 // モックレスポンス
@@ -296,12 +321,7 @@ class CoachStore: ObservableObject {
                 isLoading = false
             }
         } catch {
-            // エラー時はモックレスポンスを返す
-            let initialMessage = "日記を読ませてもらったよ。\n\n「\(diaryContent.prefix(50))...」\n\nこの中で、特に心に残っている部分はどこかな？"
-
-            self.error = error.localizedDescription
-            addCoachMessage(initialMessage)
-            isLoading = false
+            handleCoachRequestFailure(error)
         }
     }
 
@@ -337,6 +357,8 @@ class CoachStore: ObservableObject {
         }
         #endif
 
+        await flushPendingSessionDeletes()
+
         // 直近に同期済みなら自動同期はスキップ（サーバ負荷とバッテリーの節約）
         if !force,
            let last = lastSessionsSyncAt,
@@ -352,17 +374,30 @@ class CoachStore: ObservableObject {
             let serverList = try await coachService.getSessions(limit: 50)
 
             await MainActor.run {
-                // サーバーにしか存在しないセッションをローカルに追加
+                let suppressedServerIDs = CoachSessionDeletionStore.load()
                 let localServerIds = Set(sessions.compactMap { $0.serverId })
                 let newSessions = serverList.sessions
-                    .filter { !localServerIds.contains($0.sessionId) }
+                    .filter {
+                        !localServerIds.contains($0.sessionId)
+                            && !suppressedServerIDs.contains($0.sessionId)
+                    }
                     .map { CoachSession.from($0) }
 
-                if !newSessions.isEmpty {
-                    sessions.append(contentsOf: newSessions)
-                    sessions.sort { $0.updatedAt > $1.updatedAt }
-                    saveSessions()
+                for serverSession in serverList.sessions
+                    where !suppressedServerIDs.contains(serverSession.sessionId) {
+                    guard let index = sessions.firstIndex(where: {
+                        $0.serverId == serverSession.sessionId
+                    }) else { continue }
+                    let remote = CoachSession.from(serverSession)
+                    if remote.updatedAt >= sessions[index].updatedAt {
+                        sessions[index].summary = remote.summary
+                        sessions[index].updatedAt = remote.updatedAt
+                    }
                 }
+
+                sessions.append(contentsOf: newSessions)
+                sessions.sort { $0.updatedAt > $1.updatedAt }
+                saveSessions()
                 lastSessionsSyncAt = Date()
                 isLoading = false
             }
@@ -375,6 +410,37 @@ class CoachStore: ObservableObject {
                     self.showReauthPrompt = true
                 }
                 isLoading = false
+            }
+        }
+    }
+
+    private func schedulePendingSessionDeletes() {
+        deletionTask?.cancel()
+        deletionTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 250_000_000)
+            await self?.flushPendingSessionDeletes()
+        }
+    }
+
+    func flushPendingSessionDeletes() async {
+        guard APIClient.shared.getAuthToken() != nil, !isFlushingDeletions else { return }
+        isFlushingDeletions = true
+        defer { isFlushingDeletions = false }
+
+        for serverID in CoachSessionDeletionStore.load() {
+            do {
+                do {
+                    try await coachService.deleteSession(sessionId: serverID)
+                } catch APIError.httpError(let statusCode, _) where statusCode == 404 {
+                    // 既に削除済みなら完了扱い。
+                }
+                CoachSessionDeletionStore.remove(serverID)
+            } catch {
+                let apiError = (error as? APIError) ?? .networkError(error)
+                lastAPIError = apiError
+                self.error = apiError.errorDescription
+                if apiError.requiresReauth { showReauthPrompt = true }
+                break
             }
         }
     }
@@ -392,6 +458,7 @@ class CoachStore: ObservableObject {
                 if let index = sessions.firstIndex(where: { $0.serverId == serverId }) {
                     sessions[index].messages = fullSession.messages
                     sessions[index].updatedAt = fullSession.updatedAt
+                    sessions[index].summary = fullSession.summary
                     saveSessions()
                 }
             }

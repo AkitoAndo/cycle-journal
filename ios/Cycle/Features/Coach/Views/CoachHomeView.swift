@@ -16,6 +16,7 @@ struct CoachHomeView: View {
     @State private var showingDiaryPicker = false
     @State private var showingBreathing = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.cycleTabIsActive) private var cycleTabIsActive
 
     var body: some View {
         VStack(spacing: 0) {
@@ -26,12 +27,12 @@ struct CoachHomeView: View {
                     ZStack {
                         // 呼吸に合わせて広がるハロー。正弦波駆動の連続アニメーションで
                         // 折り返しの止まりがなく、常に滑らかに満ち引きする
-                        if reduceMotion {
-                            breathingVisual(phase: 0.5)
-                        } else {
-                            TimelineView(.animation) { context in
-                                breathingVisual(phase: breathPhase(at: context.date))
-                            }
+                        TimelineView(.animation(paused: !shouldAnimateBreathing)) { context in
+                            breathingVisual(
+                                phase: shouldAnimateBreathing
+                                    ? breathPhase(at: context.date)
+                                    : 0.5
+                            )
                         }
                     }
                     // ハローの見た目いっぱいまでタップ可能にする
@@ -124,6 +125,15 @@ struct CoachHomeView: View {
     }
 
     // MARK: - 呼吸ハロー
+
+    private var shouldAnimateBreathing: Bool {
+        cycleTabIsActive
+            && !reduceMotion
+            && !showingChat
+            && !showingHistory
+            && !showingDiaryPicker
+            && !showingBreathing
+    }
 
     /// 1呼吸（吸って吐く）の周期（秒）。ゆったりした腹式呼吸のテンポ
     private var breathPeriod: Double { 6.4 }

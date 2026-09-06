@@ -15,7 +15,7 @@ const NEW_VERSION = process.env.NEW_VERSION ?? "1.0.3";
 const BUILD_NUMBER = process.env.BUILD_NUMBER ?? "1780796272";
 const WHATS_NEW_JA = process.env.WHATS_NEW_JA ?? [
   "- 月額プランに3日間の無料トライアルを追加しました",
-  "- 設定画面から「Cycle Premium」へアップグレードできるようになりました",
+  "- 設定画面から「Treow Premium」へアップグレードできるようになりました",
   "- 利用規約とプライバシーポリシーを最新化しました",
   "- AIコーチの応答エンジンを更新し、安定性を改善しました",
   "- タスクリストの表示エラーを修正しました",

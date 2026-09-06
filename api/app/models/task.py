@@ -9,6 +9,7 @@ from app.models.common import CycleElement
 
 class CreateTaskRequest(BaseModel):
     title: str = Field(..., min_length=1)
+    client_task_id: str | None = Field(default=None, min_length=1, max_length=128)
     description: str | None = None
     session_id: str | None = None
     cycle_element: CycleElement | None = None

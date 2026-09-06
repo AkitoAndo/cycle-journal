@@ -7,16 +7,17 @@
 
 import Foundation
 
-/// JSONファイルを使用した汎用的なデータ永続化ユーティリティ
+/// JSONファイルを使用したユーザー別データ永続化ユーティリティ
 ///
-/// DocumentsディレクトリにJSONファイルとしてデータを保存・読み込み
+/// Application Support配下のユーザー別ディレクトリにJSONファイルとして保存・読み込み
 /// アプリ全体で使用可能なシンプルなストレージ抽象化
 enum JSONFileStore {
-    /// ファイル名からDocumentsディレクトリのフルパスURLを取得
+    /// ファイル名から現在のユーザースコープ内のフルパスURLを取得
     /// - Parameter fileName: ファイル名（例: "data.json"）
     /// - Returns: DocumentsディレクトリのファイルURL
     static func url(_ fileName: String) -> URL {
-        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let dir = UserDataScope.currentDataDirectory()
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir.appendingPathComponent(fileName)
     }
 
@@ -40,7 +41,7 @@ enum JSONFileStore {
         let enc = JSONEncoder()
         enc.outputFormatting = [.prettyPrinted, .withoutEscapingSlashes]
         if let data = try? enc.encode(value) {
-            try? data.write(to: u, options: .atomic)
+            try? data.write(to: u, options: [.atomic, .completeFileProtection])
         }
     }
 }

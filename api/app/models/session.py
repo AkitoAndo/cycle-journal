@@ -18,6 +18,7 @@ class MessageData(BaseModel):
 class SessionSummary(BaseModel):
     session_id: str
     title: str | None = None
+    summary: str | None = None
     cycle_element: CycleElement | None = None
     message_count: int = 0
     last_message_at: datetime | None = None
@@ -27,6 +28,8 @@ class SessionSummary(BaseModel):
 class SessionDetail(BaseModel):
     session_id: str
     title: str | None = None
+    summary: str | None = None
+    summary_generated_at: datetime | None = None
     cycle_element: CycleElement | None = None
     has_diary_context: bool = False
     messages: list[MessageData] = []

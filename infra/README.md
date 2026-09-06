@@ -1,4 +1,4 @@
-# Cycle Journal Infrastructure
+# Treow Infrastructure
 
 Terraform is split by directory and state:
 
@@ -79,3 +79,25 @@ Do the migration before removing the legacy root state from operation.
    terraform -chdir=infra/environments/prod plan
    terraform -chdir=infra/environments/dev plan
    ```
+
+## Manual Resource Reconciliation
+
+Some resources were created manually while release operations were being
+unblocked. Import them into the split state before applying the matching
+Terraform changes:
+
+```bash
+terraform -chdir=infra/environments/shared import \
+  'module.shared.google_secret_manager_secret.app_store_connect["app-store-connect-api-key"]' \
+  'projects/cycle-journal/secrets/app-store-connect-api-key'
+terraform -chdir=infra/environments/shared import \
+  'module.shared.google_secret_manager_secret.app_store_connect["app-store-connect-key-id"]' \
+  'projects/cycle-journal/secrets/app-store-connect-key-id'
+terraform -chdir=infra/environments/shared import \
+  'module.shared.google_secret_manager_secret.app_store_connect["app-store-connect-issuer-id"]' \
+  'projects/cycle-journal/secrets/app-store-connect-issuer-id'
+
+terraform -chdir=infra/environments/prod import \
+  'module.api.google_firestore_index.tasks_by_created_at' \
+  'projects/cycle-journal/databases/(default)/collectionGroups/tasks/indexes/CICAgJim14AK'
+```

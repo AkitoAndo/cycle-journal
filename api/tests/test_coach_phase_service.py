@@ -1,0 +1,196 @@
+"""Coach phase/control service tests."""
+
+from datetime import UTC, datetime
+
+from app.services import coach_phase_service
+
+
+def test_extract_control_block_strips_visible_text():
+    visible, control = coach_phase_service.extract_control_block(
+        'そう感じたんだね。\n\n<control>{"phase":"acknowledge","phase_complete":true,"route":"triage","report":{}}</control>'
+    )
+
+    assert visible == "そう感じたんだね。"
+    assert control == {
+        "phase": "acknowledge",
+        "phase_complete": True,
+        "route": "triage",
+        "report": {},
+    }
+
+
+def test_apply_control_state_routes_to_next_phase():
+    state = coach_phase_service.apply_control_state(
+        {"phase": "acknowledge"},
+        {"phase": "acknowledge", "phase_complete": True, "route": "triage"},
+        now=datetime(2026, 8, 9, tzinfo=UTC),
+    )
+
+    assert state["phase"] == "triage"
+    assert state["phase_label"] == "2_トリアージ"
+    assert state["last_control"]["route"] == "triage"
+
+
+def test_apply_control_state_keeps_phase_when_layer8_fires():
+    state = coach_phase_service.apply_control_state(
+        {"phase": "triage"},
+        {
+            "phase": "triage",
+            "phase_complete": True,
+            "route": "layer8",
+            "report": {"layer8": True},
+        },
+        now=datetime(2026, 8, 9, tzinfo=UTC),
+    )
+
+    assert state["phase"] == "triage"
+    assert state["layer8"] is True
+    assert state["last_control"]["route"] == "layer8"
+
+
+def test_apply_control_state_stores_reported_session_material():
+    state = coach_phase_service.apply_control_state(
+        {"phase": "triage"},
+        {
+            "phase": "triage",
+            "report": {
+                "item": "請求書",
+                "placement": "片づく",
+                "task_permission": True,
+            },
+        },
+        now=datetime(2026, 8, 9, tzinfo=UTC),
+    )
+
+    assert state["items"] == [
+        {
+            "text": "請求書",
+            "status": "片づく",
+            "task_permission": True,
+            "task_id": None,
+        }
+    ]
+
+
+def test_task_write_candidate_requires_done_placement_and_permission():
+    candidate = coach_phase_service.task_write_candidate(
+        {"phase": "triage"},
+        {
+            "phase": "triage",
+            "report": {
+                "item": "請求書",
+                "placement": "片づく",
+                "task_permission": True,
+            },
+        },
+    )
+    denied = coach_phase_service.task_write_candidate(
+        {"phase": "triage"},
+        {
+            "phase": "triage",
+            "report": {
+                "item": "母のこと",
+                "placement": "残る",
+                "task_permission": True,
+            },
+        },
+    )
+
+    assert candidate == {"title": "請求書"}
+    assert denied is None
+
+
+def test_task_write_candidate_skips_existing_task_id():
+    candidate = coach_phase_service.task_write_candidate(
+        {
+            "phase": "triage",
+            "items": [
+                {
+                    "text": "請求書",
+                    "status": "片づく",
+                    "task_permission": True,
+                    "task_id": "task-1",
+                }
+            ],
+        },
+        {
+            "phase": "triage",
+            "report": {
+                "item": "請求書",
+                "placement": "片づく",
+                "task_permission": True,
+            },
+        },
+    )
+
+    assert candidate is None
+
+
+def test_attach_task_to_state_links_item():
+    state = coach_phase_service.attach_task_to_state(
+        {
+            "phase": "triage",
+            "items": [
+                {
+                    "text": "請求書",
+                    "status": "片づく",
+                    "task_permission": True,
+                }
+            ],
+        },
+        item_text="請求書",
+        task_id="task-1",
+    )
+
+    assert state["items"][0]["task_id"] == "task-1"
+
+
+def test_build_phase_context_contains_current_phase_and_control_contract():
+    context = coach_phase_service.build_phase_context(
+        {"coach_state": {"phase": "space"}}
+    )
+
+    assert "3_残余" in context
+    assert "<control>" in context
+    assert "核チェックリスト" in context
+
+
+def test_build_phase_context_uses_configured_phase_module():
+    context = coach_phase_service.build_phase_context(
+        {"coach_state": {"phase": "naming"}},
+        config={
+            "coach_phase_modules": {
+                "naming": "CUSTOM NAMING\n{{核チェックリスト}}",
+            },
+            "coach_action_core_checklist": "CUSTOM CHECKLIST",
+        },
+    )
+
+    assert "CUSTOM NAMING" in context
+    assert "CUSTOM CHECKLIST" in context
+
+
+def test_detect_boundary_route_marks_crisis_and_professional_boundary():
+    crisis = coach_phase_service.detect_boundary_route("もう死にたいです")
+    professional = coach_phase_service.detect_boundary_route("これは法律の判断ですか")
+
+    assert crisis == {"kind": "crisis", "route": "layer8"}
+    assert professional == {"kind": "professional", "route": "boundary"}
+
+
+def test_stream_filter_hides_split_control_block():
+    stream_filter = coach_phase_service.ControlBlockStreamFilter()
+    output = []
+    for chunk in [
+        "そう",
+        "感じたんだね。<con",
+        'trol>{"phase":"acknowledge"}</control>',
+    ]:
+        emitted = stream_filter.feed(chunk)
+        if emitted:
+            output.append(emitted)
+    tail = stream_filter.flush()
+    if tail:
+        output.append(tail)
+
+    assert "".join(output) == "そう感じたんだね。"

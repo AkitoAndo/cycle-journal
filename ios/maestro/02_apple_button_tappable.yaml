@@ -12,5 +12,5 @@ tags:
 - tapOn: "Sign in with Apple"
 # タップ後にアプリがまだ前面で動作していれば成功
 - extendedWaitUntil:
-    visible: "Cycle"
+    visible: "Treow"
     timeout: 5000

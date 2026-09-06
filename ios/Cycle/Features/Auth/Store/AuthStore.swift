@@ -229,6 +229,7 @@ class AuthStore: NSObject, ObservableObject {
     func deleteAccount() async {
         isLoading = true
         error = nil
+        let deletingUserID = currentUser?.userId
 
         do {
             try await authService.deleteAccount()
@@ -239,6 +240,12 @@ class AuthStore: NSObject, ObservableObject {
         }
 
         GIDSignIn.sharedInstance.signOut()
+        if let deletingUserID {
+            UserDataScope.deleteData(for: deletingUserID)
+        }
+        DataExportService.removeTemporaryExportFiles()
+        UserDefaults.standard.removeObject(forKey: "hasCompletedOnboarding")
+        UserDefaults.standard.removeObject(forKey: "pendingOnboardingGoal")
         clearLocalAuth()
         isLoading = false
     }
@@ -261,6 +268,7 @@ class AuthStore: NSObject, ObservableObject {
                 createdAt: Date(),
                 provider: .apple
             )
+            UserDataScope.activate(userID: "ui-test-user")
             state = .authenticated(userId: "ui-test-user")
             return
         }
@@ -279,6 +287,7 @@ class AuthStore: NSObject, ObservableObject {
                 createdAt: Date(),
                 provider: .apple
             )
+            UserDataScope.activate(userID: "debug-user")
             state = .authenticated(userId: "debug-user")
             return
         }
@@ -302,8 +311,8 @@ class AuthStore: NSObject, ObservableObject {
         }
 
         currentUser = user
+        UserDataScope.activate(userID: user.userId, adoptLegacyData: true)
         APIClient.shared.setAuthToken(accessToken)
-        Task { await SubscriptionService().registerStoredAPNsDeviceTokenIfAvailable() }
         state = .authenticated(userId: user.userId)
     }
 
@@ -323,8 +332,13 @@ class AuthStore: NSObject, ObservableObject {
             saveToKeychain(key: refreshTokenKey, value: response.refreshToken)
             APIClient.shared.setAuthToken(response.accessToken)
             return response.accessToken
+        } catch let error as APIError {
+            if error.requiresReauth {
+                clearLocalAuth()
+            }
+            throw error
         } catch {
-            clearLocalAuth()
+            // 通信断や一時的なサーバー障害ではログイン状態を維持する。
             throw error
         }
     }
@@ -336,8 +350,8 @@ class AuthStore: NSObject, ObservableObject {
         saveToKeychain(key: refreshTokenKey, value: refreshToken)
         saveUserToKeychain(user)
         deleteFromKeychain(key: legacyTokenKey)
+        UserDataScope.activate(userID: user.userId)
         APIClient.shared.setAuthToken(accessToken)
-        Task { await SubscriptionService().registerStoredAPNsDeviceTokenIfAvailable() }
     }
 
     private func clearLocalAuth() {
@@ -346,6 +360,7 @@ class AuthStore: NSObject, ObservableObject {
         deleteFromKeychain(key: legacyTokenKey)
         deleteFromKeychain(key: userKey)
         APIClient.shared.setAuthToken(nil)
+        UserDataScope.deactivate()
         currentUser = nil
         state = .unauthenticated
     }
@@ -416,6 +431,7 @@ class AuthStore: NSObject, ObservableObject {
 
         var newQuery = query
         newQuery[kSecValueData as String] = data
+        newQuery[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
         SecItemAdd(newQuery as CFDictionary, nil)
     }
 

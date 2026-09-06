@@ -5,8 +5,8 @@
 //  Created by Takeshi Ogata on 2025/11/15.
 //
 
-import Foundation
 import Combine
+import Foundation
 import SwiftUI
 
 /// タスク管理のビジネスロジックを担当するViewModel
@@ -33,14 +33,21 @@ final class TaskViewModel: ObservableObject {
     /// 再認証プロンプト表示フラグ
     @Published var showReauthPrompt: Bool = false
 
-    private let taskService = TaskService()
+    private let taskService: TaskSyncing
+    private var cancellables = Set<AnyCancellable>()
+    private var mutationFlushTask: Task<Void, Never>?
+    private var isFlushingMutations = false
 
     // MARK: - Initialization
 
-    init() {
+    init(taskService: TaskSyncing = TaskService()) {
+        self.taskService = taskService
         loadData()
         loadArchives()
         loadTemplates()
+        NotificationCenter.default.publisher(for: .localDataScopeDidChange)
+            .sink { [weak self] _ in self?.reloadForCurrentUser() }
+            .store(in: &cancellables)
     }
 
     // MARK: - Computed Properties
@@ -64,6 +71,50 @@ final class TaskViewModel: ObservableObject {
         tasks
             .filter { $0.deletedAt != nil }
             .sorted { $0.deletedAt! > $1.deletedAt! }
+    }
+
+    /// ホームの日付ビューに表示するタスク。
+    /// 今日には未完了タスクも表示し、過去日にはその日に完了したタスクだけを表示する。
+    func homeTasks(on date: Date, now: Date = Date(), calendar: Calendar = .current) -> [TaskItem] {
+        Self.homeTasks(
+            on: date,
+            now: now,
+            tasks: tasks,
+            archives: archives,
+            calendar: calendar
+        )
+    }
+
+    /// 日付別タスクの純粋な組み立て処理。ホーム表示と単体テストで共有する。
+    static func homeTasks(
+        on date: Date,
+        now: Date,
+        tasks: [TaskItem],
+        archives: [TaskArchive],
+        calendar: Calendar = .current
+    ) -> [TaskItem] {
+        let activeTasks = tasks.filter { $0.deletedAt == nil }
+        var candidates: [TaskItem] = []
+
+        if calendar.isDate(date, inSameDayAs: now) {
+            candidates.append(contentsOf: activeTasks
+                .filter { !$0.isCompleted }
+                .sorted { $0.sortOrder < $1.sortOrder })
+        }
+
+        candidates.append(contentsOf: activeTasks
+            .filter { task in
+                task.isCompleted
+                    && task.completedAt.map { calendar.isDate($0, inSameDayAs: date) } == true
+            }
+            .sorted { ($0.completedAt ?? $0.createdAt) > ($1.completedAt ?? $1.createdAt) })
+
+        candidates.append(contentsOf: archives
+            .filter { calendar.isDate($0.date, inSameDayAs: date) }
+            .flatMap(\.completedTasks))
+
+        var seen = Set<UUID>()
+        return candidates.filter { seen.insert($0.id).inserted }
     }
 
     // MARK: - Task Management
@@ -97,30 +148,7 @@ final class TaskViewModel: ObservableObject {
         tasks.append(newTask)
         persist()
 
-        // サーバーに同期
-        let taskIndex = tasks.count - 1
-        Task {
-            await syncCreateTask(localIndex: taskIndex)
-        }
-    }
-
-    /// サーバーにタスクを作成
-    private func syncCreateTask(localIndex: Int) async {
-        guard localIndex < tasks.count else { return }
-        let task = tasks[localIndex]
-        do {
-            let serverTask = try await taskService.createTask(
-                title: task.title,
-                description: task.description.isEmpty ? nil : task.description
-            )
-            tasks[localIndex].serverId = serverTask.taskId
-            persist()
-        } catch {
-            let apiError = (error as? APIError) ?? .networkError(error)
-            lastSyncError = apiError
-            syncError = apiError.errorDescription
-            if apiError.requiresReauth { showReauthPrompt = true }
-        }
+        enqueueUpsert(for: newTask.id)
     }
 
     /// タスクの完了状態を切り替え
@@ -131,11 +159,7 @@ final class TaskViewModel: ObservableObject {
         tasks[index].completedAt = tasks[index].isCompleted ? Date() : nil
         persist()
 
-        // サーバーに同期
-        let updatedTask = tasks[index]
-        Task {
-            await syncUpdateTask(updatedTask, status: updatedTask.isCompleted ? "completed" : "active")
-        }
+        enqueueUpsert(for: tasks[index].id)
     }
 
     /// タスクを更新
@@ -164,11 +188,7 @@ final class TaskViewModel: ObservableObject {
             tasks[index].nextAction = newNextAction
             persist()
 
-            // サーバーに同期
-            let updatedTask = tasks[index]
-            Task {
-                await syncUpdateTask(updatedTask, title: trimmedTitle, description: newDescription)
-            }
+            enqueueUpsert(for: tasks[index].id)
         } else {
             // アーカイブ内のタスクとして更新
             updateArchivedTask(
@@ -191,21 +211,23 @@ final class TaskViewModel: ObservableObject {
         tasks[index].deletedAt = Date()
         persist()
 
-        // サーバーから削除
-        Task {
-            await syncDeleteTask(task)
-        }
+        enqueueDelete(for: tasks[index])
     }
 
     /// タスクを復元
     func restoreTask(_ task: TaskItem) {
         guard let index = findTaskIndex(task) else { return }
         tasks[index].deletedAt = nil
+        // 削除要求が完了済み・実行中のどちらでも安全に再作成できるよう、
+        // 決定的なclient_task_idを使ったupsertへ切り替える。
+        tasks[index].serverId = nil
         persist()
+        enqueueUpsert(for: tasks[index].id)
     }
 
     /// タスクを完全に削除（物理削除）
     func permanentlyDeleteTask(_ task: TaskItem) {
+        enqueueDelete(for: task)
         tasks.removeAll { $0.id == task.id }
         persist()
     }
@@ -235,6 +257,17 @@ final class TaskViewModel: ObservableObject {
     func reloadData() {
         loadData()
         loadArchives()
+    }
+
+    private func reloadForCurrentUser() {
+        mutationFlushTask?.cancel()
+        isFlushingMutations = false
+        lastServerSyncAt = nil
+        isSyncing = false
+        clearSyncError()
+        loadData()
+        loadArchives()
+        loadTemplates()
     }
 
     /// データをロード
@@ -297,6 +330,8 @@ final class TaskViewModel: ObservableObject {
         }
         #endif
 
+        await flushPendingMutations()
+
         // 直近に同期済みなら自動同期はスキップ（サーバ負荷とバッテリーの節約）
         if !force,
            let last = lastServerSyncAt,
@@ -309,12 +344,26 @@ final class TaskViewModel: ObservableObject {
         syncError = nil
 
         do {
-            let serverList = try await taskService.getTasks(limit: 100)
+            let serverList = try await taskService.getTasks(status: nil, limit: 100, offset: 0)
             let localServerIds = Set(tasks.compactMap { $0.serverId })
+            let suppressedServerIds = TaskSyncMutationStore.pendingDeletedServerIDs()
+                .union(archives.flatMap { $0.completedTasks.compactMap(\.serverId) })
+            let pendingUpserts = TaskSyncMutationStore.pendingUpsertLocalIDs()
 
-            // サーバーにしかないタスクをローカルに追加
             for serverTask in serverList.tasks {
-                if !localServerIds.contains(serverTask.taskId) {
+                if suppressedServerIds.contains(serverTask.taskId) {
+                    continue
+                }
+
+                if let index = tasks.firstIndex(where: { $0.serverId == serverTask.taskId }) {
+                    // 未送信のローカル編集がある場合はOutboxを優先する。
+                    if !pendingUpserts.contains(tasks[index].id) {
+                        tasks[index].title = serverTask.title
+                        tasks[index].description = serverTask.description ?? ""
+                        tasks[index].isCompleted = serverTask.status == "completed"
+                        tasks[index].completedAt = serverTask.completedAt
+                    }
+                } else if !localServerIds.contains(serverTask.taskId) {
                     var newTask = TaskItem(title: serverTask.title)
                     newTask.serverId = serverTask.taskId
                     newTask.description = serverTask.description ?? ""
@@ -342,35 +391,104 @@ final class TaskViewModel: ObservableObject {
         lastSyncError = nil
     }
 
-    /// サーバーのタスクを更新
-    private func syncUpdateTask(_ task: TaskItem, title: String? = nil, description: String? = nil, status: String? = nil) async {
-        guard let serverId = task.serverId else { return }
-        do {
-            _ = try await taskService.updateTask(
-                taskId: serverId,
-                title: title,
-                description: description,
-                status: status
-            )
-        } catch {
-            let apiError = (error as? APIError) ?? .networkError(error)
-            lastSyncError = apiError
-            syncError = apiError.errorDescription
-            if apiError.requiresReauth { showReauthPrompt = true }
+    private func enqueueUpsert(for localTaskID: UUID) {
+        TaskSyncMutationStore.enqueueUpsert(localTaskID: localTaskID)
+        scheduleMutationFlush()
+    }
+
+    private func enqueueDelete(for task: TaskItem) {
+        TaskSyncMutationStore.enqueueDelete(localTaskID: task.id, serverID: task.serverId)
+        scheduleMutationFlush()
+    }
+
+    private func scheduleMutationFlush() {
+        mutationFlushTask?.cancel()
+        mutationFlushTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 250_000_000)
+            await self?.flushPendingMutations()
         }
     }
 
-    /// サーバーからタスクを削除
-    private func syncDeleteTask(_ task: TaskItem) async {
-        guard let serverId = task.serverId else { return }
-        do {
-            try await taskService.deleteTask(taskId: serverId)
-        } catch {
-            let apiError = (error as? APIError) ?? .networkError(error)
-            lastSyncError = apiError
-            syncError = apiError.errorDescription
-            if apiError.requiresReauth { showReauthPrompt = true }
+    /// 永続Outboxを順番に処理する。成功した操作だけを削除し、一時障害時は次回へ残す。
+    func flushPendingMutations() async {
+        guard APIClient.shared.getAuthToken() != nil, !isFlushingMutations else { return }
+        isFlushingMutations = true
+        defer { isFlushingMutations = false }
+
+        while !Task.isCancelled, let mutation = TaskSyncMutationStore.loadAll().first {
+            do {
+                switch mutation.kind {
+                case .upsert:
+                    guard let task = tasks.first(where: {
+                        $0.id == mutation.localTaskID && $0.deletedAt == nil
+                    }) else {
+                        TaskSyncMutationStore.remove(id: mutation.id)
+                        continue
+                    }
+                    try await pushUpsert(task, mutation: mutation)
+
+                case .delete:
+                    if let serverID = mutation.serverID {
+                        do {
+                            try await taskService.deleteTask(taskId: serverID)
+                        } catch APIError.httpError(let statusCode, _) where statusCode == 404 {
+                            // 再送時に既に消えていれば成功とみなす。
+                        }
+                    }
+                }
+
+                TaskSyncMutationStore.remove(id: mutation.id)
+                syncError = nil
+                lastSyncError = nil
+            } catch {
+                applySyncError(error)
+                break
+            }
         }
+    }
+
+    private func pushUpsert(_ snapshot: TaskItem, mutation: TaskSyncMutation) async throws {
+        var serverID = snapshot.serverId
+        if serverID == nil {
+            let created = try await taskService.createTask(
+                title: snapshot.title,
+                clientTaskId: snapshot.id.uuidString,
+                description: snapshot.description.isEmpty ? nil : snapshot.description,
+                sessionId: nil,
+                cycleElement: nil
+            )
+            serverID = created.taskId
+
+            if let index = tasks.firstIndex(where: { $0.id == snapshot.id }) {
+                tasks[index].serverId = created.taskId
+                persist()
+            } else {
+                // 作成待ちの間にアーカイブ・削除された場合は孤児化させない。
+                TaskSyncMutationStore.enqueueDelete(
+                    localTaskID: snapshot.id,
+                    serverID: created.taskId
+                )
+                return
+            }
+        }
+
+        guard let serverID,
+              let latest = tasks.first(where: {
+                  $0.id == snapshot.id && $0.deletedAt == nil
+              }) else { return }
+        _ = try await taskService.updateTask(
+            taskId: serverID,
+            title: latest.title,
+            description: latest.description,
+            status: latest.isCompleted ? "completed" : "pending"
+        )
+    }
+
+    private func applySyncError(_ error: Error) {
+        let apiError = (error as? APIError) ?? .networkError(error)
+        lastSyncError = apiError
+        syncError = apiError.errorDescription
+        if apiError.requiresReauth { showReauthPrompt = true }
     }
 
     // MARK: - Archive Management
@@ -393,6 +511,7 @@ final class TaskViewModel: ObservableObject {
         TaskArchiveStore.save(archive)
 
         // タスクリストから削除
+        enqueueDelete(for: task)
         tasks.removeAll { $0.id == task.id }
 
         persist()
@@ -418,6 +537,9 @@ final class TaskViewModel: ObservableObject {
         TaskArchiveStore.save(archive)
 
         // 完了タスクを削除
+        for task in completed {
+            enqueueDelete(for: task)
+        }
         tasks.removeAll { $0.isCompleted }
 
         persist()

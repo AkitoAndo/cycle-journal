@@ -45,3 +45,36 @@ def test_firestore_database_id_overridable_via_env():
     with patch.dict(os.environ, {"FIRESTORE_DATABASE_ID": "dev"}):
         settings = Settings()
         assert settings.firestore_database_id == "dev"
+
+
+def test_google_oauth_client_ids_combines_legacy_and_additional_values():
+    with patch.dict(
+        os.environ,
+        {
+            "GOOGLE_CLIENT_ID": "ios-client",
+            "GOOGLE_CLIENT_IDS": "web-dev, web-prod,web-dev",
+        },
+    ):
+        settings = Settings()
+        assert settings.google_oauth_client_ids == [
+            "ios-client",
+            "web-dev",
+            "web-prod",
+        ]
+
+
+def test_cors_origins_are_explicit_and_deduplicated():
+    with patch.dict(
+        os.environ,
+        {
+            "CORS_ALLOWED_ORIGINS": (
+                "https://app.example.com, http://localhost:3000,"
+                "https://app.example.com"
+            )
+        },
+    ):
+        settings = Settings()
+        assert settings.cors_origins == [
+            "https://app.example.com",
+            "http://localhost:3000",
+        ]

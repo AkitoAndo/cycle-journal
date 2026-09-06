@@ -43,6 +43,7 @@ struct CreateSessionRequest: Encodable {
 struct SessionData: Decodable {
     let sessionId: String
     let title: String?
+    let summary: String?
     let cycleElement: String?
     let messageCount: Int?
     let lastMessageAt: Date?
@@ -59,6 +60,8 @@ struct SessionListData: Decodable {
 struct SessionDetailData: Decodable {
     let sessionId: String
     let title: String?
+    let summary: String?
+    let summaryGeneratedAt: Date?
     let cycleElement: String?
     let hasDiaryContext: Bool?
     let messages: [MessageData]
@@ -83,6 +86,7 @@ struct MessageMetadataData: Decodable {
 
 struct CreateTaskRequest: Encodable {
     let title: String
+    let clientTaskId: String?
     let description: String?
     let sessionId: String?
     let cycleElement: String?
@@ -128,6 +132,48 @@ struct ReflectionData: Decodable {
     let whatIWantToTry: String?
     let overallFeeling: String?
     let createdAt: Date
+}
+
+// MARK: - Journal API Models
+
+struct JournalSyncItem: Codable {
+    let journalId: String
+    let text: String
+    let tags: [String]
+    let entryDate: Date
+    let deletedAt: Date?
+    let createdAt: Date?
+    let updatedAt: Date?
+}
+
+struct JournalSyncRequest: Encodable {
+    let journals: [JournalSyncItem]
+    let deletedJournalIds: [String]
+    let lastPulledAt: Date?
+}
+
+struct JournalData: Decodable {
+    let journalId: String
+    let text: String
+    let tags: [String]
+    let entryDate: Date
+    let deletedAt: Date?
+    let createdAt: Date
+    let updatedAt: Date
+}
+
+struct JournalListData: Decodable {
+    let journals: [JournalData]
+    let total: Int
+}
+
+struct JournalSyncData: Decodable {
+    let journals: [JournalData]
+    let serverTime: Date
+    let pushedCount: Int
+    let pulledCount: Int
+    let deletedCount: Int
+    let conflictCount: Int
 }
 
 // MARK: - User API Models

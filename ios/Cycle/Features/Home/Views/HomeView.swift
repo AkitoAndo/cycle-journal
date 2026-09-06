@@ -70,10 +70,7 @@ struct HomeView: View {
     }
 
     private var dayTasks: [TaskItem] {
-        // その日にアーカイブされた完了タスク（アーカイブ日基準）
-        taskViewModel.archives
-            .first { calendar.isDate($0.date, inSameDayAs: selectedDate) }?
-            .completedTasks ?? []
+        taskViewModel.homeTasks(on: selectedDate)
     }
 
     /// カレンダーに記録ドットを出す日（ジャーナル/セッション/タスクのいずれかがある日）
@@ -85,7 +82,9 @@ struct HomeView: View {
         journalViewModel.entries.filter { $0.deletedAt == nil }.forEach { add($0.date) }
         coachStore.sessions.forEach { add($0.createdAt) }
         meditationStore.logs.forEach { add($0.date) }
+        taskViewModel.completedTasks.compactMap(\.completedAt).forEach { add($0) }
         taskViewModel.archives.filter { !$0.completedTasks.isEmpty }.forEach { add($0.date) }
+        if !taskViewModel.incompleteTasks.isEmpty { add(Date()) }
         scheduleStore.events.forEach { add($0.startDate) }
         return days
     }
@@ -470,13 +469,16 @@ struct HomeView: View {
     }
 
     private var taskRows: some View {
-        // ホームのタスクはアーカイブ済みのため、アーカイブ操作は付けない
         ForEach(dayTasks) { task in
             taskCard(task)
                 .customListRowStyle()
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                     Button(role: .destructive) {
-                        taskViewModel.deleteArchivedTask(task)
+                        if isLiveTask(task) {
+                            taskViewModel.deleteTask(task)
+                        } else {
+                            taskViewModel.deleteArchivedTask(task)
+                        }
                     } label: {
                         Label("削除", systemImage: "trash")
                             .labelStyle(.iconOnly)
@@ -499,6 +501,10 @@ struct HomeView: View {
                     .tint(DesignSystem.Colors.textSecondary)
                 }
         }
+    }
+
+    private func isLiveTask(_ task: TaskItem) -> Bool {
+        taskViewModel.tasks.contains { $0.id == task.id }
     }
 
     // MARK: - Cards

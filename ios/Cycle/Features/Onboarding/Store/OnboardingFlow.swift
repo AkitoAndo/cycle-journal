@@ -68,9 +68,15 @@ final class OnboardingFlow: ObservableObject {
         step = step.next()
     }
 
+    /// 紹介ページだけを省略し、認証以降の価値体験は維持する。
+    func skipIntroduction() {
+        guard step == .welcome || step == .cycleConcept else { return }
+        step = .signIn
+    }
+
     func selectGoal(_ goal: OnboardingGoal) {
         selectedGoal = goal
-        UserDefaults.standard.set(goal.rawValue, forKey: "userGoal")
+        UserDefaults.standard.set(goal.rawValue, forKey: "pendingOnboardingGoal")
     }
 
     func setFirstJournalText(_ text: String) {

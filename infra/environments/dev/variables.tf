@@ -35,3 +35,9 @@ variable "apple_apns_key_id" {
   type        = string
   default     = ""
 }
+
+variable "mcp_oauth_issuer" {
+  type        = string
+  description = "OAuth issuer for the Coach Studio remote MCP server"
+  default     = "https://example.invalid/"
+}

@@ -1,4 +1,4 @@
-# Cycle Journal Repository Rules
+# Treow Repository Rules
 
 ## Execution Style (Autonomy)
 

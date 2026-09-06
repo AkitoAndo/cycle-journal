@@ -78,7 +78,7 @@ struct PaywallView: View {
             Image(systemName: "tree.fill")
                 .font(.system(size: 48))
                 .foregroundStyle(DesignSystem.Colors.accent)
-            Text("Cycle Premium")
+            Text("Treow Premium")
                 .font(DesignSystem.Fonts.screenTitle)
             Text("自分と向き合う時間を、もっと深く。")
                 .font(.subheadline)

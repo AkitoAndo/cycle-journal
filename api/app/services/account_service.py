@@ -13,6 +13,7 @@ from google.cloud.firestore_v1.base_query import FieldFilter
 
 from app.services.apple_auth import revoke_apple_refresh_token
 from app.services.firestore_client import (
+    journals_ref,
     refresh_tokens_ref,
     sessions_ref,
     tasks_ref,
@@ -29,7 +30,11 @@ async def delete_user_account(db: AsyncClient, user_id: str) -> dict[str, int | 
         - apple_revoked: Apple 側で revoke できたか (True/False)
         - sessions_deleted: 削除したセッション数
         - tasks_deleted: 削除したタスク数
+        - journals_deleted: 削除したジャーナル数
         - refresh_tokens_deleted: 削除した server-issued refresh token 数
+        - ai_usage_records_deleted: 削除した月次AI利用記録数
+        - iap_links_deleted: 削除した課金ユーザー紐付け数
+        - user_subcollection_documents_deleted: subscription / APNs token 数
         - user_doc_deleted: ユーザードキュメント削除可否 (True/False)
     """
     user_doc_ref = users_ref(db).document(user_id)
@@ -54,7 +59,28 @@ async def delete_user_account(db: AsyncClient, user_id: str) -> dict[str, int | 
         user_id=user_id,
         subcollections=("reflections",),
     )
+    journals_deleted = await _delete_owned_documents(
+        db,
+        journals_ref(db),
+        user_id=user_id,
+    )
     refresh_deleted = await _delete_user_refresh_tokens(db, user_id)
+    ai_usage_deleted = await _delete_documents_by_field(
+        db.collection("ai_usage_monthly"),
+        field="user_id",
+        value=user_id,
+    )
+    iap_links_deleted = await _delete_documents_by_field(
+        db.collection("iap_links"),
+        field="uid",
+        value=user_id,
+    )
+
+    user_subcollection_documents_deleted = 0
+    for subcollection_name in ("subscription", "apns_tokens"):
+        user_subcollection_documents_deleted += await _delete_subcollection(
+            user_doc_ref.collection(subcollection_name)
+        )
 
     user_doc_deleted = False
     if snapshot.exists:
@@ -63,12 +89,17 @@ async def delete_user_account(db: AsyncClient, user_id: str) -> dict[str, int | 
 
     logger.info(
         "Deleted account user_id=%s apple_revoked=%s sessions=%d tasks=%d "
-        "refresh_tokens=%d user_doc=%s",
+        "journals=%d refresh_tokens=%d ai_usage=%d iap_links=%d "
+        "user_subcollection_documents=%d user_doc=%s",
         user_id,
         apple_revoked,
         sessions_deleted,
         tasks_deleted,
+        journals_deleted,
         refresh_deleted,
+        ai_usage_deleted,
+        iap_links_deleted,
+        user_subcollection_documents_deleted,
         user_doc_deleted,
     )
 
@@ -76,7 +107,11 @@ async def delete_user_account(db: AsyncClient, user_id: str) -> dict[str, int | 
         "apple_revoked": apple_revoked,
         "sessions_deleted": sessions_deleted,
         "tasks_deleted": tasks_deleted,
+        "journals_deleted": journals_deleted,
         "refresh_tokens_deleted": refresh_deleted,
+        "ai_usage_records_deleted": ai_usage_deleted,
+        "iap_links_deleted": iap_links_deleted,
+        "user_subcollection_documents_deleted": user_subcollection_documents_deleted,
         "user_doc_deleted": user_doc_deleted,
     }
 
@@ -99,9 +134,21 @@ async def _delete_owned_documents(
     return deleted
 
 
-async def _delete_subcollection(sub_collection) -> None:
+async def _delete_subcollection(sub_collection) -> int:
+    deleted = 0
     async for sub_doc in sub_collection.stream():
         await sub_doc.reference.delete()
+        deleted += 1
+    return deleted
+
+
+async def _delete_documents_by_field(collection, *, field: str, value: str) -> int:
+    query = collection.where(filter=FieldFilter(field, "==", value))
+    deleted = 0
+    async for doc in query.stream():
+        await doc.reference.delete()
+        deleted += 1
+    return deleted
 
 
 async def _delete_user_refresh_tokens(db: AsyncClient, user_id: str) -> int:

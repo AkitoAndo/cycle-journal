@@ -5,7 +5,7 @@
 | ステータス | :white_check_mark: Done |
 | 優先度 | P0 |
 | 依存 | C-05（Backend API接続） |
-| 参照 | [コーチ設計](/product/coach-design), [Cycleモデル](/product/cycle-model), [プロンプトカタログ](/product/prompt-catalog) |
+| 参照 | [コーチ設計](/product/coach-design), [Treowモデル](/product/cycle-model), [プロンプトカタログ](/product/prompt-catalog) |
 
 ## ユーザーストーリー
 
@@ -14,11 +14,11 @@
 ## 受け入れ条件
 
 - [x] ベースプロンプト（大樹スタイル、7つのルール）が `api/app/services/coach_service.py` に実装
-- [x] Cycle要素（土・水・根・幹・枝・葉・実・空）がプロンプトに含まれる
+- [x] Treow要素（土・水・根・幹・枝・葉・実・空）がプロンプトに含まれる
 - [x] 口調例・応答の長さ（1〜3文）がプロンプトに含まれる
 - [x] 禁止表現ルールがプロンプトに含まれる
 - [ ] 会話フェーズ（導入→深掘り→統合→実行→ふりかえり）のテンプレートが利用可能
-- [ ] Cycle要素のラベルがレスポンスメタデータに反映
+- [ ] Treow要素のラベルがレスポンスメタデータに反映
 
 ## 実装内容
 

@@ -37,13 +37,78 @@ def test_admin_rejects_non_allowlisted_email():
     assert response.status_code == 403
 
 
-def test_admin_prompt_test_uses_prompt_override_and_logs():
+def test_admin_access_accepts_allowlisted_email():
+    app = _client(_admin_db())
+    with patch("app.routers.admin.get_current_user_id", new_callable=AsyncMock) as user:
+        user.return_value = "google-user"
+        with TestClient(app) as client:
+            response = client.get("/admin/access")
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["data"]["is_admin"] is True
+
+
+def test_admin_can_deploy_prompt_version_in_dev(monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "environment", "dev")
     app = _client(_admin_db())
     with patch(
         "app.routers.admin.get_current_user_id",
         new_callable=AsyncMock,
     ) as user, patch(
-        "app.routers.admin.coach_service.chat",
+        "app.routers.admin.prompt_service.deploy_version",
+        new_callable=AsyncMock,
+    ) as deploy_version:
+        user.return_value = "google-user"
+        deploy_version.return_value = {
+            "environment": "dev",
+            "version_id": "version-1",
+            "deployed_by": "google-user",
+            "deployed_at": "2026-08-17T00:00:00+00:00",
+        }
+        with TestClient(app) as client:
+            response = client.post(
+                "/admin/prompts/deployment",
+                json={"version_id": "version-1"},
+            )
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["data"]["version_id"] == "version-1"
+    deploy_version.assert_awaited_once()
+
+
+def test_admin_cannot_deploy_prompt_version_directly_in_prod(monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "environment", "prod")
+    app = _client(_admin_db())
+    with patch("app.routers.admin.get_current_user_id", new_callable=AsyncMock) as user:
+        user.return_value = "google-user"
+        with TestClient(app) as client:
+            response = client.post(
+                "/admin/prompts/deployment",
+                json={"version_id": "version-1"},
+            )
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 403
+
+
+def test_admin_prompt_test_uses_prompt_override_and_logs():
+    from app.services.prompt_service import default_config
+
+    prompt = default_config()["system_prompt"].replace(
+        "あなたはTreowのコーチである。", "custom system"
+    )
+    app = _client(_admin_db())
+    with patch(
+        "app.routers.admin.get_current_user_id",
+        new_callable=AsyncMock,
+    ) as user, patch(
+        "app.services.prompt_admin_service.coach_service.chat",
         new_callable=AsyncMock,
     ) as chat, patch(
         "app.routers.admin.prompt_service.log_prompt_test",
@@ -56,14 +121,14 @@ def test_admin_prompt_test_uses_prompt_override_and_logs():
         with TestClient(app) as client:
             response = client.post(
                 "/admin/prompts/test",
-                json={"message": "hello", "prompt": "custom system"},
+                json={"message": "hello", "prompt": prompt},
             )
     app.dependency_overrides.clear()
 
     assert response.status_code == 200
     assert response.json()["data"]["message"] == "返答です。"
     chat.assert_awaited_once()
-    assert chat.call_args.kwargs["system_prompt"] == "custom system"
+    assert chat.call_args.kwargs["system_prompt"] == prompt
     log_prompt_test.assert_awaited_once()
 
 
@@ -79,7 +144,9 @@ def test_admin_current_prompt_returns_internal_prompt_when_no_deployment():
         from app.services.prompt_service import default_config
 
         config = default_config()
-        config["system_prompt"] = "internal system prompt"
+        config["system_prompt"] = config["system_prompt"].replace(
+            "あなたはTreowのコーチである。", "internal system prompt"
+        )
         user.return_value = "google-user"
         get_active_config.return_value = (config, None)
 
@@ -89,10 +156,10 @@ def test_admin_current_prompt_returns_internal_prompt_when_no_deployment():
 
     assert response.status_code == 200
     data = response.json()["data"]
-    assert data["prompt"] == "internal system prompt"
+    assert "internal system prompt" in data["prompt"]
     assert data["version_id"] is None
     assert data["source"] == "internal"
-    assert data["config"]["system_prompt"] == "internal system prompt"
+    assert "internal system prompt" in data["config"]["system_prompt"]
 
 
 def test_admin_auth_bypass_only_in_dev(monkeypatch):

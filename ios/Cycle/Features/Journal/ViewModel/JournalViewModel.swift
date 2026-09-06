@@ -45,17 +45,52 @@ final class JournalViewModel: ObservableObject {
     /// 検索画面のタブ選択（0: 検索, 1: 全て）
     @Published var searchViewTab: Int = 0
 
+    /// サーバー同期中かどうか
+    @Published private(set) var isSyncing: Bool = false
+
+    /// サーバー同期エラー。オフライン時はセットしない。
+    @Published private(set) var syncError: String?
+
+    private let journalService: JournalSyncing
+    private var cancellables = Set<AnyCancellable>()
+    private var syncTask: Task<Void, Never>?
+
     // MARK: - Initialization
 
-    init() {
+    init(
+        journalService: JournalSyncing = JournalService(),
+        networkMonitor: NetworkMonitor = .shared
+    ) {
+        self.journalService = journalService
         entries = JournalStore.loadAll()
         availableTags = loadAvailableTags()
+
+        networkMonitor.$isConnected
+            .removeDuplicates()
+            .filter { $0 }
+            .sink { [weak self] _ in
+                self?.scheduleSync()
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: .localDataScopeDidChange)
+            .sink { [weak self] _ in
+                self?.reloadForCurrentUser()
+            }
+            .store(in: &cancellables)
     }
 
     /// データをリロード（外部からのデータ変更後に呼ぶ）
     func reloadData() {
         entries = JournalStore.loadAll()
         availableTags = loadAvailableTags()
+    }
+
+    private func reloadForCurrentUser() {
+        syncTask?.cancel()
+        isSyncing = false
+        syncError = nil
+        reloadData()
     }
 
     // MARK: - Computed Properties
@@ -147,7 +182,7 @@ final class JournalViewModel: ObservableObject {
     /// 新しいエントリを追加
     func addEntry(text: String, tags: [String] = []) {
         guard let trimmedText = trimText(text), !trimmedText.isEmpty else { return }
-        entries.append(.init(text: trimmedText, tags: tags))
+        entries.append(.init(text: trimmedText, tags: tags, updatedAt: Date()))
         persist()
     }
 
@@ -156,6 +191,7 @@ final class JournalViewModel: ObservableObject {
         guard let index = findEntryIndex(entry) else { return }
         entries[index].text = newText
         entries[index].tags = newTags
+        entries[index].touch()
         persist()
     }
 
@@ -163,6 +199,7 @@ final class JournalViewModel: ObservableObject {
     func deleteEntry(_ entry: JournalEntry) {
         guard let index = findEntryIndex(entry) else { return }
         entries[index].deletedAt = Date()
+        entries[index].touch()
         persist()
     }
 
@@ -170,13 +207,43 @@ final class JournalViewModel: ObservableObject {
     func restoreEntry(_ entry: JournalEntry) {
         guard let index = findEntryIndex(entry) else { return }
         entries[index].deletedAt = nil
+        entries[index].touch()
         persist()
     }
 
     /// エントリを完全に削除（物理削除）
     func permanentlyDeleteEntry(_ entry: JournalEntry) {
+        JournalStore.addPendingDeletedEntryID(entry.id)
         entries.removeAll { $0.id == entry.id }
         persist()
+    }
+
+    // MARK: - Server Sync
+
+    func syncWithServer() async {
+        guard APIClient.shared.getAuthToken() != nil else { return }
+        guard !isSyncing else { return }
+
+        isSyncing = true
+        defer { isSyncing = false }
+
+        let pendingDeletedIDs = JournalStore.loadPendingDeletedEntryIDs()
+        do {
+            let response = try await journalService.sync(
+                entries: entries,
+                deletedEntryIds: pendingDeletedIDs,
+                lastPulledAt: JournalStore.loadLastSyncedAt()
+            )
+            mergeServerEntries(response.journals, ignoring: Set(pendingDeletedIDs))
+            JournalStore.savePendingDeletedEntryIDs([])
+            JournalStore.saveLastSyncedAt(response.serverTime)
+            syncError = nil
+            persist(sync: false)
+        } catch let error as APIError where error.isRetryable {
+            syncError = nil
+        } catch {
+            syncError = error.localizedDescription
+        }
     }
 
     // MARK: - Tag Management
@@ -320,13 +387,45 @@ final class JournalViewModel: ObservableObject {
     // MARK: - Private Helpers - Persistence
 
     /// エントリをストレージに保存
-    private func persist() {
+    private func persist(sync: Bool = true) {
         JournalStore.saveAll(entries)
+        if sync {
+            scheduleSync()
+        }
+    }
+
+    private func scheduleSync() {
+        guard APIClient.shared.getAuthToken() != nil else { return }
+        syncTask?.cancel()
+        syncTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            await self?.syncWithServer()
+        }
+    }
+
+    private func mergeServerEntries(_ journals: [JournalData], ignoring ignoredIDs: Set<UUID>) {
+        for journal in journals {
+            let remote = JournalEntry(apiData: journal)
+            if ignoredIDs.contains(remote.id) {
+                entries.removeAll { $0.id == remote.id }
+                continue
+            }
+
+            if let index = entries.firstIndex(where: { $0.id == remote.id }) {
+                if remote.syncUpdatedAt >= entries[index].syncUpdatedAt {
+                    entries[index] = remote
+                }
+            } else {
+                entries.append(remote)
+            }
+        }
     }
 
     /// UserDefaultsから利用可能なタグを読み込み
     private func loadAvailableTags() -> [String] {
-        guard let data = UserDefaults.standard.data(forKey: "availableTags"),
+        guard let data = UserDefaults.standard.data(
+            forKey: UserDataScope.scopedDefaultsKey("availableTags")
+        ),
               let tags = try? JSONDecoder().decode([String].self, from: data) else {
             return []
         }
@@ -336,7 +435,10 @@ final class JournalViewModel: ObservableObject {
     /// 利用可能なタグをUserDefaultsに保存
     private func saveAvailableTags() {
         if let data = try? JSONEncoder().encode(availableTags) {
-            UserDefaults.standard.set(data, forKey: "availableTags")
+            UserDefaults.standard.set(
+                data,
+                forKey: UserDataScope.scopedDefaultsKey("availableTags")
+            )
         }
     }
 }

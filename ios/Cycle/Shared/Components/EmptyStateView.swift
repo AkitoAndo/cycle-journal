@@ -35,6 +35,7 @@ struct EmptyStateView: View {
     }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.cycleTabIsActive) private var cycleTabIsActive
     @State private var isFloating = false
 
     var body: some View {
@@ -51,10 +52,10 @@ struct EmptyStateView: View {
                 )
                 .offset(y: isFloating ? -5 : 5)
                 .onAppear {
-                    guard !reduceMotion else { return }
-                    withAnimation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true)) {
-                        isFloating = true
-                    }
+                    updateFloatingAnimation(isActive: cycleTabIsActive)
+                }
+                .onChange(of: cycleTabIsActive) { _, isActive in
+                    updateFloatingAnimation(isActive: isActive)
                 }
                 .staggeredAppear(index: 0)
 
@@ -80,5 +81,15 @@ struct EmptyStateView: View {
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func updateFloatingAnimation(isActive: Bool) {
+        guard isActive, !reduceMotion else {
+            isFloating = false
+            return
+        }
+        withAnimation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true)) {
+            isFloating = true
+        }
     }
 }

@@ -18,6 +18,7 @@ enum TestDataProvider {
     @MainActor
     static func setupIfNeeded() {
         if isUITesting {
+            UserDataScope.activate(userID: "ui-test-user")
             // UIテスト: オンボーディング・データをリセットして既知の状態にする
             UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
             clearAllData()
@@ -27,6 +28,9 @@ enum TestDataProvider {
         }
 
         #if DEBUG
+        if APIClient.debugAuthBypass {
+            UserDataScope.activate(userID: "debug-user")
+        }
         // DEBUGビルド: データが空の場合のみサンプルデータを投入
         let journals = JSONFileStore.load("journals.json", as: [JournalEntry].self)
         let tasks = JSONFileStore.load("tasks.json", as: [TaskItem].self)
@@ -60,9 +64,16 @@ enum TestDataProvider {
         JSONFileStore.save([TaskItem](), to: "tasks.json")
         JSONFileStore.save([TaskArchive](), to: "task_archives.json")
         // タグ
-        UserDefaults.standard.removeObject(forKey: "availableTags")
+        UserDefaults.standard.removeObject(
+            forKey: UserDataScope.scopedDefaultsKey("availableTags")
+        )
         // コーチセッション（過去セッションが残っていると表示が不定になる）
-        UserDefaults.standard.removeObject(forKey: "CoachSessions")
+        UserDefaults.standard.removeObject(
+            forKey: UserDataScope.scopedDefaultsKey("CoachSessions")
+        )
+        UserDefaults.standard.removeObject(
+            forKey: UserDataScope.scopedDefaultsKey("MeditationLogs")
+        )
     }
 
     // MARK: - Journal
@@ -73,7 +84,10 @@ enum TestDataProvider {
 
         let tags = ["気づき", "感謝", "運動", "仕事", "読書"]
         if let data = try? JSONEncoder().encode(tags) {
-            UserDefaults.standard.set(data, forKey: "availableTags")
+            UserDefaults.standard.set(
+                data,
+                forKey: UserDataScope.scopedDefaultsKey("availableTags")
+            )
         }
 
         let entries: [JournalEntry] = [

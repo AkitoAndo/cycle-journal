@@ -2,7 +2,7 @@
 
 ## Branch Strategy
 
-Cycle Journal uses a GitLab Flow style environment branch model.
+Treow uses a GitLab Flow style environment branch model.
 
 | Flow | Target |
 | --- | --- |

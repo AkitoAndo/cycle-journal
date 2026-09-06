@@ -42,6 +42,9 @@ struct ContentView: View {
     @ViewBuilder
     private var authenticatedContent: some View {
         mainContent
+            .task {
+                await journalViewModel.syncWithServer()
+            }
     }
 
     private var splashView: some View {
@@ -97,6 +100,7 @@ struct ContentView: View {
             .opacity(isSelected ? 1 : 0)
             .allowsHitTesting(isSelected)
             .accessibilityHidden(!isSelected)
+            .environment(\.cycleTabIsActive, isSelected)
             .animation(nil, value: selectedTab)
     }
 }

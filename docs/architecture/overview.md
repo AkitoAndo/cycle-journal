@@ -38,7 +38,7 @@
 | Firestore | NoSQL ドキュメントDB、スケールtoゼロ |
 | Terraform | IaC |
 | Claude (Vertex AI) | コスト効率重視のLLM |
-| LangGraph | LLMオーケストレーション（感情分析・Cycle要素判定・安全フィルター） |
+| LangGraph | LLMオーケストレーション（感情分析・Treow要素判定・安全フィルター） |
 
 ### セキュリティ
 
@@ -95,7 +95,7 @@ api/
 │   ├── services/
 │   │   ├── apple_auth.py       # Apple JWKS取得・キャッシュ・JWT検証
 │   │   ├── coach_service.py    # SYSTEM_PROMPT + Vertex AI Claude
-│   │   ├── coach_graph.py      # LangGraphフロー（感情分析・Cycle要素・安全フィルター）
+│   │   ├── coach_graph.py      # LangGraphフロー（感情分析・Treow要素・安全フィルター）
 │   │   └── firestore_client.py # Firestore AsyncClient
 │   └── middleware/
 │       └── auth_middleware.py   # Bearerトークン抽出 + JWT検証

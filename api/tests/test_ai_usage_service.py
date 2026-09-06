@@ -26,6 +26,7 @@ def test_estimate_uses_gemini_prices_when_fallback_enabled(monkeypatch):
         message="今日は疲れた",
         history=[{"role": "assistant", "content": "前回の返答"}],
         diary_content="日記本文",
+        context_block="過去セッション要約",
         period="2026-07",
     )
 

@@ -13,9 +13,13 @@ final class ScheduleStore: ObservableObject {
     @Published private(set) var events: [ScheduleEvent] = []
 
     private static let file = "schedules.json"
+    private var cancellables = Set<AnyCancellable>()
 
     init() {
-        events = JSONFileStore.load(Self.file, as: [ScheduleEvent].self) ?? []
+        reload()
+        NotificationCenter.default.publisher(for: .localDataScopeDidChange)
+            .sink { [weak self] _ in self?.reload() }
+            .store(in: &cancellables)
     }
 
     /// 指定日の予定（終日を先頭、以降は開始時刻順）
@@ -54,5 +58,9 @@ final class ScheduleStore: ObservableObject {
 
     private func persist() {
         JSONFileStore.save(events, to: Self.file)
+    }
+
+    private func reload() {
+        events = JSONFileStore.load(Self.file, as: [ScheduleEvent].self) ?? []
     }
 }

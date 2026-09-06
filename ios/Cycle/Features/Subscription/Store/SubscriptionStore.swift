@@ -155,7 +155,9 @@ final class SubscriptionStore: ObservableObject {
     }
 
     private static func storedOnboardingGoal() -> OnboardingGoal? {
-        guard let rawValue = UserDefaults.standard.string(forKey: "userGoal") else {
+        guard let rawValue = UserDefaults.standard.string(
+            forKey: UserDataScope.scopedDefaultsKey("userGoal")
+        ) else {
             return nil
         }
         return OnboardingGoal(rawValue: rawValue)

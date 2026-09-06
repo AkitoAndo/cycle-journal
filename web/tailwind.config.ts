@@ -67,9 +67,9 @@ const config: Config = {
         ]
       },
       boxShadow: {
-        card: "0 1px 2px rgba(89, 71, 56, 0.06), 0 6px 24px rgba(89, 71, 56, 0.08)",
-        soft: "0 4px 12px rgba(140, 115, 89, 0.18)",
-        cta: "0 6px 18px rgba(140, 115, 89, 0.28)"
+        card: "0 1px 2px rgba(89, 71, 56, 0.05), 0 12px 32px rgba(89, 71, 56, 0.1)",
+        soft: "0 6px 16px rgba(89, 71, 56, 0.2)",
+        cta: "0 8px 22px rgba(89, 71, 56, 0.3)"
       },
       keyframes: {
         "fade-in-up": {

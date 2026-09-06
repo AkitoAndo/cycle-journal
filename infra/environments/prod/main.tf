@@ -3,6 +3,14 @@ provider "google" {
   region  = var.region
 }
 
+module "web" {
+  source = "../../modules/web"
+
+  project_id                     = var.project_id
+  environment                    = "prod"
+  github_actions_service_account = "github-actions-deploy@${var.project_id}.iam.gserviceaccount.com"
+}
+
 module "api" {
   source = "../../modules/api"
 
@@ -10,6 +18,8 @@ module "api" {
   region                = var.region
   environment           = "prod"
   firestore_database_id = "(default)"
+  google_client_ids     = var.google_client_ids
+  cors_allowed_origins  = var.cors_allowed_origins
   apple_team_id         = var.apple_team_id
   apple_key_id          = var.apple_key_id
   apple_apns_key_id     = var.apple_apns_key_id

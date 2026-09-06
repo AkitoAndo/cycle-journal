@@ -19,7 +19,7 @@ MEMBERS_FILE="$SCRIPT_DIR/gcp-members.txt"
 
 # ─── 設定 ────────────────────────────────────────────────────
 PROJECT_ID="cycle-journal"
-PROJECT_NAME="CycleJournal"
+PROJECT_NAME="Treow"
 REGION="asia-northeast1"
 
 # メンバーに付与するロール (管理者レベル、請求系を除く)

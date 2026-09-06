@@ -647,7 +647,7 @@ private struct TaskListPreview: View {
 // MARK: - Layout Previews
 
 private struct FlowLayoutPreview: View {
-    let tags = ["SwiftUI", "iOS", "Cycle", "振り返り", "タスク管理", "コーチング", "日記", "Atomic Design"]
+    let tags = ["SwiftUI", "iOS", "Treow", "振り返り", "タスク管理", "コーチング", "日記", "Atomic Design"]
 
     var body: some View {
         previewSection("Tag Wrapping") {

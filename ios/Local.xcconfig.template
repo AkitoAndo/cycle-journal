@@ -1,0 +1,4 @@
+// Copy this file to Local.xcconfig and fill in values for your Apple team/app.
+// Local.xcconfig is intentionally ignored because each developer may use a different team.
+DEVELOPMENT_TEAM =
+PRODUCT_BUNDLE_IDENTIFIER = com.example.CycleJournal

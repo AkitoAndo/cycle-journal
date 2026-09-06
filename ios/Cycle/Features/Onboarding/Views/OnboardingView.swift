@@ -69,9 +69,8 @@ enum OnboardingGoal: String, CaseIterable, Identifiable {
 
 struct OnboardingView: View {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
-    @AppStorage("userGoal") private var userGoal = ""
-    @State private var currentPage = 0
-    @State private var selectedGoal: OnboardingGoal?
+    @EnvironmentObject private var authStore: AuthStore
+    @StateObject private var flow = OnboardingFlow()
 
     private let pages: [OnboardingPage] = [
         OnboardingPage(
@@ -83,7 +82,7 @@ struct OnboardingView: View {
         OnboardingPage(
             id: 1,
             icon: "tree",
-            title: "Cycleという考え方",
+            title: "Treowという考え方",
             subtitle: "気づきと行動の循環が、あなたを育てます",
             details: [
                 OnboardingDetail(icon: "leaf", title: "Root", description: "想いを植える", color: DesignSystem.Colors.accent),
@@ -97,64 +96,117 @@ struct OnboardingView: View {
             icon: "questionmark.circle",
             title: "何を大切にしたいですか？",
             subtitle: "あなたに合った体験を届けます"
-        ),
-        OnboardingPage(
-            id: 3,
-            icon: "sunrise",
-            title: "さあ、はじめよう",
-            subtitle: "小さな一歩が、大きな成長のサイクルになります"
-        ),
+        )
     ]
 
     var body: some View {
-        ZStack {
-            DesignSystem.Colors.background
-                .ignoresSafeArea()
+        Group {
+            switch flow.step {
+            case .welcome, .cycleConcept, .goal:
+                introductionStep
+            case .signIn:
+                signInStep
+            case .firstJournal:
+                OnboardingFirstJournalView()
+            case .notificationPermission:
+                OnboardingNotificationPermissionView()
+            case .paywall:
+                OnboardingPaywallView()
+            case .done:
+                DesignSystem.Colors.background
+                    .ignoresSafeArea()
+            }
+        }
+        .environmentObject(flow)
+        .background(DesignSystem.Colors.background.ignoresSafeArea())
+        .animation(DesignSystem.Timing.gentleSpring, value: flow.step)
+        .onChange(of: authStore.state) { _, state in
+            guard state.isAuthenticated, flow.step == .signIn else { return }
+            flow.advance()
+        }
+        .onChange(of: flow.step) { _, step in
+            if step == .signIn, authStore.state.isAuthenticated {
+                flow.advance()
+            } else if step == .done {
+                hasCompletedOnboarding = true
+            }
+        }
+    }
 
-            VStack(spacing: 0) {
-                // Skip button
-                HStack {
-                    Spacer()
+    // MARK: - Introduction
+
+    private var introductionStep: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Spacer()
+                if flow.step != .goal {
                     Button("スキップ") {
-                        completeOnboarding()
+                        flow.skipIntroduction()
                     }
                     .font(DesignSystem.Fonts.body)
                     .foregroundStyle(DesignSystem.Colors.textSecondary)
                     .padding(.horizontal, DesignSystem.Spacing.lg)
                     .padding(.top, DesignSystem.Spacing.sm)
                 }
+            }
+            .frame(minHeight: 44)
 
-                // Page content
-                TabView(selection: $currentPage) {
-                    ForEach(pages) { page in
-                        pageView(page)
-                            .tag(page.id)
-                    }
+            if let page = pageForCurrentStep {
+                pageView(page)
+                    .id(page.id)
+                    .transition(.opacity.combined(with: .move(edge: .trailing)))
+            }
+
+            VStack(spacing: DesignSystem.Spacing.xxl) {
+                pageDots
+
+                PrimaryButton(
+                    flow.step == .goal ? "サインインへ" : "つぎへ",
+                    icon: "arrow.right"
+                ) {
+                    flow.advance()
                 }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-                .animation(.easeInOut(duration: 0.3), value: currentPage)
+                .disabled(!flow.canAdvance)
+                .padding(.horizontal, DesignSystem.Spacing.lg)
+            }
+            .padding(.bottom, DesignSystem.Spacing.xxl + 16)
+        }
+    }
 
-                // Page dots + button
-                VStack(spacing: DesignSystem.Spacing.xxl) {
-                    pageDots
+    private var pageForCurrentStep: OnboardingPage? {
+        let index = flow.step.rawValue
+        guard pages.indices.contains(index) else { return nil }
+        return pages[index]
+    }
 
-                    if currentPage == pages.count - 1 {
-                        PrimaryButton("はじめる", icon: "arrow.right") {
-                            completeOnboarding()
-                        }
-                        .padding(.horizontal, DesignSystem.Spacing.lg)
-                        .transition(.opacity)
-                    } else {
-                        PrimaryButton("つぎへ", icon: "arrow.right") {
-                            withAnimation {
-                                currentPage += 1
-                            }
-                        }
-                        .padding(.horizontal, DesignSystem.Spacing.lg)
-                        .transition(.opacity)
-                    }
-                }
-                .padding(.bottom, DesignSystem.Spacing.xxl + 16)
+    // MARK: - Authentication
+
+    @ViewBuilder
+    private var signInStep: some View {
+        switch authStore.state {
+        case .unknown:
+            VStack(spacing: DesignSystem.Spacing.lg) {
+                ProgressView()
+                    .tint(DesignSystem.Colors.accent)
+                Text("サインイン状態を確認しています")
+                    .font(DesignSystem.Fonts.caption)
+                    .foregroundStyle(DesignSystem.Colors.textSecondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        case .unauthenticated:
+            SignInView()
+        case .authenticated:
+            VStack(spacing: DesignSystem.Spacing.lg) {
+                ProgressView()
+                    .tint(DesignSystem.Colors.accent)
+                Text("最初の記録を準備しています")
+                    .font(DesignSystem.Fonts.caption)
+                    .foregroundStyle(DesignSystem.Colors.textSecondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .task {
+                guard flow.step == .signIn else { return }
+                flow.advance()
             }
         }
     }
@@ -251,14 +303,14 @@ struct OnboardingView: View {
             ForEach(OnboardingGoal.allCases) { goal in
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) {
-                        selectedGoal = goal
+                        flow.selectGoal(goal)
                     }
                 } label: {
                     HStack(spacing: DesignSystem.Spacing.md) {
                         Image(systemName: goal.icon)
                             .font(.system(size: 18))
                             .frame(width: 28)
-                            .foregroundStyle(selectedGoal == goal ? DesignSystem.Colors.accent : DesignSystem.Colors.textSecondary)
+                            .foregroundStyle(flow.selectedGoal == goal ? DesignSystem.Colors.accent : DesignSystem.Colors.textSecondary)
 
                         Text(goal.label)
                             .font(DesignSystem.Fonts.body)
@@ -266,7 +318,7 @@ struct OnboardingView: View {
 
                         Spacer()
 
-                        if selectedGoal == goal {
+                        if flow.selectedGoal == goal {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundStyle(DesignSystem.Colors.accent)
                                 .transition(.scale.combined(with: .opacity))
@@ -274,7 +326,7 @@ struct OnboardingView: View {
                     }
                     .padding(DesignSystem.Spacing.mlg)
                     .background(
-                        selectedGoal == goal
+                        flow.selectedGoal == goal
                             ? DesignSystem.Colors.accent.opacity(0.08)
                             : DesignSystem.Colors.surface
                     )
@@ -282,7 +334,7 @@ struct OnboardingView: View {
                     .overlay(
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
                             .stroke(
-                                selectedGoal == goal ? DesignSystem.Colors.accent : Color.clear,
+                                flow.selectedGoal == goal ? DesignSystem.Colors.accent : Color.clear,
                                 lineWidth: 1.5
                             )
                     )
@@ -299,21 +351,10 @@ struct OnboardingView: View {
         HStack(spacing: DesignSystem.Spacing.sm) {
             ForEach(0..<pages.count, id: \.self) { index in
                 Circle()
-                    .fill(index == currentPage ? DesignSystem.Colors.accent : DesignSystem.Colors.grey)
-                    .frame(width: index == currentPage ? 10 : 8, height: index == currentPage ? 10 : 8)
-                    .animation(.easeInOut(duration: 0.2), value: currentPage)
+                    .fill(index == flow.step.rawValue ? DesignSystem.Colors.accent : DesignSystem.Colors.grey)
+                    .frame(width: index == flow.step.rawValue ? 10 : 8, height: index == flow.step.rawValue ? 10 : 8)
+                    .animation(.easeInOut(duration: 0.2), value: flow.step)
             }
-        }
-    }
-
-    // MARK: - Actions
-
-    private func completeOnboarding() {
-        if let goal = selectedGoal {
-            userGoal = goal.rawValue
-        }
-        withAnimation(.easeInOut(duration: 0.4)) {
-            hasCompletedOnboarding = true
         }
     }
 }

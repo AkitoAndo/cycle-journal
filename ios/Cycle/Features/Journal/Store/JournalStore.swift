@@ -13,6 +13,12 @@ import Foundation
 /// ローカルストレージに保存・読み込み
 enum JournalStore {
     private static let file = "journals.json"
+    private static var lastSyncedAtKey: String {
+        UserDataScope.scopedDefaultsKey("journalLastSyncedAt")
+    }
+    private static var pendingDeletedIDsKey: String {
+        UserDataScope.scopedDefaultsKey("journalPendingDeletedIDs")
+    }
 
     /// 全てのジャーナルエントリを読み込み
     /// - Returns: 保存されているエントリの配列（失敗時は空配列）
@@ -24,5 +30,33 @@ enum JournalStore {
     /// - Parameter items: 保存するエントリの配列
     static func saveAll(_ items: [JournalEntry]) {
         JSONFileStore.save(items, to: file)
+    }
+
+    static func loadLastSyncedAt() -> Date? {
+        UserDefaults.standard.object(forKey: lastSyncedAtKey) as? Date
+    }
+
+    static func saveLastSyncedAt(_ date: Date?) {
+        if let date {
+            UserDefaults.standard.set(date, forKey: lastSyncedAtKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: lastSyncedAtKey)
+        }
+    }
+
+    static func loadPendingDeletedEntryIDs() -> [UUID] {
+        let ids = UserDefaults.standard.stringArray(forKey: pendingDeletedIDsKey) ?? []
+        return ids.compactMap(UUID.init(uuidString:))
+    }
+
+    static func addPendingDeletedEntryID(_ id: UUID) {
+        var ids = loadPendingDeletedEntryIDs()
+        guard !ids.contains(id) else { return }
+        ids.append(id)
+        savePendingDeletedEntryIDs(ids)
+    }
+
+    static func savePendingDeletedEntryIDs(_ ids: [UUID]) {
+        UserDefaults.standard.set(ids.map(\.uuidString), forKey: pendingDeletedIDsKey)
     }
 }

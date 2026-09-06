@@ -1,7 +1,7 @@
 [project]
 name = "cyclejournal-api"
 version = "0.1.0"
-description = "CycleJournal Backend API - GCP Cloud Run + Firestore"
+description = "Treow Backend API - GCP Cloud Run + Firestore"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115.0",
@@ -17,6 +17,8 @@ dependencies = [
     "langchain-core>=0.3.0",
     "app-store-server-library>=1.5.0",
     "cryptography>=42.0.0",
+    "janome>=0.5.0",
+    "mcp>=1.27.2,<2",
 ]
 
 [project.optional-dependencies]

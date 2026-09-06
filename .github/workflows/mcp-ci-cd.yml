@@ -1,0 +1,84 @@
+name: Coach MCP CI/CD
+
+on:
+  pull_request:
+    branches: [develop]
+    paths:
+      - api/**
+      - infra/modules/mcp/**
+      - infra/environments/dev/**
+      - .github/workflows/mcp-ci-cd.yml
+  push:
+    branches: [develop]
+    paths:
+      - api/**
+      - infra/modules/mcp/**
+      - infra/environments/dev/**
+      - .github/workflows/mcp-ci-cd.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: coach-mcp-${{ github.ref_name }}
+  cancel-in-progress: true
+
+env:
+  PROJECT_ID: cycle-journal
+  REGION: asia-northeast1
+  REPOSITORY: cycle-api
+  SERVICE: cycle-coach-mcp-dev
+
+jobs:
+  test:
+    name: MCP lint and test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --frozen --extra dev
+      - name: Lint
+        run: uv run ruff check .
+      - name: Test
+        run: uv run pytest
+
+  deploy:
+    name: Deploy MCP to Dev
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    environment: api-dev
+    steps:
+      - uses: actions/checkout@v4
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Configure Docker auth
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+      - name: Build and push image
+        env:
+          IMAGE: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/api:${{ github.sha }}
+        run: |
+          docker build --tag "${IMAGE}" api
+          docker push "${IMAGE}"
+      - name: Deploy MCP
+        env:
+          IMAGE: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/api:${{ github.sha }}
+        run: |
+          gcloud run deploy "${SERVICE}" \
+            --image "${IMAGE}" \
+            --region "${REGION}" \
+            --project "${PROJECT_ID}" \
+            --service-account "cycle-coach-mcp-dev@${PROJECT_ID}.iam.gserviceaccount.com" \
+            --quiet
