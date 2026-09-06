@@ -80,4 +80,5 @@ jobs:
             --image "${IMAGE}" \
             --region "${REGION}" \
             --project "${PROJECT_ID}" \
+            --service-account "cycle-coach-mcp-dev@${PROJECT_ID}.iam.gserviceaccount.com" \
             --quiet
