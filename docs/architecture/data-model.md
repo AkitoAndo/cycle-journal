@@ -49,7 +49,7 @@
 | id | UUID | |
 | role | MessageRole | user / coach |
 | content | String | |
-| metadata | MessageMetadata? | 感情、Cycle要素、提案アクション |
+| metadata | MessageMetadata? | 感情、Treow要素、提案アクション |
 | createdAt | Date | |
 
 ### AuthUser

@@ -20,7 +20,7 @@ App Store Server API を呼び出すための ES256 署名用 `.p8` 秘密鍵を
 1. [App Store Connect](https://appstoreconnect.apple.com/) → **Users and Access** → **Integrations** タブ
 2. 左サイドバーの **In-App Purchase** を選択
 3. **Generate In-App Purchase Key** ボタン
-4. **Name**: `CycleJournal IAP Server Key`
+4. **Name**: `Treow IAP Server Key`
 5. **Generate**
 6. **`AuthKey_XXXXXXXXXX.p8`** をダウンロード（**一度しかダウンロードできない**ので必ず安全に保管）
 7. 表示される以下の値を控える:

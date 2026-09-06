@@ -1,6 +1,6 @@
 # App Store リリース手順
 
-現在の対象は **Cycle v1.0.10 無料MVP**。App Store Connectのアプリレコードを正とし、Bundle ID、バージョン、ビルド番号、料金表記を提出直前に照合する。
+現在の対象は **Treow v1.0.10 無料MVP**。App Store Connectのアプリレコードを正とし、Bundle ID、バージョン、ビルド番号、料金表記を提出直前に照合する。
 
 ## 1. 提出前のコード確認
 

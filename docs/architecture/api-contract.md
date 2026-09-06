@@ -101,7 +101,7 @@ GraphQLは個人プロジェクトのスコープではオーバー。Cloud Run�
 
 | フィールド | 説明 | LangGraph OFF | LangGraph ON |
 |-----------|------|---------------|--------------|
-| `cycle_element` | Cycleモデル要素 | リクエスト指定値のみ | AI判定結果 |
+| `cycle_element` | Treowモデル要素 | リクエスト指定値のみ | AI判定結果 |
 | `detected_emotion` | 検出された感情 | null | AI判定結果（1単語） |
 
 LangGraphフローの有効/無効は環境変数 `USE_LANGGRAPH` で切り替え。

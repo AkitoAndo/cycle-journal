@@ -99,7 +99,7 @@ class Settings(BaseSettings):
     gemini_model_coach: str = "gemini-2.5-pro"  # Sonnet 相当
     gemini_model_quick: str = "gemini-2.5-flash"  # Haiku 相当
 
-    # LangGraphフローを有効にする（感情分析・Cycle要素判定・安全フィルター）
+    # LangGraphフローを有効にする（感情分析・Treow要素判定・安全フィルター）
     use_langgraph: bool = False
 
     # Apple In-App Purchase (App Store Server API / Notifications V2)

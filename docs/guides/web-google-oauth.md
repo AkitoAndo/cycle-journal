@@ -1,6 +1,6 @@
 # Web Google OAuth 運用手順
 
-Cycle の iOS / Web で同じ Google アカウントを使用するための認証情報台帳。
+Treow の iOS / Web で同じ Google アカウントを使用するための認証情報台帳。
 Client Secret の値は Git やこの文書には保存しない。
 
 ## Google Cloud
@@ -13,7 +13,7 @@ Client Secret の値は Git やこの文書には保存しない。
 
 ## Development client
 
-- Name: `Cycle Web Development`
+- Name: `Treow Web Development`
 - Client ID: `1031235624127-j358em4cvl8hll11p4kg3pd650chj82f.apps.googleusercontent.com`
 - Secret Manager secret: `google-oauth-web-development`
 - Secret versions: <https://console.cloud.google.com/security/secret-manager/secret/google-oauth-web-development/versions?project=cycle-journal>
@@ -53,7 +53,7 @@ gcloud secrets versions access latest \
 - Web: `https://cycle-web-dev-1031235624127.asia-northeast1.run.app`
 - API: `https://cycle-api-dev-1031235624127.asia-northeast1.run.app`
 - Cloud Run service: `cycle-web-dev`
-- OAuth client: `Cycle Web Development`
+- OAuth client: `Treow Web Development`
 - OAuth audience: Testing
 
 GitHub の `api-dev` environment には公開値の変数
@@ -70,7 +70,7 @@ GitHub の `api-dev` environment には公開値の変数
 Googleの公開OAuth要件に合わせ、所有権を確認できる独自ドメインを使用する。
 Homepageはログイン画面だけにせずアプリの目的・Googleデータの利用目的を説明し、
 同じドメイン上のPrivacy Policyへリンクする。ドメイン所有権をGoogle Search
-Consoleで確認してから、`Cycle Web Production` を別クライアントとして作成する。
+Consoleで確認してから、`Treow Web Production` を別クライアントとして作成する。
 localhostと一時的な`run.app` originはProduction clientへ追加しない。
 
 Production Client Secretは`google-oauth-web-production`に保存する。

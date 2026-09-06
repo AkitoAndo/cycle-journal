@@ -16,7 +16,7 @@ SIMULATOR="${1:-iPhone 16}"
 RESULT_BUNDLE="$PROJECT_DIR/TestResults.xcresult"
 DEST_DIR="$PROJECT_DIR/docs/public/screenshots"
 
-echo "=== Cycle Journal Screenshot Generator ==="
+echo "=== Treow Screenshot Generator ==="
 echo "Simulator: $SIMULATOR"
 echo ""
 

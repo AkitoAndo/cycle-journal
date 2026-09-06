@@ -35,7 +35,7 @@ interface GoogleWindow extends Window {
 const AUTH_ERROR_MESSAGES: Record<string, string> = {
   csrf: "Googleログインの確認情報が一致しませんでした。もう一度お試しください。",
   credential: "Googleからログイン情報を受け取れませんでした。もう一度お試しください。",
-  exchange: "GoogleログインをCycleのアカウントへ接続できませんでした。もう一度お試しください。",
+  exchange: "GoogleログインをTreowのアカウントへ接続できませんでした。もう一度お試しください。",
   unexpected: "Googleログインを完了できませんでした。もう一度お試しください。"
 };
 

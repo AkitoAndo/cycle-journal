@@ -2,7 +2,7 @@
 
 ## 目的
 
-CycleJournal の課金プラン（月額 ¥1,800 / 年額 ¥14,400 + 7 日無料トライアル）を App Store Connect に登録し、StoreKit 2 経由で購入可能にする。
+Treow の課金プラン（月額 ¥1,800 / 年額 ¥14,400 + 7 日無料トライアル）を App Store Connect に登録し、StoreKit 2 経由で購入可能にする。
 
 ## 前提条件
 
@@ -19,14 +19,14 @@ CycleJournal の課金プラン（月額 ¥1,800 / 年額 ¥14,400 + 7 日無料
 
 1. [App Store Connect](https://appstoreconnect.apple.com/) → 対象アプリ → **Monetization** → **Subscriptions**
 2. **Create Subscription Group** をクリック
-3. **Reference Name**: `CycleJournal Premium`（内部識別用、ユーザーには見えない）
+3. **Reference Name**: `Treow Premium`（内部識別用、ユーザーには見えない）
 4. **Save**
 
 > 同じ Group 内のサブスクは「アップグレード／ダウングレード」の関係になる。月額・年額は同一 Group に入れる。
 
 ### 2. 月額プランの作成
 
-1. Subscription Group `CycleJournal Premium` を開く
+1. Subscription Group `Treow Premium` を開く
 2. **Create Subscription** をクリック
 3. 入力項目:
    - **Reference Name**: `Monthly Premium`
@@ -47,7 +47,7 @@ CycleJournal の課金プラン（月額 ¥1,800 / 年額 ¥14,400 + 7 日無料
 
 ### 3. 年額プランの作成（7 日無料トライアル付き）
 
-1. Subscription Group `CycleJournal Premium` で再度 **Create Subscription**
+1. Subscription Group `Treow Premium` で再度 **Create Subscription**
 2. 入力項目:
    - **Reference Name**: `Yearly Premium`
    - **Product ID**: **`com.akitoando.CycleJournal.yearly_14400`**
@@ -86,7 +86,7 @@ CycleJournal の課金プラン（月額 ¥1,800 / 年額 ¥14,400 + 7 日無料
 3. 「7 日間無料で始める」タップ
 4. Sandbox アカウントのパスワード入力ダイアログ → 承認
 5. `SubscriptionStore.state` が `.trial(productID: "com.akitoando.CycleJournal.yearly_14400", expiresAt: ...)` になる
-6. `Settings → Apple Account → Subscriptions` に "CycleJournal" が表示される
+6. `Settings → Apple Account → Subscriptions` に "Treow" が表示される
 
 ### App Store Connect 側の状態
 - 商品が `Ready to Submit` になっていればアプリの審査提出に同梱可能

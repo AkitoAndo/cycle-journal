@@ -1,15 +1,15 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
-  title: 'Cycle Journal',
-  description: '日記・ジャーナルとAIコーチで内省を深めるCycle Journalのプロダクトドキュメント',
+  title: 'Treow',
+  description: '日記・ジャーナルとAIコーチで内省を深めるTreowのプロダクトドキュメント',
   lang: 'ja-JP',
   base: '/cycle-journal/',
   ignoreDeadLinks: true,
   head: [
-    ['meta', { name: 'description', content: 'Cycle Journalは、日記・ジャーナル、AIコーチ、タスクをつなげて自己理解と振り返りを支えるアプリです。' }],
-    ['meta', { name: 'keywords', content: '日記,ジャーナル,AI,AIコーチ,内省,振り返り,自己理解,タスク管理,Cycle Journal' }],
-    ['meta', { property: 'og:title', content: 'Cycle Journal - 日記とAIコーチで内省を習慣に' }],
+    ['meta', { name: 'description', content: 'Treowは、日記・ジャーナル、AIコーチ、タスクをつなげて自己理解と振り返りを支えるアプリです。' }],
+    ['meta', { name: 'keywords', content: '日記,ジャーナル,AI,AIコーチ,内省,振り返り,自己理解,タスク管理,Treow,トレオ' }],
+    ['meta', { property: 'og:title', content: 'Treow - 日記とAIコーチで内省を習慣に' }],
     ['meta', { property: 'og:description', content: '日記・ジャーナルを書き、AIコーチとの対話で気づきを行動につなげるアプリ。' }],
     ['meta', { property: 'og:type', content: 'website' }],
   ],
@@ -33,7 +33,7 @@ export default defineConfig({
         collapsed: false,
         items: [
           { text: 'コーチ設計', link: '/product/coach-design' },
-          { text: 'Cycleモデル', link: '/product/cycle-model' },
+          { text: 'Treowモデル', link: '/product/cycle-model' },
           { text: 'プロンプトカタログ', link: '/product/prompt-catalog' },
           { text: 'App Store説明文', link: '/product/store-description' },
         ],

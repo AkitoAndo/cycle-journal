@@ -2,7 +2,7 @@
 
 Nodes:
   1. analyze_emotion  - ユーザーメッセージから感情を検出
-  2. determine_cycle  - Cycleモデルの要素を判定
+  2. determine_cycle  - Treowモデルの要素を判定
   3. generate_response - コーチの応答を生成
   4. safety_filter     - 応答の安全性チェック
 """
@@ -18,7 +18,7 @@ from langgraph.graph import END, StateGraph
 from app.config import settings
 from app.services.coach_service import SYSTEM_PROMPT, build_user_content
 
-# Cycle要素
+# Treow要素
 CYCLE_ELEMENTS = ["Soil", "Water", "Root", "Trunk", "Branch", "Leaf", "Fruit", "Sky"]
 
 ANALYZE_EMOTION_PROMPT = (
@@ -28,7 +28,7 @@ ANALYZE_EMOTION_PROMPT = (
 )
 
 DETERMINE_CYCLE_PROMPT = (
-    "以下のメッセージが、Cycleモデルのどの要素に最も関連するか1つ選んでください。\n"
+    "以下のメッセージが、Treowモデルのどの要素に最も関連するか1つ選んでください。\n"
     "選択肢: {elements}\n"
     "要素名だけを答えてください。\n\n"
     "メッセージ: {user_message}\n"
@@ -38,7 +38,7 @@ DETERMINE_CYCLE_PROMPT = (
 ANALYSIS_INJECTION_PROMPT = (
     "## 現在の分析結果\n"
     "- 検出された感情: {detected_emotion}\n"
-    "- Cycle要素: {cycle_element}\n"
+    "- Treow要素: {cycle_element}\n"
     "この情報をもとに、適切な問いかけや共感を返してください。\n\n"
 )
 
@@ -108,7 +108,7 @@ def analyze_emotion(state: CoachState) -> dict:
 
 
 def determine_cycle(state: CoachState) -> dict:
-    """Cycleモデルのどの要素に関連するか判定."""
+    """Treowモデルのどの要素に関連するか判定."""
     client = _get_client()
     elements_str = ", ".join(CYCLE_ELEMENTS)
     prompt = state.determine_cycle_prompt.format(

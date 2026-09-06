@@ -10,7 +10,7 @@ data "google_project" "current" {
 
 resource "google_service_account" "cloud_run" {
   account_id   = "cycle-api-${var.environment}"
-  display_name = "CycleJournal API (${var.environment})"
+  display_name = "Treow API (${var.environment})"
   project      = var.project_id
 }
 

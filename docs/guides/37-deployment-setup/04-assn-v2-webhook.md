@@ -2,7 +2,7 @@
 
 ## 目的
 
-サブスクリプションの状態変化（購入・更新・解約・払戻し・refund・grace period 等）を Apple から CycleJournal バックエンドにリアルタイム通知する。PR #43 で実装した `POST /iap/apple/notifications` エンドポイントを App Store Connect に登録する。
+サブスクリプションの状態変化（購入・更新・解約・払戻し・refund・grace period 等）を Apple から Treow バックエンドにリアルタイム通知する。PR #43 で実装した `POST /iap/apple/notifications` エンドポイントを App Store Connect に登録する。
 
 ## 前提条件
 

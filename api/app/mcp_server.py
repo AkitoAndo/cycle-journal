@@ -96,9 +96,9 @@ token_verifier = OIDCJWTVerifier(
 )
 
 mcp = FastMCP(
-    name="Cycle Coach Studio",
+    name="Treow Coach Studio",
     instructions=(
-        "Cycleのコーチ設定を確認、検証、テストし、版として保存する管理ツールです。"
+        "Treowのコーチ設定を確認、検証、テストし、版として保存する管理ツールです。"
         "開発環境への適用は明示確認がある場合だけ実行してください。"
         "本番環境への適用はこのサーバーからはできません。"
     ),

@@ -1,4 +1,4 @@
-"""CycleJournal API - FastAPI application."""
+"""Treow API - FastAPI application."""
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,7 +23,7 @@ from app.routers import (
 setup_logging(project_id=settings.gcp_project_id)
 
 app = FastAPI(
-    title="CycleJournal API",
+    title="Treow API",
     version="0.1.0",
     docs_url="/docs" if settings.environment == "dev" else None,
 )

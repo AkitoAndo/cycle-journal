@@ -7,7 +7,7 @@ tags:
 - clearState
 - launchApp:
     clearKeychain: true
-- assertVisible: "Cycle"
+- assertVisible: "Treow"
 - assertVisible: "自分と向き合う日記アプリ"
 - assertVisible: "Sign in with Apple"
 - assertVisible: "Googleでサインイン"

@@ -60,7 +60,7 @@ struct CoachChatView: View {
                 inputArea
             }
             .background(DesignSystem.Colors.background)
-            .navigationTitle("Cycle との会話")
+            .navigationTitle("Treow との会話")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {

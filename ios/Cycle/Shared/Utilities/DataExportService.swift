@@ -208,7 +208,7 @@ enum DataExportService {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
         let dateString = dateFormatter.string(from: Date())
-        let fileName = "CycleJournal_Export_\(dateString).\(format.fileExtension)"
+        let fileName = "Treow_Export_\(dateString).\(format.fileExtension)"
 
         let tempDir = FileManager.default.temporaryDirectory
         let fileURL = tempDir.appendingPathComponent(fileName)
@@ -231,7 +231,8 @@ enum DataExportService {
             includingPropertiesForKeys: nil
         ) else { return }
 
-        for file in files where file.lastPathComponent.hasPrefix("CycleJournal_Export_") {
+        let exportPrefixes = ["Treow_Export_", "CycleJournal_Export_"]
+        for file in files where exportPrefixes.contains(where: { file.lastPathComponent.hasPrefix($0) }) {
             try? fileManager.removeItem(at: file)
         }
     }

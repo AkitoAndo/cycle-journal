@@ -41,7 +41,7 @@ final class NotificationManager {
     /// - Parameter time: リマインダー時刻（時・分のみ使用）
     func scheduleDailyReminder(hour: Int, minute: Int) {
         let content = UNMutableNotificationContent()
-        content.title = "CycleJournal"
+        content.title = "Treow"
         content.body = "今日のふりかえりを書きましょう"
         content.sound = .default
 

@@ -82,7 +82,7 @@ struct OnboardingView: View {
         OnboardingPage(
             id: 1,
             icon: "tree",
-            title: "Cycleという考え方",
+            title: "Treowという考え方",
             subtitle: "気づきと行動の循環が、あなたを育てます",
             details: [
                 OnboardingDetail(icon: "leaf", title: "Root", description: "想いを植える", color: DesignSystem.Colors.accent),

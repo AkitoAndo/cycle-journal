@@ -30,7 +30,7 @@
 1. **+** → **Add Auto-Renewable Subscription**
 2. **Reference Name**: `Monthly Premium`
 3. **Product ID**: `com.akitoando.CycleJournal.monthly_1800`
-4. **Subscription Group**: `CycleJournal Premium` を新規作成して選択
+4. **Subscription Group**: `Treow Premium` を新規作成して選択
 5. **Subscription Duration**: 1 month
 6. **Price**: ¥1,800 → 1800.00 / JPY
 7. **Family Sharing**: Off（必要なら On）
@@ -39,7 +39,7 @@
 1. **+** → **Add Auto-Renewable Subscription**
 2. **Reference Name**: `Yearly Premium`
 3. **Product ID**: `com.akitoando.CycleJournal.yearly_14400`
-4. **Subscription Group**: 上で作った `CycleJournal Premium` を選択
+4. **Subscription Group**: 上で作った `Treow Premium` を選択
 5. **Subscription Duration**: 1 year
 6. **Price**: ¥14,400 → 14400.00 / JPY
 

@@ -53,7 +53,7 @@ identity providerを推奨している。初期構成では、OpenAIの認証済
 
 1. Auth0 tenantを作成し、Google social connectionを有効にする。
 2. APIを作成する。
-   - Name: `Cycle Coach MCP Dev`
+   - Name: `Treow Coach MCP Dev`
    - Identifier:
      `https://cycle-coach-mcp-dev-1031235624127.asia-northeast1.run.app/mcp`
    - Signing Algorithm: `RS256`
@@ -81,7 +81,7 @@ exports.onExecutePostLogin = async (event, api) => {
   const email = (event.user.email || "").toLowerCase();
 
   if (!event.user.email_verified || !allowed.has(email)) {
-    api.access.deny("Cycle Coach MCP is restricted to approved administrators.");
+    api.access.deny("Treow Coach MCP is restricted to approved administrators.");
     return;
   }
 
