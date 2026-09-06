@@ -15,6 +15,12 @@ resource "google_service_account" "mcp" {
   project      = var.project_id
 }
 
+resource "google_service_account_iam_member" "github_actions_act_as" {
+  service_account_id = google_service_account.mcp.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${var.github_actions_service_account}"
+}
+
 resource "google_cloud_run_v2_service" "mcp" {
   name     = local.service_name
   location = var.region
