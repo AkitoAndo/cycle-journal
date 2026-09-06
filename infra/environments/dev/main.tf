@@ -39,9 +39,10 @@ module "api" {
 module "coach_mcp" {
   source = "../../modules/mcp"
 
-  project_id     = var.project_id
-  region         = var.region
-  environment    = "dev"
-  oauth_issuer   = var.mcp_oauth_issuer
-  allowed_emails = "takeshiogata1105@gmail.com,28ww.lo.ol.ww28@gmail.com"
+  project_id                     = var.project_id
+  region                         = var.region
+  environment                    = "dev"
+  oauth_issuer                   = var.mcp_oauth_issuer
+  allowed_emails                 = "takeshiogata1105@gmail.com,28ww.lo.ol.ww28@gmail.com"
+  github_actions_service_account = "github-actions-deploy@${var.project_id}.iam.gserviceaccount.com"
 }

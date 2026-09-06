@@ -20,6 +20,11 @@ variable "allowed_emails" {
   description = "Comma-separated verified email allowlist for MCP users"
 }
 
+variable "github_actions_service_account" {
+  type        = string
+  description = "GitHub Actions deploy service account allowed to run as the MCP service account"
+}
+
 variable "image_tag" {
   type    = string
   default = "dev"
