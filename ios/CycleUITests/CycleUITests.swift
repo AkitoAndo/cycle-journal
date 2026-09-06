@@ -172,17 +172,13 @@ final class CycleUITests: XCTestCase {
         )
         takeScreenshot("coach-chat-start")
 
-        // モック応答も1往復させてユーザー/コーチ両方の吹き出しを写す
-        let field = app.textFields.firstMatch
-        if field.waitForExistence(timeout: 3) {
-            field.tap()
-            field.typeText("今日は少し疲れた")
-            app.buttons["送信"].tap()
-            _ = app.staticTexts
-                .matching(NSPredicate(format: "label CONTAINS '？'"))
-                .firstMatch
-                .waitForExistence(timeout: 5)
-        }
+        // モック応答も1往復させてユーザー/コーチ両方の吹き出しを写す。
+        // スターターを使うことで、キーボード表示中の送信ボタン待機を避ける。
+        app.buttons["今日あったことを話したい"].tap()
+        _ = app.staticTexts
+            .matching(NSPredicate(format: "label CONTAINS '？'"))
+            .firstMatch
+            .waitForExistence(timeout: 5)
         takeScreenshot("coach-chat")
     }
 
