@@ -145,10 +145,46 @@ final class JournalViewModel: ObservableObject {
     // MARK: - Entry Management
 
     /// 新しいエントリを追加
-    func addEntry(text: String, tags: [String] = []) {
+    /// - Parameter quotedEntryId: 過去のジャーナルを引用して書く場合、その引用元のID
+    func addEntry(text: String, tags: [String] = [], quotedEntryId: UUID? = nil) {
         guard let trimmedText = trimText(text), !trimmedText.isEmpty else { return }
-        entries.append(.init(text: trimmedText, tags: tags))
+        entries.append(.init(text: trimmedText, tags: tags, quotedEntryId: quotedEntryId))
         persist()
+    }
+
+    /// エントリの引用元を取得。
+    /// ゴミ箱内（論理削除済み）の引用元も返す（本文は残っているため表示できる）。
+    /// 完全削除済みで見つからない場合は nil。
+    func quotedSource(of entry: JournalEntry) -> JournalEntry? {
+        guard let id = entry.quotedEntryId else { return nil }
+        return entries.first { $0.id == id }
+    }
+
+    /// このエントリが引用している過去エントリの件数（引用チェーンを遡った数）。
+    /// 引用なしなら 0。
+    /// 引用元が完全削除されて遡れない場合も引用自体は存在するため、最低 1 を返す。
+    func quoteCount(of entry: JournalEntry) -> Int {
+        guard entry.quotedEntryId != nil else { return 0 }
+        // チェーン = [最古 ... 直接の引用元, エントリ自身] なので、自身を除いた数が引用件数
+        return max(1, quoteChain(for: entry).count - 1)
+    }
+
+    /// エントリの引用チェーン（最も古い引用元 → このエントリ自身の時系列順）。
+    /// 引用が重なっている場合も全ての引用元をたどる。
+    /// 引用元が完全削除されてたどれなくなった場合はそこで打ち切り
+    /// （先頭要素の quotedEntryId が非nilなら打ち切りが起きたと判定できる）。
+    func quoteChain(for entry: JournalEntry) -> [JournalEntry] {
+        var chain: [JournalEntry] = [entry]
+        var visited: Set<UUID> = [entry.id]
+        var current = entry
+        while let id = current.quotedEntryId,
+              !visited.contains(id),
+              let source = entries.first(where: { $0.id == id }) {
+            chain.append(source)
+            visited.insert(id)
+            current = source
+        }
+        return chain.reversed()
     }
 
     /// エントリを更新

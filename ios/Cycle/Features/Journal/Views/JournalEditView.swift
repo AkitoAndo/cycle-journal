@@ -15,6 +15,8 @@ struct JournalEditView: View {
 
     @State private var editText: String
     @State private var editTags: [String]
+    /// 引用カードのタップで引用の履歴プレビューを表示
+    @State private var showQuoteChain = false
     @FocusState private var isTextFieldFocused: Bool
 
     init(vm: JournalViewModel, entry: JournalEntry) {
@@ -31,7 +33,13 @@ struct JournalEditView: View {
                 text: $editText,
                 selectedTags: $editTags,
                 isTextFocused: $isTextFieldFocused,
-                textEditorMinHeight: 150
+                textEditorMinHeight: 150,
+                hasQuote: entry.quotedEntryId != nil,
+                quotedSource: vm.quotedSource(of: entry),
+                // チェーン = [最古 ... 直接の引用元, エントリ自身] なので、
+                // 直接の引用元より前に遡れる件数は「全体 - 2」
+                quoteOlderCount: max(0, vm.quoteChain(for: entry).count - 2),
+                onShowQuoteChain: { showQuoteChain = true }
             )
             .navigationTitle("エントリを編集")
             .navigationBarTitleDisplayMode(.inline)
@@ -51,6 +59,10 @@ struct JournalEditView: View {
             }
         }
         .presentationBackground(DesignSystem.Colors.background)
+        .sheet(isPresented: $showQuoteChain) {
+            JournalQuoteChainView(vm: vm, entry: entry)
+                .softSheet()
+        }
     }
 
     private func saveChanges() {

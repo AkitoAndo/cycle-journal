@@ -32,12 +32,32 @@ struct JournalEntryTests {
         #expect(entry1.id != entry2.id)
     }
 
+    @Test func entryWithQuoteCodable() throws {
+        let source = JournalEntry(text: "引用元の日記")
+        let entry = JournalEntry(text: "引用して書いた日記", quotedEntryId: source.id)
+        let data = try JSONEncoder().encode(entry)
+        let decoded = try JSONDecoder().decode(JournalEntry.self, from: data)
+        #expect(decoded.quotedEntryId == source.id)
+    }
+
+    /// quotedEntryId 追加前に保存されたJSONも読み込めること（後方互換）
+    @Test func entryDecodesLegacyJSONWithoutQuotedEntryId() throws {
+        let legacyJSON = """
+        {"id":"11111111-2222-3333-4444-555555555555","date":774400000,"text":"昔のエントリ","tags":["タグ"]}
+        """
+        let decoded = try JSONDecoder().decode(JournalEntry.self, from: Data(legacyJSON.utf8))
+        #expect(decoded.text == "昔のエントリ")
+        #expect(decoded.quotedEntryId == nil)
+        #expect(decoded.deletedAt == nil)
+    }
+
     @Test func entryCodable() throws {
         let entry = JournalEntry(text: "テスト", tags: ["タグ1"])
         let data = try JSONEncoder().encode(entry)
         let decoded = try JSONDecoder().decode(JournalEntry.self, from: data)
         #expect(decoded.text == "テスト")
         #expect(decoded.tags == ["タグ1"])
+        #expect(decoded.quotedEntryId == nil)
         #expect(decoded.id == entry.id)
     }
 }
@@ -79,6 +99,116 @@ struct JournalViewModelTests {
         let vm = JournalViewModel()
         vm.addEntry(text: "  前後にスペース  ")
         #expect(vm.entries.last?.text == "前後にスペース")
+    }
+
+    @Test func quotedSourceLookup() {
+        let vm = JournalViewModel()
+        vm.addEntry(text: "引用元エントリ_lookup")
+        guard let source = vm.entries.last else {
+            Issue.record("引用元の追加に失敗")
+            return
+        }
+        vm.addEntry(text: "引用したエントリ_lookup", quotedEntryId: source.id)
+        guard let quoting = vm.entries.last else {
+            Issue.record("引用エントリの追加に失敗")
+            return
+        }
+        #expect(vm.quotedSource(of: quoting)?.id == source.id)
+        #expect(vm.quotedSource(of: source) == nil)
+    }
+
+    /// 引用が重なった場合のチェーン取得（最古 → 自身の時系列順）
+    @Test func quoteChainOrder() {
+        let vm = JournalViewModel()
+        vm.addEntry(text: "チェーン1番目")
+        guard let first = vm.entries.last else {
+            Issue.record("1番目の追加に失敗")
+            return
+        }
+        vm.addEntry(text: "チェーン2番目", quotedEntryId: first.id)
+        guard let second = vm.entries.last else {
+            Issue.record("2番目の追加に失敗")
+            return
+        }
+        vm.addEntry(text: "チェーン3番目", quotedEntryId: second.id)
+        guard let third = vm.entries.last else {
+            Issue.record("3番目の追加に失敗")
+            return
+        }
+
+        let chain = vm.quoteChain(for: third)
+        #expect(chain.map(\.id) == [first.id, second.id, third.id])
+
+        // 引用なしエントリのチェーンは自分自身のみ
+        #expect(vm.quoteChain(for: first).map(\.id) == [first.id])
+    }
+
+    /// 引用元が完全削除された場合はそこでチェーンが打ち切られる
+    @Test func quoteChainTruncatedByPermanentDelete() {
+        let vm = JournalViewModel()
+        vm.addEntry(text: "削除される引用元")
+        guard let source = vm.entries.last else {
+            Issue.record("引用元の追加に失敗")
+            return
+        }
+        vm.addEntry(text: "引用したエントリ_truncate", quotedEntryId: source.id)
+        guard let quoting = vm.entries.last else {
+            Issue.record("引用エントリの追加に失敗")
+            return
+        }
+
+        vm.permanentlyDeleteEntry(source)
+
+        let chain = vm.quoteChain(for: quoting)
+        #expect(chain.map(\.id) == [quoting.id])
+        // 先頭の quotedEntryId が残っている＝打ち切りが起きたと判定できる
+        #expect(chain.first?.quotedEntryId == source.id)
+    }
+
+    /// 右上バッジ用の引用件数（引用チェーンを遡った数。自身は含めない）
+    @Test func quoteCountCountsAllAncestors() {
+        let vm = JournalViewModel()
+        vm.addEntry(text: "件数1番目")
+        guard let first = vm.entries.last else {
+            Issue.record("1番目の追加に失敗")
+            return
+        }
+        vm.addEntry(text: "件数2番目", quotedEntryId: first.id)
+        guard let second = vm.entries.last else {
+            Issue.record("2番目の追加に失敗")
+            return
+        }
+        vm.addEntry(text: "件数3番目", quotedEntryId: second.id)
+        guard let third = vm.entries.last else {
+            Issue.record("3番目の追加に失敗")
+            return
+        }
+
+        // 引用なしはバッジ非表示（0件）
+        #expect(vm.quoteCount(of: first) == 0)
+        // 直接の引用元1件
+        #expect(vm.quoteCount(of: second) == 1)
+        // 引用の引用まで遡って2件
+        #expect(vm.quoteCount(of: third) == 2)
+    }
+
+    /// 引用元が完全削除されて遡れなくても、引用自体はあるので1件として数える
+    @Test func quoteCountIsAtLeastOneWhenSourceDeleted() {
+        let vm = JournalViewModel()
+        vm.addEntry(text: "削除される引用元_count")
+        guard let source = vm.entries.last else {
+            Issue.record("引用元の追加に失敗")
+            return
+        }
+        vm.addEntry(text: "引用したエントリ_count", quotedEntryId: source.id)
+        guard let quoting = vm.entries.last else {
+            Issue.record("引用エントリの追加に失敗")
+            return
+        }
+
+        vm.permanentlyDeleteEntry(source)
+
+        #expect(vm.quoteCount(of: quoting) == 1)
     }
 
     @Test func updateEntry() {
@@ -154,14 +284,21 @@ struct JournalViewModelTests {
     }
 
     @Test func renameTag() {
+        // JournalViewModel は端末の保存領域を共有するため、固定のタグ名だと
+        // 前回実行分が残る。renameTag は改名先が既存なら何もしない実装なので、
+        // 2回目以降の実行が必ず失敗してしまう。実行ごとに一意な名前を使う。
+        let suffix = UUID().uuidString.prefix(8)
+        let oldName = "旧名_\(suffix)"
+        let newName = "新名_\(suffix)"
+
         let vm = JournalViewModel()
-        vm.addTag("旧名")
-        vm.addEntry(text: "エントリ", tags: ["旧名"])
-        vm.renameTag("旧名", to: "新名")
-        #expect(vm.availableTags.contains("新名"))
-        #expect(vm.availableTags.contains("旧名") == false)
+        vm.addTag(oldName)
+        vm.addEntry(text: "エントリ", tags: [oldName])
+        vm.renameTag(oldName, to: newName)
+        #expect(vm.availableTags.contains(newName))
+        #expect(vm.availableTags.contains(oldName) == false)
         let entry = vm.entries.last
-        #expect(entry?.tags.contains("新名") == true)
+        #expect(entry?.tags.contains(newName) == true)
     }
 
     @Test func searchByText() {
@@ -228,6 +365,71 @@ struct TaskItemTests {
         let task1 = TaskItem(title: "task1")
         let task2 = TaskItem(title: "task2")
         #expect(task1.id != task2.id)
+    }
+}
+
+// MARK: - TaskItem 振り返り→ジャーナル本文 Tests
+
+struct TaskReflectionJournalTextTests {
+    @Test func allFieldsFilled() {
+        let text = TaskItem.reflectionJournalText(
+            title: "朝のランニング",
+            fact: "5km走った",
+            insight: "朝は集中できる",
+            nextAction: "明日は6kmに伸ばす"
+        )
+        #expect(text == """
+        タスクの振り返り「朝のランニング」
+
+        【事実】
+        5km走った
+
+        【気づき】
+        朝は集中できる
+
+        【次の一手】
+        明日は6kmに伸ばす
+        """)
+    }
+
+    @Test func skipsEmptyFields() {
+        let text = TaskItem.reflectionJournalText(
+            title: "読書",
+            fact: "30分読んだ",
+            insight: "",
+            nextAction: "  "
+        )
+        #expect(text == """
+        タスクの振り返り「読書」
+
+        【事実】
+        30分読んだ
+        """)
+    }
+
+    @Test func allEmptyReturnsNil() {
+        let text = TaskItem.reflectionJournalText(
+            title: "タスク",
+            fact: "",
+            insight: "   ",
+            nextAction: "\n"
+        )
+        #expect(text == nil)
+    }
+
+    @Test func trimsWhitespace() {
+        let text = TaskItem.reflectionJournalText(
+            title: "タスク",
+            fact: "",
+            insight: "  気づきの内容  \n",
+            nextAction: ""
+        )
+        #expect(text == """
+        タスクの振り返り「タスク」
+
+        【気づき】
+        気づきの内容
+        """)
     }
 }
 

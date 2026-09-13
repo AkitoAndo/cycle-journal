@@ -20,6 +20,10 @@ struct JournalListView: View {
     @State private var showDatePicker = false
     @State private var showNewEntry = false
     @State private var editingEntry: JournalEntry?
+    /// スワイプ「引用」で選択された引用元エントリ（設定されると引用付き新規作成シートを表示）
+    @State private var quotingEntry: JournalEntry?
+    /// 引用カードのタップで選択されたエントリ（設定されると引用の履歴シートを表示）
+    @State private var chainEntry: JournalEntry?
     @State private var showTagManagement = false
     @State private var showDeleted = false
 
@@ -42,6 +46,14 @@ struct JournalListView: View {
             }
             .sheet(item: $editingEntry) { entry in
                 JournalEditView(vm: vm, entry: entry)
+                    .softSheet()
+            }
+            .sheet(item: $quotingEntry) { entry in
+                JournalNewEntryView(vm: vm, quotedEntry: entry)
+                    .softSheet()
+            }
+            .sheet(item: $chainEntry) { entry in
+                JournalQuoteChainView(vm: vm, entry: entry)
                     .softSheet()
             }
             .sheet(isPresented: $showTagManagement) {
@@ -128,11 +140,20 @@ struct JournalListView: View {
     private var entriesList: some View {
         JournalEntriesList(
             entries: vm.todays,
+            quoteCount: { entry in
+                vm.quoteCount(of: entry)
+            },
             onEdit: { entry in
                 editingEntry = entry
             },
             onDelete: { entry in
                 vm.deleteEntry(entry)
+            },
+            onQuote: { entry in
+                quotingEntry = entry
+            },
+            onShowQuoteChain: { entry in
+                chainEntry = entry
             }
         )
     }

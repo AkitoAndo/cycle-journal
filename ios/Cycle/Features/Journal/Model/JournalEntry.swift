@@ -28,4 +28,7 @@ struct JournalEntry: Identifiable, Codable, Hashable {
 
     /// 削除日時（論理削除用）
     var deletedAt: Date?
+
+    /// 引用元エントリのID（過去のジャーナルを引用して書いた場合に設定）
+    var quotedEntryId: UUID?
 }
