@@ -4,13 +4,23 @@ variable "project_id" {
 }
 
 variable "environment" {
-  description = "Deployment environment name"
+  description = "Lowercase environment name used as a GCP resource suffix"
   type        = string
 
   validation {
-    condition     = contains(["dev", "prod"], var.environment)
-    error_message = "Environment must be dev or prod."
+    condition = (
+      length(var.environment) <= 20 &&
+      can(regex("^[a-z][a-z0-9-]*$", var.environment)) &&
+      !endswith(var.environment, "-")
+    )
+    error_message = "environment must be 1-20 lowercase letters, digits, or hyphens; it must start with a letter and end with a letter or digit."
   }
+}
+
+variable "service_account_description" {
+  description = "Optional description to preserve when adopting an existing runtime identity"
+  type        = string
+  default     = null
 }
 
 variable "github_actions_service_account" {

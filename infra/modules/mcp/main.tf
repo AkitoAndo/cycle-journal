@@ -12,6 +12,7 @@ locals {
 resource "google_service_account" "mcp" {
   account_id   = "cycle-coach-mcp-${var.environment}"
   display_name = "Treow Coach MCP (${var.environment})"
+  description  = var.service_account_description
   project      = var.project_id
 }
 

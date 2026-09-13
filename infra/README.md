@@ -56,10 +56,13 @@ Do the migration before removing the legacy root state from operation.
    terraform -chdir=infra/environments/shared import \
      'module.shared.google_project_service.apis["secretmanager.googleapis.com"]' \
      'cycle-journal/secretmanager.googleapis.com'
-   terraform -chdir=infra/environments/shared import \
-     'module.shared.google_project_service.apis["aiplatform.googleapis.com"]' \
-     'cycle-journal/aiplatform.googleapis.com'
-   ```
+terraform -chdir=infra/environments/shared import \
+  'module.shared.google_project_service.apis["aiplatform.googleapis.com"]' \
+  'cycle-journal/aiplatform.googleapis.com'
+terraform -chdir=infra/environments/shared import \
+  'module.shared.google_project_service.apis["cloudquotas.googleapis.com"]' \
+  'cycle-journal/cloudquotas.googleapis.com'
+```
 
 3. Move existing production resources into `environments/prod` state with
    `terraform import` or `terraform state mv -state-out`. Keep Firestore
@@ -82,9 +85,9 @@ Do the migration before removing the legacy root state from operation.
 
 ## Manual Resource Reconciliation
 
-Some resources were created manually while release operations were being
-unblocked. Import them into the split state before applying the matching
-Terraform changes:
+The App Store Connect secrets and the production `tasks` index have already
+been imported into the split states. The commands below are retained only as
+a migration record; do not rerun them against the current state:
 
 ```bash
 terraform -chdir=infra/environments/shared import \
@@ -101,3 +104,37 @@ terraform -chdir=infra/environments/prod import \
   'module.api.google_firestore_index.tasks_by_created_at' \
   'projects/cycle-journal/databases/(default)/collectionGroups/tasks/indexes/CICAgJim14AK'
 ```
+
+The Web production identity and three Coach MCP development resources were
+imported into the split states on 2026-09-13. The commands below are retained
+as a migration record; do not rerun them against the current state:
+
+```bash
+terraform -chdir=infra/environments/prod import \
+  'module.web.google_service_account.cloud_run' \
+  'projects/cycle-journal/serviceAccounts/cycle-web-prod@cycle-journal.iam.gserviceaccount.com'
+terraform -chdir=infra/environments/prod import \
+  'module.web.google_service_account_iam_member.github_actions_act_as' \
+  'projects/cycle-journal/serviceAccounts/cycle-web-prod@cycle-journal.iam.gserviceaccount.com roles/iam.serviceAccountUser serviceAccount:github-actions-deploy@cycle-journal.iam.gserviceaccount.com'
+
+terraform -chdir=infra/environments/dev import \
+  'module.coach_mcp.google_service_account.mcp' \
+  'projects/cycle-journal/serviceAccounts/cycle-coach-mcp-dev@cycle-journal.iam.gserviceaccount.com'
+terraform -chdir=infra/environments/dev import \
+  'module.coach_mcp.google_service_account_iam_member.github_actions_act_as' \
+  'projects/cycle-journal/serviceAccounts/cycle-coach-mcp-dev@cycle-journal.iam.gserviceaccount.com roles/iam.serviceAccountUser serviceAccount:github-actions-deploy@cycle-journal.iam.gserviceaccount.com'
+terraform -chdir=infra/environments/dev import \
+  'module.coach_mcp.google_cloud_run_v2_service.mcp' \
+  'projects/cycle-journal/locations/asia-northeast1/services/cycle-coach-mcp-dev'
+```
+
+After the imports, review a fresh plan. The development `tasks` index, the
+Coach MCP public invoker binding, and the API environment additions are not
+present in GCP and should remain as intentional changes. Do not import them.
+
+The Random provider can show an in-place update for
+`module.api.random_password.jwt_secret` even when its before and after
+attributes are identical. For each occurrence, save and review the exact plan,
+confirm that `google_secret_manager_secret_version.jwt_secret` has no action,
+and apply that saved plan only. Never taint or replace the password resource.
+After applying, run a final plan in all three environments.
