@@ -81,8 +81,6 @@ struct TaskListView: View {
         VStack(spacing: 0) {
             header
 
-            NetworkStatusBanner()
-
             // 開発ビルドで API をバイパス中（debugAuthBypass）は同期が意図的に
             // 遮断され .offline になるため、その場合はバナーを出さない
             if !APIClient.debugAuthBypass, let error = vm.lastSyncError, vm.syncError != nil {
