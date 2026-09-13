@@ -20,7 +20,7 @@ ARCHIVE_PATH="${BUILD_DIR}/Cycle.xcarchive"
 EXPORT_DIR="${BUILD_DIR}/export"
 PRIVATE_KEYS_DIR="${HOME}/.appstoreconnect/private_keys"
 LOCAL_XCCONFIG="${PROJECT_ROOT}/ios/Local.xcconfig"
-RELEASE_MARKETING_VERSION="${MARKETING_VERSION:-1.0.10}"
+RELEASE_MARKETING_VERSION="${MARKETING_VERSION:-1.0.11}"
 RELEASE_BUILD_NUMBER="${CURRENT_PROJECT_VERSION:-$(date +%s)}"
 
 echo "→ fetch ASC API credentials from Secret Manager"
