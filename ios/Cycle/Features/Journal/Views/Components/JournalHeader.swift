@@ -8,11 +8,9 @@
 import SwiftUI
 
 /// ジャーナル画面のヘッダー
-/// 年月の表示・継続日数・「今日へ戻る」とメニューボタンを提供
+/// 年月の表示・「今日へ戻る」とメニューボタンを提供
 struct JournalHeader: View {
     let selectedDate: Date
-    /// 連続記録日数（2日以上でバッジ表示）
-    var streakDays: Int = 0
     /// 「今日へ戻る」タップ時の動作。今日以外を表示中のみボタンが出る
     var onToday: (() -> Void)? = nil
     let onShowSearch: () -> Void
@@ -23,10 +21,6 @@ struct JournalHeader: View {
     var body: some View {
         HStack(alignment: .center, spacing: DesignSystem.Spacing.sm) {
             monthYearTitle
-
-            if streakDays >= 2 {
-                streakBadge
-            }
 
             Spacer()
 
@@ -48,22 +42,6 @@ struct JournalHeader: View {
         Text(selectedDate.formatted(.dateTime.year().month(.wide).locale(Locale(identifier: "ja_JP"))))
             .font(DesignSystem.Fonts.screenTitle)
             .foregroundStyle(DesignSystem.Colors.textPrimary)
-    }
-
-    /// 継続日数バッジ
-    private var streakBadge: some View {
-        HStack(spacing: 3) {
-            Image(systemName: "leaf.fill")
-                .font(.system(size: 10))
-            Text("\(streakDays)日")
-                .font(.system(size: DesignSystem.FontSize.caption, weight: .semibold, design: .rounded))
-        }
-        .foregroundStyle(DesignSystem.Colors.accent)
-        .padding(.horizontal, DesignSystem.Spacing.sm)
-        .padding(.vertical, DesignSystem.Spacing.xs)
-        .background(DesignSystem.Colors.accent.opacity(0.10))
-        .clipShape(Capsule())
-        .accessibilityLabel("\(streakDays)日連続で記録中")
     }
 
     /// 今日へ戻るボタン
