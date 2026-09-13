@@ -19,6 +19,7 @@ struct TaskList: View {
     let onDelete: (TaskItem) -> Void
     let onPreview: (TaskItem) -> Void
     let onArchive: (TaskItem) -> Void
+    let onSkip: (TaskItem) -> Void
 
     var body: some View {
         List {
@@ -50,7 +51,8 @@ struct TaskList: View {
                     onEdit: { onEdit(task) },
                     onDelete: { onDelete(task) },
                     onPreview: { onPreview(task) },
-                    onArchive: nil
+                    onArchive: nil,
+                    onSkip: { onSkip(task) }
                 )
                 .deleteDisabled(true)
                 .moveDisabled(!isReorderMode)
@@ -74,7 +76,8 @@ struct TaskList: View {
                     onEdit: { onEdit(task) },
                     onDelete: { onDelete(task) },
                     onPreview: { onPreview(task) },
-                    onArchive: { onArchive(task) }
+                    onArchive: { onArchive(task) },
+                    onSkip: nil
                 )
                 .padding(.top, index == 0 && !incompleteTasks.isEmpty ? DesignSystem.Spacing.sm : 0)
             }

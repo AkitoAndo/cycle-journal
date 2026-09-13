@@ -19,7 +19,8 @@ enum TaskStore {
     }
 
     /// 全てのタスクを保存
-    static func saveAll(_ tasks: [TaskItem]) {
+    @discardableResult
+    static func saveAll(_ tasks: [TaskItem]) -> Bool {
         JSONFileStore.save(tasks, to: file)
     }
 }

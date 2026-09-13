@@ -30,6 +30,9 @@ final class TaskViewModel: ObservableObject {
     /// 最後のAPIエラー（リトライ判定用）
     @Published var lastSyncError: APIError?
 
+    /// ローカル保存に失敗したときのユーザー向けメッセージ
+    @Published private(set) var persistenceError: String?
+
     /// 再認証プロンプト表示フラグ
     @Published var showReauthPrompt: Bool = false
 
@@ -309,7 +312,8 @@ final class TaskViewModel: ObservableObject {
     // MARK: - Private Helpers - Persistence
 
     /// タスクを永続化
-    private func persist() {
+    @discardableResult
+    private func persist() -> Bool {
         TaskStore.saveAll(tasks)
     }
 
@@ -347,7 +351,7 @@ final class TaskViewModel: ObservableObject {
             let serverList = try await taskService.getTasks(status: nil, limit: 100, offset: 0)
             let localServerIds = Set(tasks.compactMap { $0.serverId })
             let suppressedServerIds = TaskSyncMutationStore.pendingDeletedServerIDs()
-                .union(archives.flatMap { $0.completedTasks.compactMap(\.serverId) })
+                .union(archives.flatMap { $0.allTasks.compactMap(\.serverId) })
             let pendingUpserts = TaskSyncMutationStore.pendingUpsertLocalIDs()
 
             for serverTask in serverList.tasks {
@@ -389,6 +393,10 @@ final class TaskViewModel: ObservableObject {
     func clearSyncError() {
         syncError = nil
         lastSyncError = nil
+    }
+
+    func clearPersistenceError() {
+        persistenceError = nil
     }
 
     private func enqueueUpsert(for localTaskID: UUID) {
@@ -518,6 +526,89 @@ final class TaskViewModel: ObservableObject {
         loadArchives()
     }
 
+    /// 未完了タスクを、任意の理由とともに今日の履歴へ移す。
+    func skipTask(_ task: TaskItem, reason: String) {
+        guard let taskIndex = findTaskIndex(task) else { return }
+        let currentTask = tasks[taskIndex]
+        guard !currentTask.isCompleted, currentTask.deletedAt == nil else { return }
+
+        let previousTasks = tasks
+        let previousArchives = TaskArchiveStore.loadAll()
+        let today = TaskArchive.todayStart
+        var archive = TaskArchiveStore.load(for: today) ?? TaskArchive(date: today, completedTasks: [])
+        let existingIds = Set(archive.allTasks.map(\.id))
+
+        if !existingIds.contains(currentTask.id) {
+            archive.skippedTasks.append(
+                SkippedTaskArchiveItem(
+                    task: currentTask,
+                    reason: reason.trimmingCharacters(in: .whitespacesAndNewlines),
+                    skippedAt: Date()
+                )
+            )
+        }
+
+        guard TaskArchiveStore.save(archive) else {
+            reportPersistenceError()
+            return
+        }
+        tasks.removeAll { $0.id == currentTask.id }
+        guard persist() else {
+            tasks = previousTasks
+            _ = TaskArchiveStore.saveAll(previousArchives)
+            loadArchives()
+            reportPersistenceError()
+            return
+        }
+        loadArchives()
+    }
+
+    /// 見送ったタスクを未完了として一覧の末尾へ戻す。
+    func resumeSkippedTask(_ skippedItem: SkippedTaskArchiveItem) {
+        var updatedArchives = archives
+        var archivedTask: TaskItem?
+
+        for archiveIndex in updatedArchives.indices {
+            if let taskIndex = updatedArchives[archiveIndex].skippedTasks.firstIndex(
+                where: { $0.id == skippedItem.id }
+            ) {
+                archivedTask = updatedArchives[archiveIndex].skippedTasks.remove(at: taskIndex).task
+                if updatedArchives[archiveIndex].isEmpty {
+                    updatedArchives.remove(at: archiveIndex)
+                }
+                break
+            }
+        }
+
+        guard var resumedTask = archivedTask else { return }
+        resumedTask.isCompleted = false
+        resumedTask.completedAt = nil
+        resumedTask.deletedAt = nil
+        resumedTask.sortOrder = (incompleteTasks.map(\.sortOrder).max() ?? -1) + 1
+
+        let previousTasks = tasks
+        tasks.removeAll { $0.id == resumedTask.id }
+        tasks.append(resumedTask)
+        guard persist() else {
+            tasks = previousTasks
+            reportPersistenceError()
+            return
+        }
+
+        guard TaskArchiveStore.saveAll(updatedArchives) else {
+            tasks = previousTasks
+            _ = TaskStore.saveAll(previousTasks)
+            reportPersistenceError()
+            return
+        }
+        enqueueUpsert(for: resumedTask.id)
+        loadArchives()
+    }
+
+    private func reportPersistenceError() {
+        persistenceError = "変更を保存できませんでした。空き容量を確認して、もう一度お試しください。"
+    }
+
     /// 完了タスクをアーカイブ
     func archiveCompletedTasks() {
         let completed = completedTasks
@@ -577,6 +668,21 @@ final class TaskViewModel: ObservableObject {
                 TaskArchiveStore.save(updatedArchives[archiveIndex])
                 taskFound = true
                 break
+            } else if let taskIndex = updatedArchives[archiveIndex].skippedTasks.firstIndex(
+                where: { $0.id == task.id }
+            ) {
+                updatedArchives[archiveIndex].skippedTasks[taskIndex].task.title = trimmedTitle
+                updatedArchives[archiveIndex].skippedTasks[taskIndex].task.description = newDescription
+                updatedArchives[archiveIndex].skippedTasks[taskIndex].task.intent = newIntent
+                updatedArchives[archiveIndex].skippedTasks[taskIndex].task.achievementVision = newAchievementVision
+                updatedArchives[archiveIndex].skippedTasks[taskIndex].task.notes = newNotes
+                updatedArchives[archiveIndex].skippedTasks[taskIndex].task.fact = newFact
+                updatedArchives[archiveIndex].skippedTasks[taskIndex].task.insight = newInsight
+                updatedArchives[archiveIndex].skippedTasks[taskIndex].task.nextAction = newNextAction
+
+                TaskArchiveStore.save(updatedArchives[archiveIndex])
+                taskFound = true
+                break
             }
         }
 
@@ -597,7 +703,20 @@ final class TaskViewModel: ObservableObject {
                 updatedArchives[archiveIndex].completedTasks.remove(at: taskIndex)
 
                 // アーカイブが空になった場合は削除、そうでない場合は更新
-                if updatedArchives[archiveIndex].completedTasks.isEmpty {
+                if updatedArchives[archiveIndex].isEmpty {
+                    updatedArchives.remove(at: archiveIndex)
+                    TaskArchiveStore.saveAll(updatedArchives)
+                } else {
+                    TaskArchiveStore.save(updatedArchives[archiveIndex])
+                }
+                break
+            } else if let taskIndex = updatedArchives[archiveIndex].skippedTasks.firstIndex(
+                where: { $0.id == task.id }
+            ) {
+                deletedTask = updatedArchives[archiveIndex].skippedTasks[taskIndex].task
+                updatedArchives[archiveIndex].skippedTasks.remove(at: taskIndex)
+
+                if updatedArchives[archiveIndex].isEmpty {
                     updatedArchives.remove(at: archiveIndex)
                     TaskArchiveStore.saveAll(updatedArchives)
                 } else {
