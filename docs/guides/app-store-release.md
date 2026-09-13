@@ -1,14 +1,15 @@
 # App Store リリース手順
 
-現在の対象は **Treow v1.0.10 期間限定無料MVP**。App Store Connectのアプリレコードを正とし、Bundle ID、バージョン、ビルド番号、料金表記を提出直前に照合する。
+現在の対象は **Treow v1.0.11 期間限定無料MVP**。App Store Connectのアプリレコードを正とし、Bundle ID、バージョン、ビルド番号、料金表記を提出直前に照合する。
 
 ## 1. 提出前のコード確認
 
-1. `ios/Local.xcconfig.template` を `ios/Local.xcconfig` へコピーする。Apple Developer TeamとApp Store Connectに登録済みのBundle IDを設定する
-2. XcodeのCycleターゲットでSigning & Capabilitiesにエラーがないことを確認する
-3. Releaseビルドが `MARKETING_VERSION = 1.0.10` であることを確認する
-4. `CURRENT_PROJECT_VERSION` はApp Store Connect上の同バージョンの既存ビルドより大きくする
-5. `PrivacyInfo.xcprivacy` がCycleターゲットへ含まれることを確認する
+1. `ios/Local.xcconfig.template` を `ios/Local.xcconfig` へコピーする
+2. Apple Developer TeamとApp Store Connectに登録済みのBundle IDを設定する
+3. XcodeのCycleターゲットでSigning & Capabilitiesにエラーがないことを確認する
+4. Releaseビルドが `MARKETING_VERSION = 1.0.11` であることを確認する
+5. `CURRENT_PROJECT_VERSION` はApp Store Connect上の同バージョンの既存ビルドより大きくする
+6. `PrivacyInfo.xcprivacy` がCycleターゲットへ含まれることを確認する
 
 設定値の確認:
 
@@ -72,7 +73,7 @@ App Store Connectが要求する最新のiPhoneサイズを登録する。Cycle�
 
 ## 6. 最終提出
 
-- [ ] 処理済みビルドをv1.0.10へ選択
+- [ ] 処理済みビルドをv1.0.11へ選択
 - [ ] 輸出コンプライアンス、コンテンツ権利、年齢区分へ回答
 - [ ] サポートURL・Privacy URLが公開状態で開く
 - [ ] 全スクリーンショットと説明文が現在のUI・期間限定無料の提供状態と一致する

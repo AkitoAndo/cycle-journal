@@ -15,6 +15,7 @@ struct JournalEditView: View {
 
     @State private var editText: String
     @State private var editTags: [String]
+    @State private var showQuoteChain = false
     @FocusState private var isTextFieldFocused: Bool
 
     init(vm: JournalViewModel, entry: JournalEntry) {
@@ -31,7 +32,11 @@ struct JournalEditView: View {
                 text: $editText,
                 selectedTags: $editTags,
                 isTextFocused: $isTextFieldFocused,
-                textEditorMinHeight: 150
+                textEditorMinHeight: 150,
+                hasQuote: entry.quotedEntryId != nil,
+                quotedSource: vm.quotedSource(of: entry),
+                quoteOlderCount: max(0, vm.quoteChain(for: entry).count - 2),
+                onShowQuoteChain: { showQuoteChain = true }
             )
             .navigationTitle("エントリを編集")
             .navigationBarTitleDisplayMode(.inline)
@@ -51,6 +56,10 @@ struct JournalEditView: View {
             }
         }
         .presentationBackground(DesignSystem.Colors.background)
+        .sheet(isPresented: $showQuoteChain) {
+            JournalQuoteChainView(vm: vm, entry: entry)
+                .softSheet()
+        }
     }
 
     private func saveChanges() {

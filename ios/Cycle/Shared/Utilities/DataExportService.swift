@@ -127,6 +127,12 @@ enum DataExportService {
         let filteredJournals = journals.filter { $0.deletedAt == nil }
         let filteredTasks = mergedTasks(active: tasks, archives: archives)
         let dateFormatter = ISO8601DateFormatter()
+        var skippedItemsByTaskID: [UUID: SkippedTaskArchiveItem] = [:]
+        for archive in archives {
+            for item in archive.skippedTasks {
+                skippedItemsByTaskID[item.id] = item
+            }
+        }
 
         // ジャーナルセクション
         csv += "# ジャーナル\n"
@@ -142,8 +148,10 @@ enum DataExportService {
 
         // タスクセクション
         csv += "# タスク\n"
-        csv += "ID,タイトル,説明,完了,作成日,完了日,意図,完了イメージ,注意点,事実,気づき,次の一手\n"
+        csv += "ID,タイトル,説明,完了,作成日,完了日,意図,完了イメージ,注意点,事実,気づき,次の一手,状態,見送り日時,見送り理由\n"
         for task in filteredTasks {
+            let skippedItem = skippedItemsByTaskID[task.id]
+            let status = skippedItem != nil ? "見送り" : (task.isCompleted ? "完了" : "未完了")
             csv += "\(csvEscape(task.id.uuidString)),"
             csv += "\(csvEscape(task.title)),"
             csv += "\(csvEscape(task.description)),"
@@ -155,19 +163,23 @@ enum DataExportService {
             csv += "\(csvEscape(task.notes)),"
             csv += "\(csvEscape(task.fact)),"
             csv += "\(csvEscape(task.insight)),"
-            csv += "\(csvEscape(task.nextAction))\n"
+            csv += "\(csvEscape(task.nextAction)),"
+            csv += "\(csvEscape(status)),"
+            csv += "\(csvEscape(skippedItem.map { dateFormatter.string(from: $0.skippedAt) } ?? "")),"
+            csv += "\(csvEscape(skippedItem?.reason ?? ""))\n"
         }
 
         csv += "\n"
 
         // アーカイブセクション
         csv += "# タスクアーカイブ\n"
-        csv += "ID,日付,完了タスク数,作成日\n"
+        csv += "ID,日付,完了タスク数,作成日,見送りタスク数\n"
         for archive in archives {
             csv += "\(csvEscape(archive.id.uuidString)),"
             csv += "\(csvEscape(dateFormatter.string(from: archive.date))),"
             csv += "\(archive.completedTasks.count),"
-            csv += "\(csvEscape(dateFormatter.string(from: archive.createdAt)))\n"
+            csv += "\(csvEscape(dateFormatter.string(from: archive.createdAt))),"
+            csv += "\(archive.skippedTasks.count)\n"
         }
 
         csv += "\n"
@@ -253,7 +265,7 @@ enum DataExportService {
 
         // アーカイブのタスクを先に追加
         for archive in archives {
-            for task in archive.completedTasks {
+            for task in archive.allTasks {
                 if task.deletedAt == nil {
                     taskMap[task.id] = task
                 }

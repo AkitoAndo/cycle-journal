@@ -21,6 +21,7 @@ struct TaskListView: View {
     @State private var showArchive = false
     @State private var showDeleted = false
     @State private var showTemplates = false
+    @State private var skippingTask: TaskItem?
 
     /// チェック（完了）直後に事後情報フォームを出す対象タスク
     @State private var postActionTask: TaskItem?
@@ -65,6 +66,26 @@ struct TaskListView: View {
             .sheet(item: $postActionTask) { task in
                 TaskPostActionEntryView(vm: vm, task: task)
                     .softSheet()
+            }
+            .sheet(item: $skippingTask) { task in
+                TaskSkipView(task: task) { reason in
+                    vm.skipTask(task, reason: reason)
+                }
+                .presentationDetents([.medium])
+                .softSheet()
+            }
+            .alert(
+                "変更を保存できませんでした",
+                isPresented: Binding(
+                    get: { vm.persistenceError != nil },
+                    set: { if !$0 { vm.clearPersistenceError() } }
+                )
+            ) {
+                Button("OK") {
+                    vm.clearPersistenceError()
+                }
+            } message: {
+                Text(vm.persistenceError ?? "")
             }
     }
 
@@ -168,6 +189,9 @@ struct TaskListView: View {
                     },
                     onArchive: { task in
                         vm.archiveTask(task)
+                    },
+                    onSkip: { task in
+                        skippingTask = task
                     }
                 )
                 .refreshable {
@@ -181,7 +205,7 @@ struct TaskListView: View {
         FloatingActionButton(icon: "plus", accessibilityIdentifier: "task_fab_plus") {
             showNewTask = true
         }
-        .padding(.trailing, 40)
-        .padding(.bottom, 40)
+        .padding(.trailing, DesignSystem.Spacing.xxl)
+        .padding(.bottom, DesignSystem.Spacing.xxl)
     }
 }

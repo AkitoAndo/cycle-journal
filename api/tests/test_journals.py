@@ -32,6 +32,7 @@ def test_sync_pushes_local_journal(journal_client_factory):
                     "tags": ["daily"],
                     "entry_date": "2026-08-01T10:00:00Z",
                     "updated_at": "2026-08-01T10:05:00Z",
+                    "quoted_entry_id": "journal-source",
                 }
             ]
         },
@@ -44,6 +45,44 @@ def test_sync_pushes_local_journal(journal_client_factory):
     assert data["journals"][0]["journal_id"] == "journal-1"
     assert db.store["journal-1"]["user_id"] == "test-user-123"
     assert db.store["journal-1"]["text"] == "今日の記録"
+    assert db.store["journal-1"]["quoted_entry_id"] == "journal-source"
+    assert data["journals"][0]["quoted_entry_id"] == "journal-source"
+
+
+def test_sync_legacy_client_keeps_existing_quote(journal_client_factory):
+    client, db = journal_client_factory(
+        {
+            "journal-1": {
+                "user_id": "test-user-123",
+                "text": "before",
+                "tags": [],
+                "entry_date": _dt(2026, 8, 1, 10, 0),
+                "created_at": _dt(2026, 8, 1, 10, 0),
+                "updated_at": _dt(2026, 8, 1, 10, 0),
+                "deleted_at": None,
+                "quoted_entry_id": "journal-source",
+            }
+        }
+    )
+
+    response = client.post(
+        "/journals/sync",
+        json={
+            "journals": [
+                {
+                    "journal_id": "journal-1",
+                    "text": "updated by old client",
+                    "tags": [],
+                    "entry_date": "2026-08-01T10:00:00Z",
+                    "updated_at": "2026-08-01T11:00:00Z",
+                }
+            ]
+        },
+    )
+
+    assert response.status_code == 200
+    assert db.store["journal-1"]["quoted_entry_id"] == "journal-source"
+    assert response.json()["data"]["journals"][0]["quoted_entry_id"] == "journal-source"
 
 
 def test_sync_keeps_server_journal_when_server_is_newer(journal_client_factory):

@@ -144,6 +144,7 @@ struct JournalSyncItem: Codable {
     let deletedAt: Date?
     let createdAt: Date?
     let updatedAt: Date?
+    var quotedEntryId: String? = nil
 }
 
 struct JournalSyncRequest: Encodable {
@@ -160,6 +161,7 @@ struct JournalData: Decodable {
     let deletedAt: Date?
     let createdAt: Date
     let updatedAt: Date
+    var quotedEntryId: String? = nil
 }
 
 struct JournalListData: Decodable {

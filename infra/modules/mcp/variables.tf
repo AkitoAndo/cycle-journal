@@ -7,7 +7,23 @@ variable "region" {
 }
 
 variable "environment" {
-  type = string
+  description = "Lowercase environment name used as a GCP resource suffix"
+  type        = string
+
+  validation {
+    condition = (
+      length(var.environment) <= 14 &&
+      can(regex("^[a-z][a-z0-9-]*$", var.environment)) &&
+      !endswith(var.environment, "-")
+    )
+    error_message = "environment must be 1-14 lowercase letters, digits, or hyphens; it must start with a letter and end with a letter or digit."
+  }
+}
+
+variable "service_account_description" {
+  description = "Optional description to preserve when adopting an existing runtime identity"
+  type        = string
+  default     = null
 }
 
 variable "oauth_issuer" {

@@ -45,6 +45,7 @@ extension JournalSyncItem {
         deletedAt = entry.deletedAt
         createdAt = entry.date
         updatedAt = entry.updatedAt ?? entry.syncUpdatedAt
+        quotedEntryId = entry.quotedEntryId?.uuidString
     }
 }
 
@@ -56,5 +57,6 @@ extension JournalEntry {
         tags = apiData.tags
         deletedAt = apiData.deletedAt
         updatedAt = apiData.updatedAt
+        quotedEntryId = apiData.quotedEntryId.flatMap(UUID.init(uuidString:))
     }
 }
