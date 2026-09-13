@@ -327,9 +327,9 @@ struct SettingsView: View {
             Image(systemName: "checkmark.seal.fill")
                 .foregroundColor(DesignSystem.Colors.accent)
             VStack(alignment: .leading) {
-                Text("Treow 無料版")
+                Text("Treow Premium")
                     .font(DesignSystem.Fonts.button)
-                Text("現在、すべての機能を無料で利用できます")
+                Text("通常は有料です。現在は期間限定で無料です。")
                     .font(DesignSystem.Fonts.caption)
                     .foregroundColor(.secondary)
             }
