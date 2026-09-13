@@ -126,7 +126,11 @@ enum TestDataProvider {
     private static func insertTasks() {
         var tasks: [TaskItem] = [
             TaskItem(title: "朝の瞑想を10分する", description: "マインドフルネス瞑想を試す", intent: "心を落ち着ける習慣をつけたい"),
-            TaskItem(title: "週報を書く", description: "今週の振り返りと来週の計画", notes: "金曜日の夕方までに"),
+            TaskItem(
+                id: UUID(uuidString: "00000000-0000-0000-0000-000000000302")!,
+                title: "週報を10分で振り返る",
+                description: "今週の気づきをひとつ残す"
+            ),
             TaskItem(title: "読書30分", description: "嫌われる勇気の続きを読む"),
             TaskItem(title: "ジムに行く", description: "上半身トレーニング"),
             TaskItem(title: "部屋の掃除", description: "リビングと寝室"),

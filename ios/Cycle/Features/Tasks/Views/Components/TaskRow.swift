@@ -18,6 +18,27 @@ struct TaskRow: View {
     let onDelete: () -> Void
     let onPreview: () -> Void
     let onArchive: (() -> Void)?
+    let onSkip: (() -> Void)?
+
+    init(
+        task: TaskItem,
+        isReorderMode: Bool,
+        onToggleCompletion: @escaping () -> Void,
+        onEdit: @escaping () -> Void,
+        onDelete: @escaping () -> Void,
+        onPreview: @escaping () -> Void,
+        onArchive: (() -> Void)?,
+        onSkip: (() -> Void)? = nil
+    ) {
+        self.task = task
+        self.isReorderMode = isReorderMode
+        self.onToggleCompletion = onToggleCompletion
+        self.onEdit = onEdit
+        self.onDelete = onDelete
+        self.onPreview = onPreview
+        self.onArchive = onArchive
+        self.onSkip = onSkip
+    }
 
     var body: some View {
         taskContent
@@ -27,6 +48,9 @@ struct TaskRow: View {
                     deleteButton
                     if task.isCompleted, let archiveAction = onArchive {
                         archiveButton(action: archiveAction)
+                    }
+                    if !task.isCompleted, let skipAction = onSkip {
+                        skipButton(action: skipAction)
                     }
                     editButton
                     previewButton
@@ -123,5 +147,14 @@ struct TaskRow: View {
                 .labelStyle(.iconOnly)
         }
         .tint(.blue)
+    }
+
+    private func skipButton(action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label("見送る", systemImage: "archivebox")
+                .labelStyle(.iconOnly)
+        }
+        .tint(DesignSystem.Colors.accent)
+        .accessibilityIdentifier("task_skip_\(task.id.uuidString.lowercased())")
     }
 }

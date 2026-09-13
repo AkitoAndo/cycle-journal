@@ -19,7 +19,8 @@ enum TaskArchiveStore {
     }
 
     /// 全てのアーカイブを保存
-    static func saveAll(_ archives: [TaskArchive]) {
+    @discardableResult
+    static func saveAll(_ archives: [TaskArchive]) -> Bool {
         JSONFileStore.save(archives, to: file)
     }
 
@@ -30,7 +31,8 @@ enum TaskArchiveStore {
     }
 
     /// 特定の日付のアーカイブを保存または更新
-    static func save(_ archive: TaskArchive) {
+    @discardableResult
+    static func save(_ archive: TaskArchive) -> Bool {
         var archives = loadAll()
         let startOfDay = TaskArchive.startOfDay(for: archive.date)
 
@@ -42,6 +44,6 @@ enum TaskArchiveStore {
 
         // 日付の降順でソート
         archives.sort { $0.date > $1.date }
-        saveAll(archives)
+        return saveAll(archives)
     }
 }
