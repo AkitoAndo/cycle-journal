@@ -16,6 +16,8 @@ struct SettingsView: View {
     /// タスク完了チェック時に事後情報フォームを出すか（TaskListView と共有）
     @AppStorage(UserDataScope.scopedDefaultsKey("isPostActionPromptEnabled"))
     private var isPostActionPromptEnabled = true
+    @AppStorage(AppearanceMode.storageKey)
+    private var appearanceModeRawValue = AppearanceMode.system.rawValue
     @State private var systemPermissionGranted = false
     @State private var showingDataExport = false
     @State private var showingSignOutAlert = false
@@ -132,6 +134,28 @@ struct SettingsView: View {
                 // 料金プラン
                 Section("料金プラン") {
                     premiumRow
+                }
+                .listRowBackground(GlassListRowBackground())
+
+                // 表示設定
+                Section("表示") {
+                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
+                        Label("外観モード", systemImage: "circle.lefthalf.filled")
+                            .font(DesignSystem.Fonts.bodyMedium)
+
+                        Picker("外観モード", selection: appearanceModeBinding) {
+                            ForEach(AppearanceMode.allCases) { mode in
+                                Text(mode.title).tag(mode)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .accessibilityIdentifier("appearance_mode_picker")
+
+                        Text(appearanceMode.description)
+                            .font(DesignSystem.Fonts.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.vertical, DesignSystem.Spacing.xs)
                 }
                 .listRowBackground(GlassListRowBackground())
 
@@ -339,6 +363,17 @@ struct SettingsView: View {
     }
 
     // MARK: - Notification Helpers
+
+    private var appearanceMode: AppearanceMode {
+        AppearanceMode(rawValue: appearanceModeRawValue) ?? .system
+    }
+
+    private var appearanceModeBinding: Binding<AppearanceMode> {
+        Binding(
+            get: { appearanceMode },
+            set: { appearanceModeRawValue = $0.rawValue }
+        )
+    }
 
     /// リマインダー時刻のバインディング
     private var reminderTimeBinding: Binding<Date> {
