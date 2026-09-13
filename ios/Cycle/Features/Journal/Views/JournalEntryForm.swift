@@ -16,24 +16,46 @@ struct JournalEntryForm: View {
     @FocusState.Binding var isTextFocused: Bool
 
     let textEditorMinHeight: CGFloat
+    let hasQuote: Bool
+    let quotedSource: JournalEntry?
+    let quoteOlderCount: Int
+    let onShowQuoteChain: (() -> Void)?
 
     init(
         vm: JournalViewModel,
         text: Binding<String>,
         selectedTags: Binding<[String]>,
         isTextFocused: FocusState<Bool>.Binding,
-        textEditorMinHeight: CGFloat = 200
+        textEditorMinHeight: CGFloat = 200,
+        hasQuote: Bool = false,
+        quotedSource: JournalEntry? = nil,
+        quoteOlderCount: Int = 0,
+        onShowQuoteChain: (() -> Void)? = nil
     ) {
         self.vm = vm
         self._text = text
         self._selectedTags = selectedTags
         self._isTextFocused = isTextFocused
         self.textEditorMinHeight = textEditorMinHeight
+        self.hasQuote = hasQuote
+        self.quotedSource = quotedSource
+        self.quoteOlderCount = quoteOlderCount
+        self.onShowQuoteChain = onShowQuoteChain
     }
 
     var body: some View {
         ScrollView {
             VStack(spacing: DesignSystem.Spacing.xl) {
+                if hasQuote {
+                    QuotedJournalCard(
+                        source: quotedSource,
+                        lineLimit: 6,
+                        olderCount: quoteOlderCount,
+                        onShowQuoteChain: onShowQuoteChain
+                    )
+                    .padding(.horizontal, DesignSystem.Spacing.lg)
+                }
+
                 // 内容入力セクション
                 contentSection
 

@@ -12,6 +12,8 @@ struct JournalNewEntryView: View {
     @ObservedObject var vm: JournalViewModel
     @Environment(\.dismiss) private var dismiss
 
+    var quotedEntry: JournalEntry?
+
     @State private var inputText: String = ""
     @State private var selectedTags: [String] = []
     @FocusState private var isTextFieldFocused: Bool
@@ -22,9 +24,11 @@ struct JournalNewEntryView: View {
                 vm: vm,
                 text: $inputText,
                 selectedTags: $selectedTags,
-                isTextFocused: $isTextFieldFocused
+                isTextFocused: $isTextFieldFocused,
+                hasQuote: quotedEntry != nil,
+                quotedSource: quotedEntry
             )
-            .navigationTitle("新しいエントリ")
+            .navigationTitle(quotedEntry == nil ? "新しいエントリ" : "引用して書く")
             .navigationBarTitleDisplayMode(.inline)
             .modifier(GlassNavBarModifier())
             .toolbar {
@@ -51,7 +55,11 @@ struct JournalNewEntryView: View {
         let trimmedText = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedText.isEmpty else { return }
 
-        vm.addEntry(text: trimmedText, tags: selectedTags)
+        vm.addEntry(
+            text: trimmedText,
+            tags: selectedTags,
+            quotedEntryId: quotedEntry?.id
+        )
 
         // 保存後のフィードバック
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)

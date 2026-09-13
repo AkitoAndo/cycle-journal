@@ -20,6 +20,8 @@ struct JournalListView: View {
     @State private var showDatePicker = false
     @State private var showNewEntry = false
     @State private var editingEntry: JournalEntry?
+    @State private var quotingEntry: JournalEntry?
+    @State private var chainEntry: JournalEntry?
     @State private var showTagManagement = false
     @State private var showDeleted = false
 
@@ -42,6 +44,14 @@ struct JournalListView: View {
             }
             .sheet(item: $editingEntry) { entry in
                 JournalEditView(vm: vm, entry: entry)
+                    .softSheet()
+            }
+            .sheet(item: $quotingEntry) { entry in
+                JournalNewEntryView(vm: vm, quotedEntry: entry)
+                    .softSheet()
+            }
+            .sheet(item: $chainEntry) { entry in
+                JournalQuoteChainView(vm: vm, entry: entry)
                     .softSheet()
             }
             .sheet(isPresented: $showTagManagement) {
@@ -127,11 +137,18 @@ struct JournalListView: View {
     private var entriesList: some View {
         JournalEntriesList(
             entries: vm.todays,
+            quoteCount: { vm.quoteCount(of: $0) },
             onEdit: { entry in
                 editingEntry = entry
             },
             onDelete: { entry in
                 vm.deleteEntry(entry)
+            },
+            onQuote: { entry in
+                quotingEntry = entry
+            },
+            onShowQuoteChain: { entry in
+                chainEntry = entry
             }
         )
     }
