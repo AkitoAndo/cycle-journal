@@ -13,6 +13,8 @@ struct TaskPostActionFieldsSection: View {
     @Binding var fact: String
     @Binding var insight: String
     @Binding var nextAction: String
+    /// 「ジャーナルにも保存」トグル。nil のときは表示しない
+    var saveToJournal: Binding<Bool>? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.xl) {
@@ -33,11 +35,31 @@ struct TaskPostActionFieldsSection: View {
                 text: $nextAction,
                 placeholder: "次回は何を1つだけ変える？"
             )
+
+            if let saveToJournal {
+                journalToggle(saveToJournal)
+            }
         }
         .padding(.horizontal, DesignSystem.Spacing.lg)
     }
 
     private func fieldSection(title: String, text: Binding<String>, placeholder: String) -> some View {
         FormTextEditor(label: title, text: text, placeholder: placeholder)
+    }
+
+    private func journalToggle(_ isOn: Binding<Bool>) -> some View {
+        Toggle(isOn: isOn) {
+            VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                Text("ジャーナルにも保存")
+                    .font(DesignSystem.Fonts.body)
+                    .foregroundStyle(DesignSystem.Colors.textPrimary)
+                Text("保存すると、この振り返りをジャーナルにも記録します")
+                    .font(DesignSystem.Fonts.caption)
+                    .foregroundStyle(DesignSystem.Colors.textTertiary)
+            }
+        }
+        .tint(DesignSystem.Colors.accent)
+        .padding(DesignSystem.Spacing.md)
+        .modifier(FormFieldBackground())
     }
 }

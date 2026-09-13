@@ -71,4 +71,25 @@ extension TaskItem {
     var previewText: String {
         [description, intent, notes].first { !$0.isEmpty } ?? ""
     }
+
+    /// 振り返り（事実・気づき・次の一手）をジャーナル本文に整形する。
+    /// 空のフィールドは含めず、全フィールドが空なら nil を返す
+    /// （＝ジャーナルに保存するものがない）。
+    static func reflectionJournalText(title: String, fact: String, insight: String, nextAction: String) -> String? {
+        let sections: [(label: String, value: String)] = [
+            ("事実", fact.trimmingCharacters(in: .whitespacesAndNewlines)),
+            ("気づき", insight.trimmingCharacters(in: .whitespacesAndNewlines)),
+            ("次の一手", nextAction.trimmingCharacters(in: .whitespacesAndNewlines)),
+        ]
+        let filled = sections.filter { !$0.value.isEmpty }
+        guard !filled.isEmpty else { return nil }
+
+        var lines = ["タスクの振り返り「\(title)」"]
+        for section in filled {
+            lines.append("")
+            lines.append("【\(section.label)】")
+            lines.append(section.value)
+        }
+        return lines.joined(separator: "\n")
+    }
 }

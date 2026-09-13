@@ -12,6 +12,7 @@ import SwiftUI
 
 struct TaskPostActionEntryView: View {
     @ObservedObject var vm: TaskViewModel
+    @EnvironmentObject private var journalVM: JournalViewModel
     @Environment(\.dismiss) private var dismiss
 
     /// 記入対象のタスク（チェック時点のスナップショット）
@@ -20,6 +21,9 @@ struct TaskPostActionEntryView: View {
     @State private var inputFact: String
     @State private var inputInsight: String
     @State private var inputNextAction: String
+
+    /// 「ジャーナルにも保存」トグル。前回の選択を記憶する
+    @AppStorage("isReflectionJournalSaveEnabled") private var saveReflectionToJournal = false
 
     init(vm: TaskViewModel, task: TaskItem) {
         self.vm = vm
@@ -38,7 +42,8 @@ struct TaskPostActionEntryView: View {
                     TaskPostActionFieldsSection(
                         fact: $inputFact,
                         insight: $inputInsight,
-                        nextAction: $inputNextAction
+                        nextAction: $inputNextAction,
+                        saveToJournal: $saveReflectionToJournal
                     )
                 }
                 .padding(.top, DesignSystem.Spacing.xl)
@@ -89,6 +94,17 @@ struct TaskPostActionEntryView: View {
             newInsight: inputInsight.trimmingCharacters(in: .whitespacesAndNewlines),
             newNextAction: inputNextAction.trimmingCharacters(in: .whitespacesAndNewlines)
         )
+
+        // トグルがオンなら、振り返りをジャーナルにも記録（全欄空なら何もしない）
+        if saveReflectionToJournal,
+           let journalText = TaskItem.reflectionJournalText(
+               title: task.title,
+               fact: inputFact,
+               insight: inputInsight,
+               nextAction: inputNextAction
+           ) {
+            journalVM.addEntry(text: journalText)
+        }
 
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         dismiss()

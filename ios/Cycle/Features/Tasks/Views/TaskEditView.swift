@@ -10,6 +10,7 @@ import SwiftUI
 struct TaskEditView: View {
     @ObservedObject var vm: TaskViewModel
     let task: TaskItem
+    @EnvironmentObject private var journalVM: JournalViewModel
     @Environment(\.dismiss) private var dismiss
 
     @State private var editTitle: String
@@ -21,6 +22,9 @@ struct TaskEditView: View {
     @State private var editInsight: String
     @State private var editNextAction: String
     @State private var selectedSection: TaskSectionTabs.Section = .basic
+
+    /// 「ジャーナルにも保存」トグル。編集のたびに重複記録されないよう毎回オフで開始
+    @State private var saveReflectionToJournal = false
 
     init(vm: TaskViewModel, task: TaskItem) {
         self.vm = vm
@@ -112,7 +116,8 @@ struct TaskEditView: View {
         TaskPostActionFieldsSection(
             fact: $editFact,
             insight: $editInsight,
-            nextAction: $editNextAction
+            nextAction: $editNextAction,
+            saveToJournal: $saveReflectionToJournal
         )
     }
 
@@ -139,6 +144,17 @@ struct TaskEditView: View {
             newInsight: trimmedInsight,
             newNextAction: trimmedNextAction
         )
+
+        // トグルがオンなら、振り返りをジャーナルにも記録（全欄空なら何もしない）
+        if saveReflectionToJournal,
+           let journalText = TaskItem.reflectionJournalText(
+               title: trimmedTitle,
+               fact: trimmedFact,
+               insight: trimmedInsight,
+               nextAction: trimmedNextAction
+           ) {
+            journalVM.addEntry(text: journalText)
+        }
 
         // 保存後のフィードバック
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
