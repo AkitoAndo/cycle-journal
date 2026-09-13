@@ -32,13 +32,44 @@ struct JournalEntryTests {
         #expect(entry1.id != entry2.id)
     }
 
+    @Test func entryWithQuoteCodable() throws {
+        let source = JournalEntry(text: "引用元の日記")
+        let entry = JournalEntry(text: "引用して書いた日記", quotedEntryId: source.id)
+        let data = try JSONEncoder().encode(entry)
+        let decoded = try JSONDecoder().decode(JournalEntry.self, from: data)
+        #expect(decoded.quotedEntryId == source.id)
+    }
+
+    @Test func entryDecodesLegacyJSONWithoutQuotedEntryId() throws {
+        let legacyJSON = """
+        {"id":"11111111-2222-3333-4444-555555555555","date":774400000,"text":"昔のエントリ","tags":["タグ"]}
+        """
+        let decoded = try JSONDecoder().decode(JournalEntry.self, from: Data(legacyJSON.utf8))
+        #expect(decoded.text == "昔のエントリ")
+        #expect(decoded.quotedEntryId == nil)
+    }
+
     @Test func entryCodable() throws {
         let entry = JournalEntry(text: "テスト", tags: ["タグ1"])
         let data = try JSONEncoder().encode(entry)
         let decoded = try JSONDecoder().decode(JournalEntry.self, from: data)
         #expect(decoded.text == "テスト")
         #expect(decoded.tags == ["タグ1"])
+        #expect(decoded.quotedEntryId == nil)
         #expect(decoded.id == entry.id)
+    }
+
+    @Test func syncItemEncodesQuotedEntryIdForAPI() throws {
+        let quotedEntryId = UUID()
+        let item = JournalSyncItem(
+            entry: JournalEntry(text: "引用して書いた日記", quotedEntryId: quotedEntryId)
+        )
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        let data = try encoder.encode(item)
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+
+        #expect(json?["quoted_entry_id"] as? String == quotedEntryId.uuidString)
     }
 
     @Test func syncUpdatedAtFallsBackToDate() {
@@ -95,6 +126,98 @@ struct JournalViewModelTests {
         let vm = JournalViewModel()
         vm.addEntry(text: "  前後にスペース  ")
         #expect(vm.entries.last?.text == "前後にスペース")
+    }
+
+    @Test func quotedSourceLookup() {
+        let vm = JournalViewModel()
+        vm.addEntry(text: "引用元エントリ")
+        guard let source = vm.entries.last else { return }
+        vm.addEntry(text: "引用したエントリ", quotedEntryId: source.id)
+        guard let quoting = vm.entries.last else { return }
+
+        #expect(vm.quotedSource(of: quoting)?.id == source.id)
+        #expect(vm.quotedSource(of: source) == nil)
+    }
+
+    @Test func quotedEntrySelectsItsCreationDate() {
+        let vm = JournalViewModel()
+        vm.addEntry(text: "引用元エントリ")
+        guard let source = vm.entries.last else { return }
+        vm.selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
+
+        vm.addEntry(text: "引用したエントリ", quotedEntryId: source.id)
+
+        guard let quoting = vm.entries.last else { return }
+        #expect(Calendar.current.isDate(vm.selectedDate, inSameDayAs: quoting.date))
+        #expect(vm.todays.contains { $0.id == quoting.id })
+    }
+
+    @Test func quoteChainUsesOldestToNewestOrder() {
+        let vm = JournalViewModel()
+        vm.addEntry(text: "1番目")
+        guard let first = vm.entries.last else { return }
+        vm.addEntry(text: "2番目", quotedEntryId: first.id)
+        guard let second = vm.entries.last else { return }
+        vm.addEntry(text: "3番目", quotedEntryId: second.id)
+        guard let third = vm.entries.last else { return }
+
+        #expect(vm.quoteChain(for: third).map(\.id) == [first.id, second.id, third.id])
+    }
+
+    @Test func quoteChainStopsAfterPermanentDelete() {
+        let vm = JournalViewModel()
+        vm.addEntry(text: "削除される引用元")
+        guard let source = vm.entries.last else { return }
+        vm.addEntry(text: "引用したエントリ", quotedEntryId: source.id)
+        guard let quoting = vm.entries.last else { return }
+
+        vm.permanentlyDeleteEntry(source)
+
+        #expect(vm.quoteChain(for: quoting).map(\.id) == [quoting.id])
+        #expect(vm.quoteCount(of: quoting) == 1)
+    }
+
+    @Test func quoteChainTreatsServerTombstoneAsPermanentlyDeleted() {
+        let sourceID = UUID()
+        let tombstone = JournalEntry(
+            id: sourceID,
+            text: "",
+            deletedAt: Date(),
+            updatedAt: Date()
+        )
+        let quoting = JournalEntry(text: "引用したエントリ", quotedEntryId: sourceID)
+        JournalStore.saveAll([tombstone, quoting])
+        let vm = JournalViewModel()
+
+        #expect(vm.quotedSource(of: quoting) == nil)
+        #expect(vm.quoteChain(for: quoting).map(\.id) == [quoting.id])
+        #expect(vm.quoteChainHasMissingSource(for: quoting))
+    }
+
+    @Test func quoteChainDoesNotTreatCycleAsDeletedSource() {
+        let firstID = UUID()
+        let secondID = UUID()
+        let first = JournalEntry(id: firstID, text: "1番目", quotedEntryId: secondID)
+        let second = JournalEntry(id: secondID, text: "2番目", quotedEntryId: firstID)
+        JournalStore.saveAll([first, second])
+        let vm = JournalViewModel()
+
+        #expect(vm.quoteChain(for: first).map(\.id) == [secondID, firstID])
+        #expect(vm.quoteChainHasMissingSource(for: first) == false)
+    }
+
+    @Test func quoteCountIncludesAllAncestors() {
+        let vm = JournalViewModel()
+        vm.addEntry(text: "1番目")
+        guard let first = vm.entries.last else { return }
+        vm.addEntry(text: "2番目", quotedEntryId: first.id)
+        guard let second = vm.entries.last else { return }
+        vm.addEntry(text: "3番目", quotedEntryId: second.id)
+        guard let third = vm.entries.last else { return }
+
+        #expect(vm.quoteCount(of: first) == 0)
+        #expect(vm.quoteCount(of: second) == 1)
+        #expect(vm.quoteCount(of: third) == 2)
     }
 
     @Test func updateEntry() {
@@ -169,7 +292,8 @@ struct JournalViewModelTests {
             entryDate: entryDate,
             deletedAt: nil,
             createdAt: entryDate,
-            updatedAt: updatedAt
+            updatedAt: updatedAt,
+            quotedEntryId: "11111111-2222-3333-4444-555555555555"
         )
         let vm = JournalViewModel(
             journalService: MockJournalSyncer(
@@ -192,6 +316,7 @@ struct JournalViewModelTests {
         let synced = vm.entries.first { $0.id == id }
         #expect(synced?.text == "remote")
         #expect(synced?.tags == ["server"])
+        #expect(synced?.quotedEntryId?.uuidString == "11111111-2222-3333-4444-555555555555")
     }
 
     @Test func deletedEntriesNotInAllEntries() {
