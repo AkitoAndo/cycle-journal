@@ -105,6 +105,48 @@ final class CycleUITests: XCTestCase {
         takeScreenshot("journal-calendar")
     }
 
+    @MainActor
+    func testScreenshots_Journal_QuoteFlow() {
+        tapTab("Journal")
+
+        let sourceText = app.staticTexts[
+            "朝ランニングをした。空気が澄んでいて気持ちよかった。"
+        ]
+        XCTAssertTrue(sourceText.waitForExistence(timeout: 3))
+        sourceText.swipeLeft()
+
+        let quoteButton = app.buttons["引用"]
+        XCTAssertTrue(quoteButton.waitForExistence(timeout: 3))
+        takeScreenshot("journal-quote-action")
+        quoteButton.tap()
+
+        XCTAssertTrue(app.navigationBars["引用して書く"].waitForExistence(timeout: 3))
+        let textView = app.textViews.firstMatch
+        XCTAssertTrue(textView.waitForExistence(timeout: 3))
+        textView.tap()
+        textView.typeText("昨日の気づきを意識したら、今日はより長く走れた。")
+        takeScreenshot("journal-quote-compose")
+
+        app.buttons["保存"].tap()
+        let quotedText = app.staticTexts[
+            "昨日の気づきを意識したら、今日はより長く走れた。"
+        ]
+        XCTAssertTrue(quotedText.waitForExistence(timeout: 3))
+        XCTAssertTrue(
+            app.descendants(matching: .any)["引用1件"].waitForExistence(timeout: 3)
+        )
+        takeScreenshot("journal-quote-list")
+
+        quotedText.swipeLeft()
+        let historyButton = app.buttons["引用を確認"]
+        XCTAssertTrue(historyButton.waitForExistence(timeout: 3))
+        historyButton.tap()
+
+        XCTAssertTrue(app.navigationBars["引用の履歴"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["このエントリ"].waitForExistence(timeout: 3))
+        takeScreenshot("journal-quote-history")
+    }
+
     // MARK: - Tasks Screenshots
 
     @MainActor

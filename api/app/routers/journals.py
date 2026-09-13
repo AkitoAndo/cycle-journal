@@ -118,6 +118,7 @@ async def _apply_client_journal(
     snapshot = await doc_ref.get()
     client_updated_at = _as_utc(item.updated_at or item.created_at or item.entry_date)
     created_at = _as_utc(item.created_at or item.entry_date)
+    quoted_entry_id = item.quoted_entry_id
 
     if snapshot.exists:
         current = snapshot.to_dict() or {}
@@ -130,18 +131,21 @@ async def _apply_client_journal(
         ):
             return "conflict"
         created_at = _as_utc(current.get("created_at") or created_at)
+        if "quoted_entry_id" not in item.model_fields_set:
+            quoted_entry_id = current.get("quoted_entry_id")
 
-    await doc_ref.set(
-        {
-            "user_id": user_id,
-            "text": item.text,
-            "tags": item.tags,
-            "entry_date": _as_utc(item.entry_date),
-            "deleted_at": _as_utc(item.deleted_at) if item.deleted_at else None,
-            "created_at": created_at,
-            "updated_at": client_updated_at or now,
-        }
-    )
+    data = {
+        "user_id": user_id,
+        "text": item.text,
+        "tags": item.tags,
+        "entry_date": _as_utc(item.entry_date),
+        "deleted_at": _as_utc(item.deleted_at) if item.deleted_at else None,
+        "created_at": created_at,
+        "updated_at": client_updated_at or now,
+    }
+    if "quoted_entry_id" in item.model_fields_set or quoted_entry_id is not None:
+        data["quoted_entry_id"] = quoted_entry_id
+    await doc_ref.set(data)
     return "pushed"
 
 
@@ -165,6 +169,7 @@ def _doc_to_journal(journal_id: str, data: dict) -> JournalData:
         deleted_at=_as_utc(data["deleted_at"]) if data.get("deleted_at") else None,
         created_at=_as_utc(created_at),
         updated_at=_as_utc(updated_at),
+        quoted_entry_id=data.get("quoted_entry_id"),
     )
 
 

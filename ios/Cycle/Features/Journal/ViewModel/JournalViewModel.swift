@@ -180,10 +180,69 @@ final class JournalViewModel: ObservableObject {
     // MARK: - Entry Management
 
     /// 新しいエントリを追加
-    func addEntry(text: String, tags: [String] = []) {
+    /// - Parameter quotedEntryId: 過去のジャーナルを引用して書く場合の引用元ID
+    func addEntry(text: String, tags: [String] = [], quotedEntryId: UUID? = nil) {
         guard let trimmedText = trimText(text), !trimmedText.isEmpty else { return }
-        entries.append(.init(text: trimmedText, tags: tags, updatedAt: Date()))
+        let newEntry = JournalEntry(
+            text: trimmedText,
+            tags: tags,
+            quotedEntryId: quotedEntryId,
+            updatedAt: Date()
+        )
+        entries.append(newEntry)
+        if quotedEntryId != nil {
+            selectedDate = newEntry.date
+        }
         persist()
+    }
+
+    /// エントリが直接引用しているジャーナルを取得する。
+    /// 論理削除済みの引用元も本文が残っているため返す。
+    func quotedSource(of entry: JournalEntry) -> JournalEntry? {
+        guard let id = entry.quotedEntryId else { return nil }
+        return quoteSource(withID: id)
+    }
+
+    /// 引用チェーンを最古の引用元から現在のエントリまでの順で返す。
+    /// 壊れたデータに循環参照があっても、同じIDは再訪しない。
+    func quoteChain(for entry: JournalEntry) -> [JournalEntry] {
+        var chain = [entry]
+        var visited: Set<UUID> = [entry.id]
+        var current = entry
+
+        while let sourceID = current.quotedEntryId,
+              !visited.contains(sourceID),
+              let source = quoteSource(withID: sourceID) {
+            chain.append(source)
+            visited.insert(sourceID)
+            current = source
+        }
+
+        return chain.reversed()
+    }
+
+    /// 一覧のバッジへ表示する、現在のエントリを除いた引用件数。
+    /// 引用元が完全削除済みでも、参照自体が残っていれば最低1件とする。
+    func quoteCount(of entry: JournalEntry) -> Int {
+        guard entry.quotedEntryId != nil else { return 0 }
+        return max(1, quoteChain(for: entry).count - 1)
+    }
+
+    /// 引用チェーンが、完全削除された引用元で途切れているかを返す。
+    /// 循環参照による打ち切りは、削除として扱わない。
+    func quoteChainHasMissingSource(for entry: JournalEntry) -> Bool {
+        guard let unresolvedSourceID = quoteChain(for: entry).first?.quotedEntryId else {
+            return false
+        }
+        return quoteSource(withID: unresolvedSourceID) == nil
+    }
+
+    /// サーバーで完全削除されたエントリは空のtombstoneとして同期されるため、
+    /// 引用元としては存在しないものとして扱う。
+    private func quoteSource(withID id: UUID) -> JournalEntry? {
+        entries.first {
+            $0.id == id && !($0.deletedAt != nil && $0.text.isEmpty)
+        }
     }
 
     /// エントリを更新
