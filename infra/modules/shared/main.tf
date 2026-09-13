@@ -5,6 +5,7 @@ locals {
     "artifactregistry.googleapis.com",
     "secretmanager.googleapis.com",
     "aiplatform.googleapis.com",
+    "cloudquotas.googleapis.com",
   ])
 
   app_store_connect_secret_ids = toset([
