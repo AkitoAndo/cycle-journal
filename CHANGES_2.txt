@@ -1,0 +1,300 @@
+================================================================================
+CHANGES_2.txt - Cycle Journal 開発記録【0801バージョン】
+================================================================================
+
+バージョン: 0801（起点: cycle-journal-20260710 の最終状態を完全コピー）
+目的: 0801バージョンとして行う機能・デザインの変更をすべて記録し、
+      CTO がレビューできるようにする。
+運用: 変更を加えるたびに、このファイルの末尾にエントリを追記する。
+※ CHANGES_1.txt（0710バージョンの記録）の続き。本ファイルが記録 No.2。
+   0710バージョンまでの変更履歴は CHANGES_1.txt を参照。
+
+エントリ形式:
+  [日付] 変更タイトル
+  --------------------------------------------------------------------------------
+  変更ファイル: （パス。複数の場合は箇条書き）
+  内容: 何をどう変えたか（Before → After がわかるように）
+  目的: なぜ変えたか（必要な場合）
+  結果: ビルド / 動作確認の結果
+
+================================================================================
+
+[2026-08-03] 0801バージョンの開発開始（作業フォルダ移行）
+--------------------------------------------------------------------------------
+変更ファイル:
+  - なし（フォルダ運用の切り替えのみ）
+内容: 作業フォルダを ~/Desktop/cycle-journal-20260710 から
+      ~/Desktop/cycle-journal-20260801 へ移行。
+      0801フォルダは0710フォルダの完全コピーで、ソースコードは同一
+      （0710磨き込み一式・4-7-8呼吸法・ホームタブ等をすべて含む）。
+      以後の変更記録は本ファイル（CHANGES_2.txt）に追記する。
+目的: 0710フェーズのスナップショットを保全しつつ、0801バージョンとして
+      開発を継続するため（日付付きフォルダ運用）。
+結果: フォルダ差分確認済み（.git/index・Xcodeユーザ状態・DerivedData のみ相違）。
+
+[2026-08-03] タスクの振り返りをジャーナルにも保存できるように（入力欄にトグル追加）
+--------------------------------------------------------------------------------
+変更ファイル:
+  - ios/Cycle/Features/Tasks/Model/Task.swift
+  - ios/Cycle/Features/Tasks/Views/Components/TaskPostActionFieldsSection.swift
+  - ios/Cycle/Features/Tasks/Views/TaskPostActionEntryView.swift
+  - ios/Cycle/Features/Tasks/Views/TaskEditView.swift
+  - ios/CycleTests/CycleTests.swift
+内容: タスクの振り返り（事後情報: 事実・気づき・次の一手）をジャーナルにも
+      保存できるようにした。
+      Before: 振り返りはタスクにのみ保存され、ジャーナルとは独立していた。
+      After:  1) 振り返り入力欄の下に「ジャーナルにも保存」トグルを追加
+                 （完了時の事後情報シートと、タスク編集画面の「事後」タブ
+                 の両方）。他の入力欄と同じFormFieldBackgroundスタイル。
+              2) トグルがオンの状態で保存すると、振り返りを整形した本文で
+                 ジャーナルエントリを自動作成する。書式は
+                 「タスクの振り返り「<タスク名>」」+ 空行区切りで
+                 【事実】【気づき】【次の一手】の各セクション。
+                 空欄のセクションは含めず、全欄が空なら何も作成しない。
+              3) 完了時シートのトグルは前回の選択を記憶
+                 （AppStorage "isReflectionJournalSaveEnabled"）。
+                 編集画面のトグルは保存のたびに重複記録されないよう
+                 毎回オフで開く。
+      - 本文整形は TaskItem.reflectionJournalText として切り出し、
+        ユニットテスト4件（全欄あり/一部空欄/全欄空/トリム）を追加。
+目的: オーナー要望「タスクの振り返りをジャーナルにも保存できるようにしたい。
+      入力欄でオンオフが切り替えられるようにしたい」への対応。
+      内省（タスクの振り返り）とジャーナルの循環をつなぐ。
+結果: ユニットテスト4件全て成功。ビルド成功。シミュレータ
+      （iPhone 17 Pro / iOS 26.2）へ再インストール・起動確認済み。
+      【ビルド環境の注意】Desktop配下はiCloud同期（fileprovider）が
+      拡張属性 com.apple.FinderInfo を再付与し続けるため、Desktop内の
+      DerivedData（ios/build/DerivedData-0801）ではcodesignが
+      「resource fork, Finder information, or similar detritus not allowed」
+      で失敗する。ビルドは標準の ~/Library/Developer/Xcode/DerivedData を
+      使うこと（-derivedDataPath を指定しない）。
+
+[2026-08-03] ジャーナルの引用機能を追加（スワイプ「引用」→引用付きエントリ作成）
+--------------------------------------------------------------------------------
+変更ファイル:
+  - ios/Cycle/Features/Journal/Model/JournalEntry.swift
+  - ios/Cycle/Features/Journal/ViewModel/JournalViewModel.swift
+  - ios/Cycle/Features/Journal/Views/Components/QuotedJournalCard.swift（新規）
+  - ios/Cycle/Features/Journal/Views/Components/JournalEntriesList.swift
+  - ios/Cycle/Features/Journal/Views/JournalEntryRow.swift
+  - ios/Cycle/Features/Journal/Views/JournalEntryForm.swift
+  - ios/Cycle/Features/Journal/Views/JournalNewEntryView.swift
+  - ios/Cycle/Features/Journal/Views/JournalEditView.swift
+  - ios/CycleTests/CycleTests.swift
+内容: 過去のジャーナルを引用して新しいエントリを書けるようにした。
+      Before: エントリ同士をつなぐ手段がなく、過去の内省を参照しながら
+              書くには手でコピーするしかなかった。
+      After:  1) エントリ行のスワイプ（右→左）に「引用」ボタンを追加
+              　 （quote.opening アイコン・brownLight。既存の削除・編集の
+              　 並びに統一）。
+              2) 引用をタップすると「引用して書く」シートが開き、上部に
+              　 引用元カード（左アクセントバー + 引用マーク + 元の日付時刻
+              　 + 本文抜粋）、その下に日記入力欄。保存すると引用元IDを
+              　 持つ新エントリが作成される。
+              3) 一覧では引用付きエントリをカード内で「上=引用元（過去・
+              　 日付明示）→ 下=本文（今）」の順に縦に並べ、過去→現在の
+              　 時系列がひと目で分かる表示にした。編集画面でも引用元を
+              　 表示（読み取り専用）。
+              4) 引用元が完全削除された場合は「引用元のジャーナルは削除
+              　 されました」のプレースホルダー。ゴミ箱内（論理削除）なら
+              　 本文は残っているためそのまま表示。
+              5) VoiceOver: 引用カードは「◯月◯日のジャーナルを引用: 本文」
+              　 とまとめて読み上げ。
+      - データ: JournalEntry に quotedEntryId: UUID? を追加（オプショナル
+        のため既存の保存データはそのまま読める。後方互換テストで担保）。
+目的: オーナー要望「過去のジャーナルを引用したいとき、スワイプから引用
+      マークボタンで新しく作成し、時系列がわかるような表示に並べて表示」
+      への対応。過去の内省を引用して重ねることで「振り返る→書く」の
+      循環を深める。
+結果: ユニットテスト24件（ジャーナル関連、新規2件含む）全て成功。
+      ビルド成功。シミュレータ（iPhone 17 Pro / iOS 26.2）へ再インストール・
+      起動確認済み。
+
+[2026-08-04] 引用の履歴プレビューを追加（引用カードのタップでチェーン全体を時系列表示）
+--------------------------------------------------------------------------------
+変更ファイル:
+  - ios/Cycle/Features/Journal/Views/JournalQuoteChainView.swift（新規）
+  - ios/Cycle/Features/Journal/ViewModel/JournalViewModel.swift
+  - ios/Cycle/Features/Journal/Views/Components/QuotedJournalCard.swift
+  - ios/Cycle/Features/Journal/Views/JournalEntryRow.swift
+  - ios/Cycle/Features/Journal/Views/Components/JournalEntriesList.swift
+  - ios/Cycle/Features/Journal/Views/JournalListView.swift
+  - ios/Cycle/Features/Journal/Views/JournalEntryForm.swift
+  - ios/Cycle/Features/Journal/Views/JournalEditView.swift
+  - ios/CycleTests/CycleTests.swift
+内容: 引用が重なったエントリ（引用の引用…）の全ての引用元を、
+      タイムライン形式でまとめて確認できるようにした。
+      Before: 引用カードには直接の引用元1件しか表示されず、引用が
+              重なった場合にそれより前を遡る手段がなかった。
+      After:  1) JournalViewModel に quoteChain(for:) を追加。
+                 引用元を再帰的に遡り「最古 → … → 直接の引用元 →
+                 エントリ自身」の配列を返す（循環参照は訪問済みIDで防止。
+                 引用元が完全削除されていればそこで打ち切り）。
+              2) 引用の履歴画面 JournalQuoteChainView（新規）。
+                 縦の接続線 + 点のタイムラインで各エントリをカード表示。
+                 最新（エントリ自身）はアクセント色の点 +「このエントリ」
+                 バッジ。打ち切りが起きた場合は先頭に「これより前の
+                 引用元は削除されました」の注記。VoiceOverは日付+本文を
+                 まとめて読み上げ。
+              3) 一覧・編集画面の引用カードをタップすると履歴シートが
+                 開く（タップ可のときはシェブロン表示 +
+                 accessibilityHint「タップで引用の履歴を表示」）。
+              4) 引用カードに「さらに過去の引用が◯件」のヒントを追加
+                 （直接の引用元より前に遡れる件数 = チェーン全体 - 2）。
+目的: 引用機能（8/3）の仕上げ。引用を重ねたときに内省の積み重ねを
+      時系列で一望できるようにし、「振り返る→書く」の循環を完結させる。
+結果: ユニットテスト122件全て成功（quoteChainOrder /
+      quoteChainTruncatedByPermanentDelete の2件を含む）。ビルド成功。
+      シミュレータ（iPhone 17 Pro）へインストール・起動確認済み。
+      ※前回はこの機能の実装途中（編集画面側の配線が未完）で作業が
+        中断していたため、本エントリで完成分をまとめて記録。
+
+[2026-08-04] スワイプ「引用」ボタンのアイコンを変更
+--------------------------------------------------------------------------------
+変更ファイル:
+  - ios/Cycle/Features/Journal/Views/JournalEntryRow.swift
+内容: エントリ行スワイプの「引用」ボタンのアイコンを変更。
+      Before: quote.opening（引用マーク）
+      After:  arrowshape.turn.up.backward（返信矢印）
+      引用カード・引用の履歴画面内の引用マーク（quote.opening）は変更なし。
+目的: オーナー要望。スワイプメニューでは「このエントリに返す」イメージの
+      返信矢印の方が直感的なため。
+結果: ビルド成功。シミュレータ（iPhone 17 Pro）へ再インストール・起動確認済み。
+
+[2026-08-04] 引用の履歴の開き方をカード全体タップから専用ボタンに変更
+--------------------------------------------------------------------------------
+変更ファイル:
+  - ios/Cycle/Features/Journal/Views/Components/QuotedJournalCard.swift
+  - ios/Cycle/Features/Journal/Views/JournalEntryRow.swift
+  - ios/Cycle/Features/Journal/Views/JournalEntryForm.swift
+  - ios/Cycle/Features/Journal/Views/JournalQuoteChainView.swift（コメントのみ）
+内容: 引用の履歴プレビューの開き方を変更。
+      Before: 引用カード全体がボタンで、タップすると履歴が開く
+              （タップ可の目印は右上のシェブロン）。
+      After:  カード自体はタップ不可に戻し、カード右上に履歴ボタン
+              （clock.arrow.circlepath・アクセント色）を配置。
+              このボタンのタップでのみ履歴シートが開く。
+      - 実装: QuotedJournalCard の showsChevron を onShowQuoteChain
+        クロージャに置き換え、ボタンをカード内（overlay・topTrailing）に
+        内蔵。JournalEntryRow / JournalEntryForm の外側の Button ラップは
+        削除し、クロージャをカードへ渡すだけにした。
+      - VoiceOver: カード本文（引用のまとめ読み上げ）と履歴ボタン
+        （「引用の履歴を表示」）を別要素に分離し、ボタン単体で操作可能に。
+目的: オーナー要望「引用の履歴はチェック（確認）ボタンにして」への対応。
+      カード全体タップは誤操作しやすく、開く操作を明示的なボタンにする。
+結果: ビルド成功。シミュレータ（iPhone 17 Pro）へ再インストール・起動確認済み。
+
+[2026-08-08] 一覧の引用表示を「引用元カード」から「右上の件数バッジ + 右スワイプで確認」に変更
+--------------------------------------------------------------------------------
+変更ファイル:
+  - ios/Cycle/Features/Journal/Views/JournalEntryRow.swift
+  - ios/Cycle/Features/Journal/Views/Components/JournalEntriesList.swift
+  - ios/Cycle/Features/Journal/Views/JournalListView.swift
+  - ios/Cycle/Features/Journal/ViewModel/JournalViewModel.swift
+  - ios/CycleTests/CycleTests.swift
+内容: ジャーナル一覧での引用の見せ方を変更した。
+      Before: 引用付きエントリのカード内に引用元の本文カードを並べて表示
+              （上=引用元・下=本文）。引用の履歴は引用元カード右上の
+              履歴ボタンから開く。一覧が縦に長くなり、本文より引用元が
+              目立っていた。
+      After:  1) 一覧では引用元の本文を表示しない。代わりにカード右上に
+                 引用件数バッジ（引用マーク + 件数）を出すだけにした。
+                 本文とバッジは HStack(alignment: .top) で並べ、本文が
+                 長くてもバッジが右上に固定される。
+              2) 引用の中身は行を右スワイプ（leading）して現れる
+                 「引用を確認」ボタン（clock.arrow.circlepath・アクセント色）
+                 から開く。開く先は既存の引用の履歴画面
+                 JournalQuoteChainView（最古 → 自身の時系列表示）。
+                 引用のないエントリには右スワイプのボタンを出さない。
+              3) 左スワイプ（trailing）の削除・編集・引用は変更なし。
+              4) 件数は JournalViewModel.quoteCount(of:) を新設して算出。
+                 引用チェーンを遡った数（自身を除く）＝引用の引用も数える。
+                 引用元が完全削除されて遡れない場合も引用自体はあるため
+                 最低1件として数える。
+              5) VoiceOver: バッジは「引用N件」と読み上げ、ヒントで
+                 「右スワイプの確認ボタンで引用の履歴を表示」を案内。
+      - JournalEntryRow / JournalEntriesList の引数を quotedSource +
+        olderQuoteCount から quoteCount 1つに整理した。
+      - QuotedJournalCard 自体は残置。「引用して書く」画面と編集画面では
+        引用元を見ながら書く必要があるため、これまで通り表示する。
+目的: オーナー要望「前の引用は表示せず、右上に引用の件数を記載。引用の
+      中身の確認は右スワイプでチェックボタンをクリックし、時系列で参照
+      できるようにしたい」への対応。一覧では「今書いたこと」を主役にし、
+      引用は必要なときだけ遡る導線にする。
+結果: ユニットテスト124件全て成功（quoteCountCountsAllAncestors /
+      quoteCountIsAtLeastOneWhenSourceDeleted の新規2件を含む。122→124件）。
+      ビルド成功。シミュレータ（iPhone 17 Pro / iOS 26.2）で
+      引用2件のエントリに「引用マーク2」バッジが出ること、右スワイプで
+      確認ボタンが現れること、タップで引用の履歴が時系列表示されることを
+      スクリーンショットで確認済み。
+      【既知の別課題（今回の変更とは無関係・未対応）】
+      - CycleUITests に12件の失敗が残っている。原因は0710のタブ刷新で
+        tab_Settings が tab_MyPage に改名されたこと、および全タブ常時
+        マウント化により fab_plus が複数一致すること。UIテスト側の更新が必要。
+      - 全タブ常時マウントのため、非選択タブの要素が XCUITest の
+        アクセシビリティツリーから引けてしまう（accessibilityHidden 指定済み
+        だが効いていない）。VoiceOver への影響を要確認。
+
+[2026-08-08] 引用を確認するボタンをチェックマークに変更し、スワイプ内の「引用」の左へ移動
+--------------------------------------------------------------------------------
+変更ファイル:
+  - ios/Cycle/Features/Journal/Views/JournalEntryRow.swift
+内容: 同日の「右上バッジ + 右スワイプで確認」から、確認ボタンの見た目と
+      置き場所を変更した。
+      Before: 行を右スワイプ（leading）すると現れる履歴アイコン
+              （clock.arrow.circlepath・アクセント色）のボタン。
+      After:  左スワイプ（trailing）の並びに移動し、アイコンを
+              チェックマーク（checkmark・greyDark）に変更。
+              並びは右から順に 削除 → 編集 → 引用 → 引用を確認 となり、
+              「引用」の左隣に置かれる（swipeActions は宣言順に右端から
+              並ぶため、引用の次に宣言している）。
+              引用を持たないエントリにはこのボタンを出さない（従来通り）。
+              右スワイプ（leading）のスワイプアクションは廃止。
+      - 件数バッジの VoiceOver ヒントを
+        「左スワイプのチェックマークで引用の履歴を表示」に更新。
+目的: オーナー要望「チェックマークです。引用の左に加えてください」への対応。
+      確認の操作を引用の操作の隣に置き、引用まわりの操作を一列にまとめる。
+結果: ビルド成功。ユニットテスト124件全て成功。シミュレータ
+      （iPhone 17 Pro / iOS 26.2）で、左スワイプに 削除・編集・引用・
+      チェックマーク の4つがこの並びで出ること、チェックマークのタップで
+      引用の履歴が時系列表示されることをスクリーンショットで確認済み。
+
+[2026-08-08] ユニットテスト renameTag が2回目以降の実行で必ず失敗する問題を修正
+--------------------------------------------------------------------------------
+変更ファイル:
+  - ios/CycleTests/CycleTests.swift
+内容: renameTag のテストが、一度実行すると以降ずっと失敗するようになっていた
+      のを修正した。
+      原因: JournalViewModel は端末の保存領域（UserDefaults の availableTags）
+            を共有しており、テストが作ったタグ「新名」が実行後も残る。
+            JournalViewModel.renameTag は改名先が既存のタグなら何もせず
+            return する実装（JournalViewModel.swift:251）のため、2回目以降は
+            改名が実行されず、「旧名が消えない」「エントリに新名が付かない」
+            の2つのアサーションが必ず落ちる。
+      Before: 固定のタグ名「旧名」「新名」を使用。
+      After:  UUID から作った接尾辞を付けた一意なタグ名を使い、実行のたびに
+              未使用の名前で改名するようにした。
+      - 併せて、シミュレータに蓄積していたテスト用タグ（重複タグ / 新名 /
+        新しいタグ / 旧名）を保存領域から除去した。
+目的: 変更のたびに「ユニットテスト全て成功」を確認する運用のため、
+      テストが実行順や過去の実行状態に依存しない状態に戻す。
+結果: ユニットテストを2回連続実行し、いずれも124件全て成功することを確認。
+      ※ 根本的にはテストが端末の保存領域を共有していること自体が問題で、
+        他のテストも同じ壊れ方をしうる（今回は renameTag のみ顕在化）。
+        テスト用にストアを差し替える仕組みの導入は別途検討。
+
+[2026-08-08] 「引用を確認」チェックマークの色をタスクのスワイプと統一
+--------------------------------------------------------------------------------
+変更ファイル:
+  - ios/Cycle/Features/Journal/Views/JournalEntryRow.swift
+内容: ジャーナルのスワイプに追加したチェックマークボタンの色を変更。
+      Before: DesignSystem.Colors.greyDark（明るめのグレー）
+      After:  DesignSystem.Colors.textSecondary
+      タスクのスワイプにある同じチェックマークのボタン「プレビュー」
+      （TaskRow.swift の previewButton）が textSecondary を使っているため、
+      同じ操作・同じアイコンは同じ色になるよう揃えた。
+目的: オーナー要望「チェックマークの色をタスクと同じ色にして」への対応。
+結果: ビルド成功。ユニットテスト124件全て成功。シミュレータ
+      （iPhone 17 Pro / iOS 26.2）でジャーナルとタスクの両方をスワイプして
+      スクリーンショットを撮り、チェックマークボタンの色がピクセル値で
+      一致することを確認（両方とも RGB (115, 110, 105)）。
