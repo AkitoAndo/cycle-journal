@@ -21,10 +21,14 @@ struct TaskArchiveView: View {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return vm.archives }
         return vm.archives.compactMap { archive in
-            let matched = archive.completedTasks.filter { $0.matches(query) }
-            guard !matched.isEmpty else { return nil }
+            let matchedCompleted = archive.completedTasks.filter { $0.matches(query) }
+            let matchedSkipped = archive.skippedTasks.filter {
+                $0.task.matches(query) || $0.reason.localizedCaseInsensitiveContains(query)
+            }
+            guard !matchedCompleted.isEmpty || !matchedSkipped.isEmpty else { return nil }
             var copy = archive
-            copy.completedTasks = matched
+            copy.completedTasks = matchedCompleted
+            copy.skippedTasks = matchedSkipped
             return copy
         }
     }
@@ -57,6 +61,19 @@ struct TaskArchiveView: View {
                 }
         }
         .presentationBackground(DesignSystem.Colors.background)
+        .alert(
+            "変更を保存できませんでした",
+            isPresented: Binding(
+                get: { vm.persistenceError != nil },
+                set: { if !$0 { vm.clearPersistenceError() } }
+            )
+        ) {
+            Button("OK") {
+                vm.clearPersistenceError()
+            }
+        } message: {
+            Text(vm.persistenceError ?? "")
+        }
     }
 
     // ジャーナル検索と同じ見た目のワード検索バー
@@ -115,6 +132,29 @@ struct TaskArchiveView: View {
                             },
                             onPreview: {
                                 previewingTask = task
+                            },
+                            isSkipped: false,
+                            reason: nil,
+                            onResume: nil
+                        )
+                    }
+
+                    ForEach(archive.skippedTasks) { skippedItem in
+                        TaskArchiveRow(
+                            task: skippedItem.task,
+                            onEdit: {
+                                editingTask = skippedItem.task
+                            },
+                            onDelete: {
+                                vm.deleteArchivedTask(skippedItem.task)
+                            },
+                            onPreview: {
+                                previewingTask = skippedItem.task
+                            },
+                            isSkipped: true,
+                            reason: skippedItem.reason,
+                            onResume: {
+                                vm.resumeSkippedTask(skippedItem)
                             }
                         )
                     }
@@ -159,12 +199,18 @@ struct TaskArchiveRow: View {
     let onEdit: () -> Void
     let onDelete: () -> Void
     let onPreview: () -> Void
+    let isSkipped: Bool
+    let reason: String?
+    let onResume: (() -> Void)?
 
     var body: some View {
         taskContent
             .customListRowStyle()
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 deleteButton
+                if let onResume {
+                    resumeButton(action: onResume)
+                }
                 editButton
                 previewButton
             }
@@ -172,11 +218,43 @@ struct TaskArchiveRow: View {
 
     private var taskContent: some View {
         SurfaceCard {
-            HStack(spacing: DesignSystem.Spacing.md) {
-                taskTitle
-                Spacer()
+            VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
+                HStack(alignment: .top, spacing: DesignSystem.Spacing.md) {
+                    taskTitle
+                    Spacer()
+                    statusBadge
+                }
+
+                if let reason, !reason.isEmpty {
+                    HStack(alignment: .top, spacing: DesignSystem.Spacing.xs) {
+                        Text("理由")
+                            .font(DesignSystem.Fonts.caption)
+                            .foregroundStyle(DesignSystem.Colors.textSecondary)
+                        Text(reason)
+                            .font(DesignSystem.Fonts.caption)
+                            .foregroundStyle(DesignSystem.Colors.textPrimary)
+                    }
+                    .padding(.top, DesignSystem.Spacing.xs)
+                }
             }
         }
+        .accessibilityIdentifier("task_archive_row_\(task.id.uuidString.lowercased())")
+    }
+
+    private var statusBadge: some View {
+        Text(isSkipped ? "見送り" : "完了")
+            .font(DesignSystem.Fonts.caption2.weight(.semibold))
+            .foregroundStyle(
+                isSkipped ? DesignSystem.Colors.textSecondary : DesignSystem.Colors.accent
+            )
+            .padding(.horizontal, DesignSystem.Spacing.sm)
+            .padding(.vertical, DesignSystem.Spacing.xs)
+            .background(
+                (isSkipped ? DesignSystem.Colors.textSecondary : DesignSystem.Colors.accent)
+                    .opacity(0.12)
+            )
+            .clipShape(Capsule())
+            .accessibilityIdentifier("task_archive_status_\(task.id.uuidString.lowercased())")
     }
 
     private var taskTitle: some View {
@@ -214,5 +292,14 @@ struct TaskArchiveRow: View {
                 .labelStyle(.iconOnly)
         }
         .tint(DesignSystem.Colors.textSecondary)
+    }
+
+    private func resumeButton(action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label("再開", systemImage: "arrow.uturn.backward")
+                .labelStyle(.iconOnly)
+        }
+        .tint(.blue)
+        .accessibilityIdentifier("task_resume_\(task.id.uuidString.lowercased())")
     }
 }

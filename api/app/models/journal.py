@@ -13,6 +13,7 @@ class JournalSyncItem(BaseModel):
     deleted_at: datetime | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
+    quoted_entry_id: str | None = None
 
 
 class JournalData(BaseModel):
@@ -23,6 +24,7 @@ class JournalData(BaseModel):
     deleted_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
+    quoted_entry_id: str | None = None
 
 
 class JournalListData(BaseModel):

@@ -34,6 +34,8 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 @main
 struct CycleApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @AppStorage(AppearanceMode.storageKey)
+    private var appearanceModeRawValue = AppearanceMode.system.rawValue
 
     init() {
         // Google Sign-In
@@ -84,29 +86,36 @@ struct CycleApp: App {
     @StateObject private var meditationStore = MeditationStore()
     @StateObject private var authStore = AuthStore()
 
+    private var appearanceMode: AppearanceMode {
+        AppearanceMode(rawValue: appearanceModeRawValue) ?? .system
+    }
+
     var body: some Scene {
         WindowGroup {
-            if showCatalog {
-                NavigationStack {
-                    ComponentCatalogView()
+            Group {
+                if showCatalog {
+                    NavigationStack {
+                        ComponentCatalogView()
+                    }
+                } else {
+                    ContentView()
+                        .environmentObject(journalViewModel)
+                        .environmentObject(taskViewModel)
+                        .environmentObject(coachStore)
+                        .environmentObject(meditationStore)
+                        .environmentObject(authStore)
+                        .onOpenURL { url in
+                            GIDSignIn.sharedInstance.handle(url)
+                        }
+                        .task {
+                            TestDataProvider.setupIfNeeded()
+                            TestDataProvider.setupSync()
+                            journalViewModel.reloadData()
+                            taskViewModel.reloadData()
+                        }
                 }
-            } else {
-                ContentView()
-                    .environmentObject(journalViewModel)
-                    .environmentObject(taskViewModel)
-                    .environmentObject(coachStore)
-                    .environmentObject(meditationStore)
-                    .environmentObject(authStore)
-                    .onOpenURL { url in
-                        GIDSignIn.sharedInstance.handle(url)
-                    }
-                    .task {
-                        TestDataProvider.setupIfNeeded()
-                        TestDataProvider.setupSync()
-                        journalViewModel.reloadData()
-                        taskViewModel.reloadData()
-                    }
             }
+            .preferredColorScheme(appearanceMode.colorScheme)
         }
     }
 }

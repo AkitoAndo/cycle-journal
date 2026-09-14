@@ -10,12 +10,16 @@ variable "region" {
 }
 
 variable "environment" {
-  description = "Environment name (dev / prod)"
+  description = "Lowercase environment name used as a GCP resource suffix"
   type        = string
 
   validation {
-    condition     = contains(["dev", "prod"], var.environment)
-    error_message = "environment must be dev or prod."
+    condition = (
+      length(var.environment) <= 20 &&
+      can(regex("^[a-z][a-z0-9-]*$", var.environment)) &&
+      !endswith(var.environment, "-")
+    )
+    error_message = "environment must be 1-20 lowercase letters, digits, or hyphens; it must start with a letter and end with a letter or digit."
   }
 }
 
@@ -81,6 +85,12 @@ variable "mcp_service_account_email" {
   description = "Only service identity allowed to call the internal MCP API router"
   type        = string
   default     = ""
+}
+
+variable "mcp_enabled" {
+  description = "Expose MCP service-to-service environment settings on the API runtime"
+  type        = bool
+  default     = false
 }
 
 variable "apple_bundle_id" {

@@ -9,6 +9,7 @@ module "web" {
   project_id                     = var.project_id
   environment                    = "prod"
   github_actions_service_account = "github-actions-deploy@${var.project_id}.iam.gserviceaccount.com"
+  service_account_description    = "Runtime identity for Treow Web in production"
 }
 
 module "api" {

@@ -32,13 +32,44 @@ struct JournalEntryTests {
         #expect(entry1.id != entry2.id)
     }
 
+    @Test func entryWithQuoteCodable() throws {
+        let source = JournalEntry(text: "引用元の日記")
+        let entry = JournalEntry(text: "引用して書いた日記", quotedEntryId: source.id)
+        let data = try JSONEncoder().encode(entry)
+        let decoded = try JSONDecoder().decode(JournalEntry.self, from: data)
+        #expect(decoded.quotedEntryId == source.id)
+    }
+
+    @Test func entryDecodesLegacyJSONWithoutQuotedEntryId() throws {
+        let legacyJSON = """
+        {"id":"11111111-2222-3333-4444-555555555555","date":774400000,"text":"昔のエントリ","tags":["タグ"]}
+        """
+        let decoded = try JSONDecoder().decode(JournalEntry.self, from: Data(legacyJSON.utf8))
+        #expect(decoded.text == "昔のエントリ")
+        #expect(decoded.quotedEntryId == nil)
+    }
+
     @Test func entryCodable() throws {
         let entry = JournalEntry(text: "テスト", tags: ["タグ1"])
         let data = try JSONEncoder().encode(entry)
         let decoded = try JSONDecoder().decode(JournalEntry.self, from: data)
         #expect(decoded.text == "テスト")
         #expect(decoded.tags == ["タグ1"])
+        #expect(decoded.quotedEntryId == nil)
         #expect(decoded.id == entry.id)
+    }
+
+    @Test func syncItemEncodesQuotedEntryIdForAPI() throws {
+        let quotedEntryId = UUID()
+        let item = JournalSyncItem(
+            entry: JournalEntry(text: "引用して書いた日記", quotedEntryId: quotedEntryId)
+        )
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        let data = try encoder.encode(item)
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+
+        #expect(json?["quoted_entry_id"] as? String == quotedEntryId.uuidString)
     }
 
     @Test func syncUpdatedAtFallsBackToDate() {
@@ -95,6 +126,98 @@ struct JournalViewModelTests {
         let vm = JournalViewModel()
         vm.addEntry(text: "  前後にスペース  ")
         #expect(vm.entries.last?.text == "前後にスペース")
+    }
+
+    @Test func quotedSourceLookup() {
+        let vm = JournalViewModel()
+        vm.addEntry(text: "引用元エントリ")
+        guard let source = vm.entries.last else { return }
+        vm.addEntry(text: "引用したエントリ", quotedEntryId: source.id)
+        guard let quoting = vm.entries.last else { return }
+
+        #expect(vm.quotedSource(of: quoting)?.id == source.id)
+        #expect(vm.quotedSource(of: source) == nil)
+    }
+
+    @Test func quotedEntrySelectsItsCreationDate() {
+        let vm = JournalViewModel()
+        vm.addEntry(text: "引用元エントリ")
+        guard let source = vm.entries.last else { return }
+        vm.selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
+
+        vm.addEntry(text: "引用したエントリ", quotedEntryId: source.id)
+
+        guard let quoting = vm.entries.last else { return }
+        #expect(Calendar.current.isDate(vm.selectedDate, inSameDayAs: quoting.date))
+        #expect(vm.todays.contains { $0.id == quoting.id })
+    }
+
+    @Test func quoteChainUsesOldestToNewestOrder() {
+        let vm = JournalViewModel()
+        vm.addEntry(text: "1番目")
+        guard let first = vm.entries.last else { return }
+        vm.addEntry(text: "2番目", quotedEntryId: first.id)
+        guard let second = vm.entries.last else { return }
+        vm.addEntry(text: "3番目", quotedEntryId: second.id)
+        guard let third = vm.entries.last else { return }
+
+        #expect(vm.quoteChain(for: third).map(\.id) == [first.id, second.id, third.id])
+    }
+
+    @Test func quoteChainStopsAfterPermanentDelete() {
+        let vm = JournalViewModel()
+        vm.addEntry(text: "削除される引用元")
+        guard let source = vm.entries.last else { return }
+        vm.addEntry(text: "引用したエントリ", quotedEntryId: source.id)
+        guard let quoting = vm.entries.last else { return }
+
+        vm.permanentlyDeleteEntry(source)
+
+        #expect(vm.quoteChain(for: quoting).map(\.id) == [quoting.id])
+        #expect(vm.quoteCount(of: quoting) == 1)
+    }
+
+    @Test func quoteChainTreatsServerTombstoneAsPermanentlyDeleted() {
+        let sourceID = UUID()
+        let tombstone = JournalEntry(
+            id: sourceID,
+            text: "",
+            deletedAt: Date(),
+            updatedAt: Date()
+        )
+        let quoting = JournalEntry(text: "引用したエントリ", quotedEntryId: sourceID)
+        JournalStore.saveAll([tombstone, quoting])
+        let vm = JournalViewModel()
+
+        #expect(vm.quotedSource(of: quoting) == nil)
+        #expect(vm.quoteChain(for: quoting).map(\.id) == [quoting.id])
+        #expect(vm.quoteChainHasMissingSource(for: quoting))
+    }
+
+    @Test func quoteChainDoesNotTreatCycleAsDeletedSource() {
+        let firstID = UUID()
+        let secondID = UUID()
+        let first = JournalEntry(id: firstID, text: "1番目", quotedEntryId: secondID)
+        let second = JournalEntry(id: secondID, text: "2番目", quotedEntryId: firstID)
+        JournalStore.saveAll([first, second])
+        let vm = JournalViewModel()
+
+        #expect(vm.quoteChain(for: first).map(\.id) == [secondID, firstID])
+        #expect(vm.quoteChainHasMissingSource(for: first) == false)
+    }
+
+    @Test func quoteCountIncludesAllAncestors() {
+        let vm = JournalViewModel()
+        vm.addEntry(text: "1番目")
+        guard let first = vm.entries.last else { return }
+        vm.addEntry(text: "2番目", quotedEntryId: first.id)
+        guard let second = vm.entries.last else { return }
+        vm.addEntry(text: "3番目", quotedEntryId: second.id)
+        guard let third = vm.entries.last else { return }
+
+        #expect(vm.quoteCount(of: first) == 0)
+        #expect(vm.quoteCount(of: second) == 1)
+        #expect(vm.quoteCount(of: third) == 2)
     }
 
     @Test func updateEntry() {
@@ -169,7 +292,8 @@ struct JournalViewModelTests {
             entryDate: entryDate,
             deletedAt: nil,
             createdAt: entryDate,
-            updatedAt: updatedAt
+            updatedAt: updatedAt,
+            quotedEntryId: "11111111-2222-3333-4444-555555555555"
         )
         let vm = JournalViewModel(
             journalService: MockJournalSyncer(
@@ -192,6 +316,7 @@ struct JournalViewModelTests {
         let synced = vm.entries.first { $0.id == id }
         #expect(synced?.text == "remote")
         #expect(synced?.tags == ["server"])
+        #expect(synced?.quotedEntryId?.uuidString == "11111111-2222-3333-4444-555555555555")
     }
 
     @Test func deletedEntriesNotInAllEntries() {
@@ -510,6 +635,82 @@ struct TaskViewModelTests {
         #expect(vm.tasks.contains { $0.id == id } == true)
     }
 
+    @Test func skipIncompleteTaskStoresReasonAndRemovesItFromList() {
+        let vm = TaskViewModel()
+        vm.addTask(title: "今週は見送るタスク")
+        guard let task = vm.incompleteTasks.last else { return }
+
+        vm.skipTask(task, reason: "  今日は優先度を下げる  ")
+
+        #expect(!vm.tasks.contains { $0.id == task.id })
+        let skipped = vm.archives.flatMap(\.skippedTasks).first { $0.id == task.id }
+        #expect(skipped?.task.isCompleted == false)
+        #expect(skipped?.reason == "今日は優先度を下げる")
+    }
+
+    @Test func skipRejectsCompletedTask() {
+        let vm = TaskViewModel()
+        vm.addTask(title: "完了済みタスク")
+        guard let task = vm.incompleteTasks.last else { return }
+        vm.toggleCompletion(task)
+        guard let completed = vm.tasks.first(where: { $0.id == task.id }) else { return }
+
+        vm.skipTask(completed, reason: "見送らない")
+
+        #expect(vm.tasks.contains { $0.id == task.id })
+        #expect(!vm.archives.flatMap(\.skippedTasks).contains { $0.id == task.id })
+    }
+
+    @Test func skipKeepsSyncedTaskOnServer() {
+        var task = TaskItem(title: "サーバーに残すタスク")
+        task.serverId = "server-task-1"
+        TaskStore.saveAll([task])
+        let vm = TaskViewModel()
+
+        vm.skipTask(task, reason: "あとで再開する")
+
+        #expect(
+            !TaskSyncMutationStore.loadAll().contains {
+                $0.localTaskID == task.id && $0.kind == .delete
+            }
+        )
+        #expect(vm.archives.flatMap(\.skippedTasks).first?.task.serverId == "server-task-1")
+    }
+
+    @Test func resumeSkippedTaskReturnsItToIncompleteList() {
+        let vm = TaskViewModel()
+        vm.addTask(title: "再開するタスク")
+        guard let task = vm.incompleteTasks.last else { return }
+        vm.skipTask(task, reason: "いったん見送る")
+        guard let skipped = vm.archives.flatMap(\.skippedTasks).first(where: { $0.id == task.id }) else {
+            return
+        }
+
+        vm.resumeSkippedTask(skipped)
+
+        #expect(vm.incompleteTasks.contains { $0.id == task.id })
+        #expect(!vm.archives.flatMap(\.skippedTasks).contains { $0.id == task.id })
+    }
+
+    @Test func resumeSkippedTaskPreservesServerIdentity() {
+        var task = TaskItem(title: "同期済みの見送りタスク")
+        task.serverId = "server-task-2"
+        let skipped = SkippedTaskArchiveItem(task: task, reason: "保留", skippedAt: Date())
+        TaskArchiveStore.save(
+            TaskArchive(date: Date(), completedTasks: [], skippedTasks: [skipped])
+        )
+        let vm = TaskViewModel()
+
+        vm.resumeSkippedTask(skipped)
+
+        #expect(vm.incompleteTasks.first { $0.id == task.id }?.serverId == "server-task-2")
+        #expect(
+            TaskSyncMutationStore.loadAll().contains {
+                $0.localTaskID == task.id && $0.kind == .upsert
+            }
+        )
+    }
+
     @Test func homeTasksIncludesIncompleteTasksOnlyForToday() {
         let calendar = Calendar(identifier: .gregorian)
         let now = Date(timeIntervalSince1970: 1_700_000_000)
@@ -582,6 +783,58 @@ struct TaskArchiveTests {
         let decoded = try JSONDecoder().decode(TaskArchive.self, from: data)
         #expect(decoded.completedTasks.count == 1)
         #expect(decoded.completedTasks.first?.title == "完了タスク")
+    }
+
+    @Test func archiveDecodesLegacyJSONWithoutSkippedTasks() throws {
+        let archive = TaskArchive(date: Date(), completedTasks: [TaskItem(title: "従来の完了タスク")])
+        let encoded = try JSONEncoder().encode(archive)
+        var json = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        json.removeValue(forKey: "skippedTasks")
+        let legacyData = try JSONSerialization.data(withJSONObject: json)
+
+        let decoded = try JSONDecoder().decode(TaskArchive.self, from: legacyData)
+
+        #expect(decoded.completedTasks.count == 1)
+        #expect(decoded.skippedTasks.isEmpty)
+    }
+
+    @Test func skippedTaskArchiveCodable() throws {
+        let task = TaskItem(title: "見送ったタスク")
+        let skipped = SkippedTaskArchiveItem(
+            task: task,
+            reason: "今日は優先度を下げる",
+            skippedAt: Date()
+        )
+        let archive = TaskArchive(date: Date(), completedTasks: [], skippedTasks: [skipped])
+
+        let data = try JSONEncoder().encode(archive)
+        let decoded = try JSONDecoder().decode(TaskArchive.self, from: data)
+
+        #expect(decoded.skippedTasks.first?.id == task.id)
+        #expect(decoded.skippedTasks.first?.reason == "今日は優先度を下げる")
+    }
+
+    @Test func csvExportIncludesSkippedTaskAndReason() throws {
+        let task = TaskItem(title: "見送ったタスク")
+        let skipped = SkippedTaskArchiveItem(
+            task: task,
+            reason: "優先度を見直した",
+            skippedAt: Date()
+        )
+        let archive = TaskArchive(date: Date(), completedTasks: [], skippedTasks: [skipped])
+
+        let data = DataExportService.exportCSV(
+            journals: [],
+            tasks: [],
+            archives: [archive],
+            sessions: []
+        )
+        let csv = try #require(String(data: data, encoding: .utf8))
+
+        #expect(csv.contains("見送ったタスク"))
+        #expect(csv.contains("優先度を見直した"))
+        #expect(csv.contains("状態,見送り日時,見送り理由"))
+        #expect(csv.contains(",見送り,"))
     }
 }
 

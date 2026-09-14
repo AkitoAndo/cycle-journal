@@ -293,26 +293,6 @@ resource "google_cloud_run_v2_service" "api" {
       }
 
       env {
-        name  = "GOOGLE_CLIENT_IDS"
-        value = var.google_client_ids
-      }
-
-      env {
-        name  = "CORS_ALLOWED_ORIGINS"
-        value = var.cors_allowed_origins
-      }
-
-      env {
-        name  = "MCP_SERVICE_ACCOUNT_EMAIL"
-        value = var.mcp_service_account_email
-      }
-
-      env {
-        name  = "MCP_BACKEND_API_URL"
-        value = local.api_public_url
-      }
-
-      env {
         name = "JWT_SECRET_KEY"
         value_source {
           secret_key_ref {
@@ -326,6 +306,34 @@ resource "google_cloud_run_v2_service" "api" {
         name  = "CLAUDE_MAX_TOKENS"
         value = tostring(var.claude_max_tokens)
       }
+
+      env {
+        name  = "CORS_ALLOWED_ORIGINS"
+        value = var.cors_allowed_origins
+      }
+
+      env {
+        name  = "GOOGLE_CLIENT_IDS"
+        value = var.google_client_ids
+      }
+
+      dynamic "env" {
+        for_each = var.mcp_enabled ? [1] : []
+
+        content {
+          name  = "MCP_SERVICE_ACCOUNT_EMAIL"
+          value = var.mcp_service_account_email
+        }
+      }
+
+      dynamic "env" {
+        for_each = var.mcp_enabled ? [1] : []
+
+        content {
+          name  = "MCP_BACKEND_API_URL"
+          value = local.api_public_url
+        }
+      }
     }
   }
 
@@ -335,6 +343,11 @@ resource "google_cloud_run_v2_service" "api" {
       client_version,
       template[0].containers[0].image,
     ]
+
+    precondition {
+      condition     = !var.mcp_enabled || trimspace(var.mcp_service_account_email) != ""
+      error_message = "mcp_service_account_email must be set when mcp_enabled is true."
+    }
   }
 
   depends_on = [

@@ -54,7 +54,7 @@ struct WeekCalendarView: View {
 
             // 日付 + 記録ドット
             VStack(spacing: 2) {
-                Text(date, format: .dateTime.day())
+                Text("\(Calendar.current.component(.day, from: date))")
                     .font(.system(
                         size: DesignSystem.FontSize.headline,
                         weight: isSelected ? .semibold : .regular

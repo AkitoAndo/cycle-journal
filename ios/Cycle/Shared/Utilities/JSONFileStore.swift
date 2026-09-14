@@ -36,12 +36,17 @@ enum JSONFileStore {
     /// - Parameters:
     ///   - value: 保存する値
     ///   - fileName: 保存先のファイル名
-    static func save<T: Encodable>(_ value: T, to fileName: String) {
+    @discardableResult
+    static func save<T: Encodable>(_ value: T, to fileName: String) -> Bool {
         let u = url(fileName)
         let enc = JSONEncoder()
         enc.outputFormatting = [.prettyPrinted, .withoutEscapingSlashes]
-        if let data = try? enc.encode(value) {
-            try? data.write(to: u, options: [.atomic, .completeFileProtection])
+        guard let data = try? enc.encode(value) else { return false }
+        do {
+            try data.write(to: u, options: [.atomic, .completeFileProtection])
+            return true
+        } catch {
+            return false
         }
     }
 }
