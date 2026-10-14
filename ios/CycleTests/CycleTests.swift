@@ -711,49 +711,110 @@ struct TaskViewModelTests {
         )
     }
 
-    @Test func homeTasksIncludesIncompleteTasksOnlyForToday() {
+    @Test func homeTasksShowsTasksOnTheirCreationDayOnly() {
         let calendar = Calendar(identifier: .gregorian)
-        let now = Date(timeIntervalSince1970: 1_700_000_000)
-        let yesterday = calendar.date(byAdding: .day, value: -1, to: now)!
-        let incomplete = TaskItem(title: "今日進める")
+        let today = Date(timeIntervalSince1970: 1_700_000_000)
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+        var createdYesterday = TaskItem(title: "昨日作った")
+        createdYesterday.createdAt = yesterday
+        var createdToday = TaskItem(title: "今日作った")
+        createdToday.createdAt = today
 
         let todayTasks = TaskViewModel.homeTasks(
-            on: now,
-            now: now,
-            tasks: [incomplete],
+            on: today,
+            tasks: [createdYesterday, createdToday],
             archives: [],
             calendar: calendar
         )
-        let pastTasks = TaskViewModel.homeTasks(
+        let yesterdayTasks = TaskViewModel.homeTasks(
             on: yesterday,
-            now: now,
-            tasks: [incomplete],
+            tasks: [createdYesterday, createdToday],
             archives: [],
             calendar: calendar
         )
 
-        #expect(todayTasks.map(\.id).contains(incomplete.id))
-        #expect(!pastTasks.map(\.id).contains(incomplete.id))
+        // 未完了のまま日をまたいでも、今日へ繰り越さず作成日に残る
+        #expect(todayTasks.map(\.id) == [createdToday.id])
+        #expect(yesterdayTasks.map(\.id) == [createdYesterday.id])
     }
 
-    @Test func homeTasksIncludesCompletedAndArchivedTasksForSelectedDay() {
+    @Test func homeTasksKeepsCompletedAndArchivedTasksOnCreationDay() {
         let calendar = Calendar(identifier: .gregorian)
-        let selectedDate = Date(timeIntervalSince1970: 1_700_000_000)
-        var completed = TaskItem(title: "完了済み", isCompleted: true)
-        completed.completedAt = selectedDate
-        let archived = TaskItem(title: "アーカイブ済み", isCompleted: true)
-        let archive = TaskArchive(date: selectedDate, completedTasks: [archived])
+        let today = Date(timeIntervalSince1970: 1_700_000_000)
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+        var completed = TaskItem(title: "昨日作って今日完了", isCompleted: true)
+        completed.createdAt = yesterday
+        completed.completedAt = today
+        var archived = TaskItem(title: "旧アーカイブ済み", isCompleted: true)
+        archived.createdAt = yesterday
+        let archive = TaskArchive(date: today, completedTasks: [archived])
 
-        let result = TaskViewModel.homeTasks(
-            on: selectedDate,
-            now: selectedDate,
+        let yesterdayTasks = TaskViewModel.homeTasks(
+            on: yesterday,
+            tasks: [completed],
+            archives: [archive],
+            calendar: calendar
+        )
+        let todayTasks = TaskViewModel.homeTasks(
+            on: today,
             tasks: [completed],
             archives: [archive],
             calendar: calendar
         )
 
-        #expect(result.map(\.id).contains(completed.id))
-        #expect(result.map(\.id).contains(archived.id))
+        #expect(yesterdayTasks.map(\.id).contains(completed.id))
+        #expect(yesterdayTasks.map(\.id).contains(archived.id))
+        #expect(todayTasks.isEmpty)
+    }
+
+    @Test func creationDateUsesSelectedDayWithCurrentTime() {
+        let calendar = Calendar(identifier: .gregorian)
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let threeDaysAgo = calendar.date(byAdding: .day, value: -3, to: now)!
+
+        #expect(TaskViewModel.creationDate(on: now, now: now, calendar: calendar) == now)
+        #expect(TaskViewModel.creationDate(on: threeDaysAgo, now: now, calendar: calendar) == threeDaysAgo)
+    }
+
+    @Test func addTaskOnSelectedDateAppearsOnlyOnThatDay() {
+        let vm = TaskViewModel()
+        let lastWeek = Calendar.current.date(byAdding: .day, value: -7, to: Date())!
+
+        vm.addTask(on: lastWeek, title: "先週の日付に追加")
+        guard let task = vm.tasks.last else { return }
+
+        #expect(vm.incompleteTasks(on: lastWeek).contains { $0.id == task.id })
+        #expect(!vm.incompleteTasks(on: Date()).contains { $0.id == task.id })
+    }
+
+    @Test func skippedTaskAppearsOnSkipDay() {
+        let vm = TaskViewModel()
+        let lastWeek = Calendar.current.date(byAdding: .day, value: -7, to: Date())!
+        vm.addTask(on: lastWeek, title: "先週作って今日見送る")
+        guard let task = vm.tasks.last else { return }
+
+        vm.skipTask(task, reason: "")
+
+        #expect(vm.skippedItems(on: Date()).contains { $0.id == task.id })
+        #expect(vm.skippedItems(on: lastWeek).isEmpty)
+        #expect(!vm.incompleteTasks(on: lastWeek).contains { $0.id == task.id })
+    }
+
+    @Test func moveIncompleteTasksOnDayKeepsOtherDaysOrder() {
+        let vm = TaskViewModel()
+        let otherDay = Calendar.current.date(byAdding: .day, value: -2, to: Date())!
+        vm.addTask(title: "今日A")
+        vm.addTask(on: otherDay, title: "別の日")
+        vm.addTask(title: "今日B")
+        let otherTask = vm.incompleteTasks(on: otherDay).first { $0.title == "別の日" }
+        let otherOrderBefore = otherTask?.sortOrder
+
+        let todayTitlesBefore = vm.incompleteTasks(on: Date()).map(\.title)
+        guard let indexB = todayTitlesBefore.firstIndex(of: "今日B") else { return }
+        vm.moveIncompleteTasks(on: Date(), from: IndexSet(integer: indexB), to: 0)
+
+        #expect(vm.incompleteTasks(on: Date()).first?.title == "今日B")
+        #expect(vm.tasks.first { $0.id == otherTask?.id }?.sortOrder == otherOrderBefore)
     }
 }
 

@@ -73,7 +73,7 @@ struct TaskSkipView: View {
                     Text(task.title)
                         .font(DesignSystem.Fonts.bodyMedium)
                         .foregroundStyle(DesignSystem.Colors.textPrimary)
-                    Text("一覧から外して、今日の履歴に残します")
+                    Text("今日の日付に「見送ったタスク」として残します")
                         .font(DesignSystem.Fonts.caption)
                         .foregroundStyle(DesignSystem.Colors.textSecondary)
                 }

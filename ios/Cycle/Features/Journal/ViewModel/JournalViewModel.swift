@@ -364,47 +364,13 @@ final class JournalViewModel: ObservableObject {
     /// - Parameter offset: 今週からのオフセット（0が今週、-1が先週、1が来週）
     /// - Returns: 7日分の日付配列
     func getWeekDays(offset: Int) -> [Date] {
-        var calendar = Calendar.current
-        calendar.firstWeekday = 1
-
-        let today = Date()
-        let targetDate = calendar.date(byAdding: .weekOfYear, value: offset, to: today) ?? today
-        let components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: targetDate)
-        let sunday = calendar.date(from: components) ?? targetDate
-
-        return (0..<7).compactMap { day in
-            calendar.date(byAdding: .day, value: day, to: sunday)
-        }
-    }
-
-    /// 現在の週オフセットに合わせて選択日を更新
-    /// 選択日が現在の週に含まれていない場合、週の最初の日に設定
-    func updateSelectedDateForCurrentWeek() {
-        let currentWeek = getWeekDays(offset: currentWeekOffset)
-        if !currentWeek.contains(where: { Calendar.current.isDate($0, inSameDayAs: selectedDate) }) {
-            if let firstDay = currentWeek.first {
-                selectedDate = firstDay
-            }
-        }
+        WeekNavigation.days(offset: offset)
     }
 
     /// 指定した日付にジャンプ（週オフセットも自動調整）
     func jumpToDate(_ date: Date) {
         selectedDate = date
-
-        let today = Date()
-        let calendar = Calendar.current
-        let todayComponents = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: today)
-        let targetComponents = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)
-
-        if let todayYear = todayComponents.yearForWeekOfYear,
-           let todayWeek = todayComponents.weekOfYear,
-           let targetYear = targetComponents.yearForWeekOfYear,
-           let targetWeek = targetComponents.weekOfYear {
-            let yearDiff = targetYear - todayYear
-            let weekDiff = targetWeek - todayWeek
-            currentWeekOffset = yearDiff * 52 + weekDiff
-        }
+        currentWeekOffset = WeekNavigation.weekOffset(for: date)
     }
 
     // MARK: - Private Helpers - Tag Sorting
@@ -499,5 +465,13 @@ final class JournalViewModel: ObservableObject {
                 forKey: UserDataScope.scopedDefaultsKey("availableTags")
             )
         }
+    }
+}
+
+// MARK: - WeekCalendarNavigating
+
+extension JournalViewModel: WeekCalendarNavigating {
+    func hasRecord(on date: Date) -> Bool {
+        hasEntries(on: date)
     }
 }

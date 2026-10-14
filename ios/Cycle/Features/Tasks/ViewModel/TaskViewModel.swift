@@ -36,6 +36,12 @@ final class TaskViewModel: ObservableObject {
     /// 再認証プロンプト表示フラグ
     @Published var showReauthPrompt: Bool = false
 
+    /// タスクリストで選択中の日付
+    @Published var selectedDate: Date = Date()
+
+    /// タスクリストの週カレンダーの週オフセット（0が今週）
+    @Published var currentWeekOffset: Int = 0
+
     private let taskService: TaskSyncing
     private var cancellables = Set<AnyCancellable>()
     private var mutationFlushTask: Task<Void, Never>?
@@ -76,54 +82,103 @@ final class TaskViewModel: ObservableObject {
             .sorted { $0.deletedAt! > $1.deletedAt! }
     }
 
-    /// ホームの日付ビューに表示するタスク。
-    /// 今日には未完了タスクも表示し、過去日にはその日に完了したタスクだけを表示する。
-    func homeTasks(on date: Date, now: Date = Date(), calendar: Calendar = .current) -> [TaskItem] {
-        Self.homeTasks(
-            on: date,
-            now: now,
-            tasks: tasks,
-            archives: archives,
-            calendar: calendar
-        )
+    // MARK: - Date-based Lists
+    //
+    // タスクは「作成した日」に属する（完了しても日付は移らない）。
+    // 見送ったタスクは「見送った日」に表示する。
+
+    /// 指定日に作成された未完了タスク（sortOrder順）
+    func incompleteTasks(on date: Date, calendar: Calendar = .current) -> [TaskItem] {
+        Self.incompleteTasks(on: date, tasks: tasks, calendar: calendar)
+    }
+
+    /// 指定日に作成された完了タスク（完了日時の降順）
+    func completedTasks(on date: Date, calendar: Calendar = .current) -> [TaskItem] {
+        Self.completedTasks(on: date, tasks: tasks, calendar: calendar)
+    }
+
+    /// 旧アーカイブ機能で保管された完了タスクのうち、指定日に作成されたもの
+    func archivedCompletedTasks(on date: Date, calendar: Calendar = .current) -> [TaskItem] {
+        Self.archivedCompletedTasks(on: date, archives: archives, calendar: calendar)
+    }
+
+    /// 指定日に見送ったタスク（見送った日時の降順）
+    func skippedItems(on date: Date, calendar: Calendar = .current) -> [SkippedTaskArchiveItem] {
+        archives
+            .flatMap(\.skippedTasks)
+            .filter { calendar.isDate($0.skippedAt, inSameDayAs: date) }
+            .sorted { $0.skippedAt > $1.skippedAt }
+    }
+
+    /// 指定日に表示するものが1件でもあるか（週カレンダー・日付選択のドット用）
+    func hasRecord(on date: Date) -> Bool {
+        !incompleteTasks(on: date).isEmpty
+            || !completedTasks(on: date).isEmpty
+            || !archivedCompletedTasks(on: date).isEmpty
+            || !skippedItems(on: date).isEmpty
+    }
+
+    /// 表示するものがある日（日付選択シートのドット用）
+    var recordedDays: Set<DateComponents> {
+        let calendar = Calendar.current
+        let taskDates = tasks.filter { $0.deletedAt == nil }.map(\.createdAt)
+        let archivedDates = archives.flatMap(\.completedTasks).map(\.createdAt)
+        let skippedDates = archives.flatMap(\.skippedTasks).map(\.skippedAt)
+        return Set((taskDates + archivedDates + skippedDates).map {
+            calendar.dateComponents([.year, .month, .day], from: $0)
+        })
+    }
+
+    /// 指定した日付にジャンプ（週オフセットも自動調整）
+    func jumpToDate(_ date: Date) {
+        selectedDate = date
+        currentWeekOffset = WeekNavigation.weekOffset(for: date)
+    }
+
+    /// ホームの日付ビューに表示するタスク（タスクリストと同じく作成日で振り分ける）
+    func homeTasks(on date: Date, calendar: Calendar = .current) -> [TaskItem] {
+        Self.homeTasks(on: date, tasks: tasks, archives: archives, calendar: calendar)
     }
 
     /// 日付別タスクの純粋な組み立て処理。ホーム表示と単体テストで共有する。
     static func homeTasks(
         on date: Date,
-        now: Date,
         tasks: [TaskItem],
         archives: [TaskArchive],
         calendar: Calendar = .current
     ) -> [TaskItem] {
-        let activeTasks = tasks.filter { $0.deletedAt == nil }
-        var candidates: [TaskItem] = []
-
-        if calendar.isDate(date, inSameDayAs: now) {
-            candidates.append(contentsOf: activeTasks
-                .filter { !$0.isCompleted }
-                .sorted { $0.sortOrder < $1.sortOrder })
-        }
-
-        candidates.append(contentsOf: activeTasks
-            .filter { task in
-                task.isCompleted
-                    && task.completedAt.map { calendar.isDate($0, inSameDayAs: date) } == true
-            }
-            .sorted { ($0.completedAt ?? $0.createdAt) > ($1.completedAt ?? $1.createdAt) })
-
-        candidates.append(contentsOf: archives
-            .filter { calendar.isDate($0.date, inSameDayAs: date) }
-            .flatMap(\.completedTasks))
+        let candidates = incompleteTasks(on: date, tasks: tasks, calendar: calendar)
+            + completedTasks(on: date, tasks: tasks, calendar: calendar)
+            + archivedCompletedTasks(on: date, archives: archives, calendar: calendar)
 
         var seen = Set<UUID>()
         return candidates.filter { seen.insert($0.id).inserted }
+    }
+
+    static func incompleteTasks(on date: Date, tasks: [TaskItem], calendar: Calendar = .current) -> [TaskItem] {
+        tasks
+            .filter { !$0.isCompleted && $0.deletedAt == nil && calendar.isDate($0.createdAt, inSameDayAs: date) }
+            .sorted { $0.sortOrder < $1.sortOrder }
+    }
+
+    static func completedTasks(on date: Date, tasks: [TaskItem], calendar: Calendar = .current) -> [TaskItem] {
+        tasks
+            .filter { $0.isCompleted && $0.deletedAt == nil && calendar.isDate($0.createdAt, inSameDayAs: date) }
+            .sorted { ($0.completedAt ?? $0.createdAt) > ($1.completedAt ?? $1.createdAt) }
+    }
+
+    static func archivedCompletedTasks(on date: Date, archives: [TaskArchive], calendar: Calendar = .current) -> [TaskItem] {
+        archives
+            .flatMap(\.completedTasks)
+            .filter { calendar.isDate($0.createdAt, inSameDayAs: date) }
+            .sorted { ($0.completedAt ?? $0.createdAt) > ($1.completedAt ?? $1.createdAt) }
     }
 
     // MARK: - Task Management
 
     /// 新しいタスクを追加
     func addTask(
+        on date: Date = Date(),
         title: String,
         description: String = "",
         intent: String = "",
@@ -144,6 +199,7 @@ final class TaskViewModel: ObservableObject {
             notes: notes
         )
         newTask.sortOrder = maxSortOrder + 1
+        newTask.createdAt = Self.creationDate(on: date)
         newTask.fact = fact
         newTask.insight = insight
         newTask.nextAction = nextAction
@@ -252,6 +308,33 @@ final class TaskViewModel: ObservableObject {
         // sortOrder を更新
         updateSortOrders(for: reorderedTasks)
         persist()
+    }
+
+    /// 指定日の未完了タスクの中で順序を変更する。
+    /// 他の日のタスクとの相対順を崩さないよう、その日のタスクが使っていた sortOrder を並べ直して割り当てる。
+    func moveIncompleteTasks(on date: Date, from source: IndexSet, to destination: Int) {
+        var dayTasks = incompleteTasks(on: date)
+        let slots = dayTasks.map(\.sortOrder).sorted()
+        dayTasks.move(fromOffsets: source, toOffset: destination)
+
+        for (task, order) in zip(dayTasks, slots) {
+            if let taskIndex = findTaskIndex(task) {
+                tasks[taskIndex].sortOrder = order
+            }
+        }
+        persist()
+    }
+
+    /// 選択日に追加するタスクの作成日時。今日なら現在時刻、それ以外の日はその日の同じ時刻にする。
+    static func creationDate(on date: Date, now: Date = Date(), calendar: Calendar = .current) -> Date {
+        guard !calendar.isDate(date, inSameDayAs: now) else { return now }
+        let time = calendar.dateComponents([.hour, .minute, .second], from: now)
+        return calendar.date(
+            bySettingHour: time.hour ?? 0,
+            minute: time.minute ?? 0,
+            second: time.second ?? 0,
+            of: date
+        ) ?? date
     }
 
     // MARK: - Data Loading
@@ -526,7 +609,7 @@ final class TaskViewModel: ObservableObject {
         loadArchives()
     }
 
-    /// 未完了タスクを、任意の理由とともに今日の履歴へ移す。
+    /// 未完了タスクを、任意の理由とともに今日の「見送ったタスク」へ移す。
     func skipTask(_ task: TaskItem, reason: String) {
         guard let taskIndex = findTaskIndex(task) else { return }
         let currentTask = tasks[taskIndex]
@@ -797,3 +880,7 @@ final class TaskViewModel: ObservableObject {
         TaskTemplateStore.saveAll(templates)
     }
 }
+
+// MARK: - WeekCalendarNavigating
+
+extension TaskViewModel: WeekCalendarNavigating {}
