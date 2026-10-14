@@ -192,57 +192,6 @@ final class CycleUITests: XCTestCase {
         takeScreenshot("task-trash")
     }
 
-    @MainActor
-    func testScreenshots_Tasks_UnfinishedSkipFlow() {
-        let taskID = "00000000-0000-0000-0000-000000000302"
-        let taskTitle = "週報を10分で振り返る"
-        let skipReason = "今日は優先度を下げることにした。"
-
-        tapTab("Tasks")
-        let taskText = app.staticTexts[taskTitle]
-        XCTAssertTrue(taskText.waitForExistence(timeout: 3))
-        taskText.swipeLeft()
-
-        let skipButton = app.buttons["task_skip_\(taskID)"]
-        XCTAssertTrue(skipButton.waitForExistence(timeout: 3))
-        takeScreenshot("task-unfinished-skip-action")
-        skipButton.tap()
-
-        XCTAssertTrue(app.navigationBars["今回は見送る"].waitForExistence(timeout: 3))
-        let reasonEditor = app.textViews.firstMatch
-        XCTAssertTrue(reasonEditor.waitForExistence(timeout: 3))
-        reasonEditor.tap()
-        reasonEditor.typeText(skipReason)
-        takeScreenshot("task-unfinished-skip-form")
-
-        let confirmButton = app.buttons["task_skip_confirm"]
-        XCTAssertTrue(confirmButton.isEnabled)
-        confirmButton.tap()
-
-        // 見送ったタスクは、その日の一覧の「見送ったタスク」に理由付きで並ぶ
-        let skippedRow = app.otherElements["task_status_row_\(taskID)"]
-        for _ in 0..<4 where !app.staticTexts[skipReason].exists {
-            app.swipeUp()
-        }
-        XCTAssertTrue(app.staticTexts[skipReason].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.staticTexts["見送り"].exists)
-        takeScreenshot("task-unfinished-skipped")
-
-        if skippedRow.exists {
-            skippedRow.swipeLeft()
-        } else {
-            app.staticTexts[skipReason].swipeLeft()
-        }
-        let resumeButton = app.buttons["task_resume_\(taskID)"]
-        XCTAssertTrue(resumeButton.waitForExistence(timeout: 3))
-        takeScreenshot("task-unfinished-resume-action")
-        resumeButton.tap()
-
-        XCTAssertFalse(app.staticTexts[skipReason].waitForExistence(timeout: 1))
-        XCTAssertTrue(app.staticTexts[taskTitle].waitForExistence(timeout: 3))
-        takeScreenshot("task-unfinished-resumed")
-    }
-
     // MARK: - Coach Screenshots
 
     @MainActor

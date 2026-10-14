@@ -22,7 +22,6 @@ struct TaskListView: View {
     @State private var showDatePicker = false
     @State private var showDeleted = false
     @State private var showTemplates = false
-    @State private var skippingTask: TaskItem?
 
     /// チェック（完了）直後に事後情報フォームを出す対象タスク
     @State private var postActionTask: TaskItem?
@@ -82,13 +81,6 @@ struct TaskListView: View {
             .sheet(item: $postActionTask) { task in
                 TaskPostActionEntryView(vm: vm, task: task)
                     .softSheet()
-            }
-            .sheet(item: $skippingTask) { task in
-                TaskSkipView(task: task) { reason in
-                    vm.skipTask(task, reason: reason)
-                }
-                .presentationDetents([.medium])
-                .softSheet()
             }
             .alert(
                 "変更を保存できませんでした",
@@ -182,14 +174,13 @@ struct TaskListView: View {
 
     @ViewBuilder
     private var taskListOrEmptyState: some View {
-        // 選択日に表示するもの（未完了・完了・見送り）が無ければ空表示。
+        // 選択日に表示するもの（未完了・完了）が無ければ空表示。
         let date = vm.selectedDate
         let incomplete = vm.incompleteTasks(on: date)
         let completed = vm.completedTasks(on: date)
         let archivedCompleted = vm.archivedCompletedTasks(on: date)
-        let skipped = vm.skippedItems(on: date)
 
-        if incomplete.isEmpty && completed.isEmpty && archivedCompleted.isEmpty && skipped.isEmpty {
+        if incomplete.isEmpty && completed.isEmpty && archivedCompleted.isEmpty {
             EmptyStateView(
                 icon: "checkmark.circle",
                 title: "この日のタスクはありません",
@@ -202,7 +193,6 @@ struct TaskListView: View {
                     incompleteTasks: incomplete,
                     completedTasks: completed,
                     archivedCompletedTasks: archivedCompleted,
-                    skippedItems: skipped,
                     isReorderMode: isReorderMode,
                     onMove: { source, destination in
                         vm.moveIncompleteTasks(on: date, from: source, to: destination)
@@ -224,14 +214,8 @@ struct TaskListView: View {
                     onPreview: { task in
                         previewingTask = task
                     },
-                    onSkip: { task in
-                        skippingTask = task
-                    },
                     onDeleteArchived: { task in
                         vm.deleteArchivedTask(task)
-                    },
-                    onResume: { item in
-                        vm.resumeSkippedTask(item)
                     }
                 )
                 .refreshable {

@@ -635,80 +635,59 @@ struct TaskViewModelTests {
         #expect(vm.tasks.contains { $0.id == id } == true)
     }
 
-    @Test func skipIncompleteTaskStoresReasonAndRemovesItFromList() {
-        let vm = TaskViewModel()
-        vm.addTask(title: "今週は見送るタスク")
-        guard let task = vm.incompleteTasks.last else { return }
-
-        vm.skipTask(task, reason: "  今日は優先度を下げる  ")
-
-        #expect(!vm.tasks.contains { $0.id == task.id })
-        let skipped = vm.archives.flatMap(\.skippedTasks).first { $0.id == task.id }
-        #expect(skipped?.task.isCompleted == false)
-        #expect(skipped?.reason == "今日は優先度を下げる")
-    }
-
-    @Test func skipRejectsCompletedTask() {
-        let vm = TaskViewModel()
-        vm.addTask(title: "完了済みタスク")
-        guard let task = vm.incompleteTasks.last else { return }
-        vm.toggleCompletion(task)
-        guard let completed = vm.tasks.first(where: { $0.id == task.id }) else { return }
-
-        vm.skipTask(completed, reason: "見送らない")
-
-        #expect(vm.tasks.contains { $0.id == task.id })
-        #expect(!vm.archives.flatMap(\.skippedTasks).contains { $0.id == task.id })
-    }
-
-    @Test func skipKeepsSyncedTaskOnServer() {
-        var task = TaskItem(title: "サーバーに残すタスク")
-        task.serverId = "server-task-1"
-        TaskStore.saveAll([task])
-        let vm = TaskViewModel()
-
-        vm.skipTask(task, reason: "あとで再開する")
-
-        #expect(
-            !TaskSyncMutationStore.loadAll().contains {
-                $0.localTaskID == task.id && $0.kind == .delete
-            }
-        )
-        #expect(vm.archives.flatMap(\.skippedTasks).first?.task.serverId == "server-task-1")
-    }
-
-    @Test func resumeSkippedTaskReturnsItToIncompleteList() {
-        let vm = TaskViewModel()
-        vm.addTask(title: "再開するタスク")
-        guard let task = vm.incompleteTasks.last else { return }
-        vm.skipTask(task, reason: "いったん見送る")
-        guard let skipped = vm.archives.flatMap(\.skippedTasks).first(where: { $0.id == task.id }) else {
-            return
-        }
-
-        vm.resumeSkippedTask(skipped)
-
-        #expect(vm.incompleteTasks.contains { $0.id == task.id })
-        #expect(!vm.archives.flatMap(\.skippedTasks).contains { $0.id == task.id })
-    }
-
-    @Test func resumeSkippedTaskPreservesServerIdentity() {
-        var task = TaskItem(title: "同期済みの見送りタスク")
+    @Test func legacySkippedTasksMigrateBackToIncomplete() {
+        var task = TaskItem(title: "以前に見送ったタスク")
         task.serverId = "server-task-2"
-        let skipped = SkippedTaskArchiveItem(task: task, reason: "保留", skippedAt: Date())
+        task.notes = "朝のうちに"
+        let createdAt = Calendar.current.date(byAdding: .day, value: -3, to: Date())!
+        task.createdAt = createdAt
+        let skipped = SkippedTaskArchiveItem(task: task, reason: "  優先度を下げた  ", skippedAt: Date())
+        var completed = TaskItem(title: "旧アーカイブの完了タスク", isCompleted: true)
+        completed.completedAt = Date()
         TaskArchiveStore.save(
-            TaskArchive(date: Date(), completedTasks: [], skippedTasks: [skipped])
+            TaskArchive(date: Date(), completedTasks: [completed], skippedTasks: [skipped])
         )
+
         let vm = TaskViewModel()
 
-        vm.resumeSkippedTask(skipped)
-
-        #expect(vm.incompleteTasks.first { $0.id == task.id }?.serverId == "server-task-2")
+        // 未完了タスクとして作成日の一覧に戻り、サーバーIDも保たれる
+        let restored = vm.incompleteTasks(on: createdAt).first { $0.id == task.id }
+        #expect(restored?.serverId == "server-task-2")
+        #expect(restored?.isCompleted == false)
+        // 見送り理由は注意点の末尾に残る
+        #expect(restored?.notes == "朝のうちに\n見送り理由: 優先度を下げた")
+        // アーカイブからは見送りが消え、完了タスクは残る
+        #expect(vm.archives.flatMap(\.skippedTasks).isEmpty)
+        #expect(vm.archives.flatMap(\.completedTasks).contains { $0.id == completed.id })
+        #expect(TaskArchiveStore.loadAll().flatMap(\.skippedTasks).isEmpty)
         #expect(
             TaskSyncMutationStore.loadAll().contains {
                 $0.localTaskID == task.id && $0.kind == .upsert
             }
         )
+    }
+
+    @Test func legacySkippedTaskMigrationDoesNotDuplicateExistingTask() {
+        let task = TaskItem(title: "一覧にも残っていたタスク")
+        TaskStore.saveAll([task])
+        TaskArchiveStore.save(
+            TaskArchive(
+                date: Date(),
+                completedTasks: [],
+                skippedTasks: [SkippedTaskArchiveItem(task: task, reason: "", skippedAt: Date())]
+            )
+        )
+
+        let vm = TaskViewModel()
+
+        #expect(vm.tasks.filter { $0.id == task.id }.count == 1)
+        #expect(vm.archives.isEmpty)
+    }
+
+    @Test func skipReasonIsAppendedToNotesOnlyWhenPresent() {
+        #expect(TaskViewModel.notesAppendingSkipReason("", reason: "  ") == "")
+        #expect(TaskViewModel.notesAppendingSkipReason("", reason: "疲れた") == "見送り理由: 疲れた")
+        #expect(TaskViewModel.notesAppendingSkipReason("メモ", reason: "疲れた") == "メモ\n見送り理由: 疲れた")
     }
 
     @Test func homeTasksShowsTasksOnTheirCreationDayOnly() {
@@ -785,19 +764,6 @@ struct TaskViewModelTests {
 
         #expect(vm.incompleteTasks(on: lastWeek).contains { $0.id == task.id })
         #expect(!vm.incompleteTasks(on: Date()).contains { $0.id == task.id })
-    }
-
-    @Test func skippedTaskAppearsOnSkipDay() {
-        let vm = TaskViewModel()
-        let lastWeek = Calendar.current.date(byAdding: .day, value: -7, to: Date())!
-        vm.addTask(on: lastWeek, title: "先週作って今日見送る")
-        guard let task = vm.tasks.last else { return }
-
-        vm.skipTask(task, reason: "")
-
-        #expect(vm.skippedItems(on: Date()).contains { $0.id == task.id })
-        #expect(vm.skippedItems(on: lastWeek).isEmpty)
-        #expect(!vm.incompleteTasks(on: lastWeek).contains { $0.id == task.id })
     }
 
     @Test func moveIncompleteTasksOnDayKeepsOtherDaysOrder() {

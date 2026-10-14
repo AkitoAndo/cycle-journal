@@ -223,7 +223,6 @@ enum CatalogRegistry {
                     CatalogProp("onEdit", "() -> Void", "編集"),
                     CatalogProp("onDelete", "() -> Void", "削除"),
                     CatalogProp("onPreview", "() -> Void", "プレビュー"),
-                    CatalogProp("onSkip", "(() -> Void)?", required: false, default: "nil", "見送る（未完了時のみ）"),
                 ],
                 preview: AnyView(TaskRowPreview())
             ),
@@ -283,7 +282,7 @@ enum CatalogRegistry {
         [
             CatalogItem(
                 name: "TaskList",
-                description: "1日分のタスク一覧（未完了 + 完了 + 見送りセクション、並び替え対応）",
+                description: "1日分のタスク一覧（未完了 + 完了セクション、並び替え対応）",
                 category: .organisms,
                 props: [
                     CatalogProp("incompleteTasks", "[TaskItem]", "未完了タスク配列"),
@@ -294,9 +293,7 @@ enum CatalogRegistry {
                     CatalogProp("onEdit", "(TaskItem) -> Void", "編集"),
                     CatalogProp("onDelete", "(TaskItem) -> Void", "削除"),
                     CatalogProp("onPreview", "(TaskItem) -> Void", "プレビュー"),
-                    CatalogProp("skippedItems", "[SkippedTaskArchiveItem]", required: false, default: "[]", "その日に見送ったタスク"),
-                    CatalogProp("onSkip", "(TaskItem) -> Void", "見送る"),
-                    CatalogProp("onResume", "(SkippedTaskArchiveItem) -> Void", required: false, default: "{ _ in }", "見送りから再開"),
+                    CatalogProp("archivedCompletedTasks", "[TaskItem]", required: false, default: "[]", "旧アーカイブの完了タスク"),
                 ],
                 preview: AnyView(TaskListPreview())
             ),

@@ -105,3 +105,35 @@ CHANGES_2.txt - Treow 開発記録【1.0.11 以降】
       ユニットテスト 148件すべて成功（日付別表示・過去日への追加・見送り日の表示・
       日付内の並び替えのテストを追加）。
       UIテスト（検索、見送り→再開の流れ）2件成功。
+
+[2026-10-14] タスクの「見送る」機能を削除
+--------------------------------------------------------------------------------
+変更ファイル:
+  - ios/Cycle/Features/Tasks/Views/TaskSkipView.swift（削除）
+  - ios/Cycle/Features/Tasks/Views/Components/TaskRow.swift
+  - ios/Cycle/Features/Tasks/Views/Components/TaskList.swift
+  - ios/Cycle/Features/Tasks/Views/Components/TaskStatusRow.swift
+  - ios/Cycle/Features/Tasks/Views/TaskListView.swift
+  - ios/Cycle/Features/Tasks/Views/TaskSearchView.swift
+  - ios/Cycle/Features/Tasks/ViewModel/TaskViewModel.swift
+  - ios/Cycle/Shared/DesignSystem/ComponentCatalog.swift
+  - ios/CycleTests/CycleTests.swift
+  - ios/CycleUITests/CycleUITests.swift
+  - docs/public/screenshots/task-unfinished-*.png（削除）
+内容:
+  Before: 未完了タスクを左スワイプ「見送る」→ 理由を入力 → 見送った日の
+          「見送ったタスク」欄に移動。そこから「再開」で未完了に戻せた。
+  After:  見送りという状態そのものを廃止（オーナー判断:「見送るならチェックを
+          つけなければいいだけ」）。
+          - スワイプの「見送る」ボタン、見送り画面、「見送ったタスク」欄、
+            「再開」、検索結果の「見送り」バッジを削除。
+          - 既存データの扱い: 1.0.11 で見送ったタスクがある端末では、読み込み時に
+            普通の未完了タスクへ戻し、作成日の一覧に表示する。
+            見送り理由は消さずに「注意点」の末尾へ「見送り理由: …」として残す。
+            サーバー上のタスク（見送り中も pending のまま残っていた）とは
+            同じ ID のまま揃う。
+目的: 操作と状態を減らして、タスクを「やった / まだ」だけで直感的に扱えるようにするため。
+結果: ビルド成功。ユニットテスト 145件すべて成功（見送り関連テストを、既存データの移行
+      テスト3件に置き換え）。iPhone 16 Pro (iOS 18.1) シミュレータで、タスクの
+      左スワイプが「プレビュー / 編集 / 削除」の3つになったことを確認。
+      ※ 既存の見送りデータからの移行は、ユニットテストでのみ確認（実機データでは未確認）。

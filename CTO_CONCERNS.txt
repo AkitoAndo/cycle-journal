@@ -38,7 +38,7 @@ CTO_CONCERNS.txt - データ・コード周りの懸念点メモ（CTO 判断用
 
 [D-02] 「見送る」したタスクがサーバー上では未完了のまま残る（高）
 --------------------------------------------------------------------------------
-状態: 未対応
+状態: 見送り機能の廃止で解消見込み（D-06 の移行で未完了タスクに戻るため、サーバーと一致する）
 該当: ios/Cycle/Features/Tasks/ViewModel/TaskViewModel.swift:530（skipTask）
 内容: skipTask はタスクを端末の一覧から外してアーカイブへ移すが、
       サーバーへは削除も状態変更も送らない（enqueueDelete / enqueueUpsert なし）。
@@ -96,6 +96,27 @@ CTO_CONCERNS.txt - データ・コード周りの懸念点メモ（CTO 判断用
 対応案: 既存の completedTasks を通常の tasks へ移す移行処理を入れた上で、
       archiveTask / archiveCompletedTasks と関連テストを削除する。
       ファイル名（task_archives.json）や型名も「見送り」用として整理する。
+
+[D-06] 見送り機能の廃止に伴う、既存データの移行処理（要レビュー・中）
+--------------------------------------------------------------------------------
+状態: 実装済み・CTO レビュー待ち（feature/remove-task-skip）
+該当: ios/Cycle/Features/Tasks/ViewModel/TaskViewModel.swift
+      （loadArchives → migrateSkippedTasksToIncomplete / notesAppendingSkipReason）
+内容: オーナー判断で「見送る」機能を削除した。1.0.11 で見送ったタスクが端末に残って
+      いる場合、読み込み時に以下を行う（保存データを書き換える一度きりの移行）。
+        - task_archives.json の skippedTasks を、tasks.json の未完了タスクへ戻す
+          （createdAt・serverId はそのまま。sortOrder は末尾に採番）。
+        - 見送り理由は notes（注意点）の末尾に「見送り理由: …」として追記。
+        - 既に tasks 側に同じ ID がある場合は重複させずに見送り側を捨てる。
+        - 戻したタスクは upsert を Outbox に積む（notes は D-01 のとおり未同期）。
+        - 保存に失敗したら何も変えず、次回読み込み時に再試行。
+      テスト: CycleTests の legacySkippedTasksMigrateBackToIncomplete ほか2件。
+レビューしてほしい点:
+  - 理由を notes に入れる方針でよいか（別項目を用意する案もある）。
+  - SkippedTaskArchiveItem / TaskArchive.skippedTasks、updateArchivedTask・
+    deleteArchivedTask の skippedTasks 分岐、DataExportService の「見送り」列は
+    デコード互換のため残している。移行が行き渡った後に削除してよいか。
+  - D-02 はこの移行で解消（見送り中のタスクが別端末で復活する問題がなくなる）。
 
 [C-01] Swift 6 で将来エラーになる並行性の警告（中）
 --------------------------------------------------------------------------------
