@@ -137,3 +137,40 @@ CHANGES_2.txt - Treow 開発記録【1.0.11 以降】
       テスト3件に置き換え）。iPhone 16 Pro (iOS 18.1) シミュレータで、タスクの
       左スワイプが「プレビュー / 編集 / 削除」の3つになったことを確認。
       ※ 既存の見送りデータからの移行は、ユニットテストでのみ確認（実機データでは未確認）。
+
+[2026-10-15] タスクに「日付」と「締切時刻（終日あり）」を入力できるようにした
+--------------------------------------------------------------------------------
+変更ファイル:
+  - ios/Cycle/Features/Tasks/Model/Task.swift
+  - ios/Cycle/Features/Tasks/ViewModel/TaskViewModel.swift
+  - ios/Cycle/Features/Tasks/Views/Components/TaskScheduleFields.swift（新規）
+  - ios/Cycle/Features/Tasks/Views/Components/TaskRow.swift
+  - ios/Cycle/Features/Tasks/Views/TaskNewEntryView.swift
+  - ios/Cycle/Features/Tasks/Views/TaskEditView.swift
+  - ios/Cycle/Features/Tasks/Views/TaskPreviewView.swift
+  - ios/Cycle/Features/Tasks/Views/TaskSearchView.swift
+  - ios/CycleTests/CycleTests.swift
+内容:
+  1) 入力（新規作成・編集の「基本情報」）
+     「詳細」の下に「日付」欄を追加。
+       - 日付: カレンダーから選択（新規作成時は、タスクリストで選択中の日が初期値）
+       - 終日: スイッチ（初期値 ON）
+       - 締切: 終日を OFF にすると表示。時刻を選択（初期値は「次のちょうどの時刻」）
+     編集で日付を変えると、そのタスクは新しい日の一覧（未完了の末尾）へ移る。
+  2) 表示
+     - 一覧の行: 締切時刻があるタスクは「🕐 18:00まで」を表示。
+       未完了のまま締切を過ぎたら赤字で「期限切れ・18:00まで」。
+       終日のタスクは、その日が終わっても未完了なら「期限切れ」。
+     - プレビュー: 「日付」欄に「10月15日(木) 終日 / 18:00まで」を表示。
+  3) データ
+     - TaskItem に scheduledDate（タスクの日付）と deadline（締切日時。空なら終日）を追加。
+     - 既存のタスクは scheduledDate が空のため、これまでどおり作成日に表示する
+       （期限切れ表示もしない）。古い保存データもそのまま読み込める。
+     - 前回の「選択日に追加すると createdAt をその日にずらす」処理は廃止し、
+       createdAt は本当の作成日時に戻した。
+目的: タスクを日付・締切で管理できるようにするため（オーナー要望）。
+結果: ビルド成功。ユニットテスト 149件すべて成功（日付・締切・期限切れ・
+      旧データ読み込みのテストを追加）。iPhone 16 Pro (iOS 18.1) シミュレータで、
+      新規作成での日付欄・終日OFFで締切欄が出ること、一覧の「01:00まで」表示、
+      編集画面に日付・締切が引き継がれることを確認。
+      ※ 赤字の「期限切れ」表示はユニットテストでのみ確認（画面では未確認）。

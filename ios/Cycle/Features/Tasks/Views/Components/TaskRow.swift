@@ -100,7 +100,39 @@ struct TaskRow: View {
                     )
                     .lineLimit(1)
             }
+            if let scheduleLabel {
+                scheduleLabelView(scheduleLabel)
+            }
         }
+    }
+
+    // MARK: - Schedule
+
+    /// 締切の表示（例: 「18:00まで」「期限切れ・18:00まで」）。終日で期限内なら表示しない
+    private var scheduleLabel: String? {
+        let isOverdue = task.isOverdue()
+        let timeText = task.deadline.map {
+            $0.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits)) + "まで"
+        }
+        switch (isOverdue, timeText) {
+        case (true, let time?): return "期限切れ・\(time)"
+        case (true, nil): return "期限切れ"
+        case (false, let time?): return time
+        case (false, nil): return nil
+        }
+    }
+
+    private func scheduleLabelView(_ text: String) -> some View {
+        let isOverdue = task.isOverdue()
+        return Label(text, systemImage: isOverdue ? "exclamationmark.circle" : "clock")
+            .font(DesignSystem.Fonts.caption)
+            .labelStyle(.titleAndIcon)
+            .foregroundStyle(
+                isOverdue
+                    ? Color(.systemRed)
+                    : (task.isCompleted ? DesignSystem.Colors.textTertiary : DesignSystem.Colors.textSecondary)
+            )
+            .accessibilityIdentifier("task_schedule_label_\(task.id.uuidString.lowercased())")
     }
 
 

@@ -14,7 +14,7 @@ struct TaskSearchView: View {
     @State private var searchText = ""
     @FocusState private var isSearchFocused: Bool
 
-    /// 検索結果1件分（表示する日付はタスクの作成日）
+    /// 検索結果1件分（表示する日付はタスクの日付）
     private struct Result: Identifiable {
         let task: TaskItem
         let status: TaskStatusRow.Status
@@ -33,11 +33,11 @@ struct TaskSearchView: View {
 
         let activeResults = vm.tasks
             .filter { $0.deletedAt == nil && $0.matches(query) }
-            .map { Result(task: $0, status: $0.isCompleted ? .completed : .incomplete, date: $0.createdAt) }
+            .map { Result(task: $0, status: $0.isCompleted ? .completed : .incomplete, date: $0.displayDate) }
         let archivedResults = vm.archives
             .flatMap(\.completedTasks)
             .filter { $0.matches(query) }
-            .map { Result(task: $0, status: .completed, date: $0.createdAt) }
+            .map { Result(task: $0, status: .completed, date: $0.displayDate) }
 
         let calendar = Calendar.current
         let grouped = Dictionary(grouping: activeResults + archivedResults) {
