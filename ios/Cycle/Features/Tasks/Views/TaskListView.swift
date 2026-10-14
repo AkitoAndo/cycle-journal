@@ -8,7 +8,7 @@
 import SwiftUI
 
 /// タスク管理のメインビュー
-/// グループ別のタスク表示、追加、編集、削除、並び替えを提供
+/// ジャーナルと同じく週カレンダーで日付を選び、その日のタスクを表示・追加・編集・並び替えする
 struct TaskListView: View {
     // MARK: - Properties
 
@@ -18,7 +18,8 @@ struct TaskListView: View {
     @State private var editingTask: TaskItem?
     @State private var previewingTask: TaskItem?
     @State private var isReorderMode = false
-    @State private var showArchive = false
+    @State private var showSearch = false
+    @State private var showDatePicker = false
     @State private var showDeleted = false
     @State private var showTemplates = false
     @State private var skippingTask: TaskItem?
@@ -40,7 +41,7 @@ struct TaskListView: View {
                 await vm.fetchServerTasks()
             }
             .sheet(isPresented: $showNewTask) {
-                TaskNewEntryView(vm: vm)
+                TaskNewEntryView(vm: vm, date: vm.selectedDate)
                     .softSheet()
             }
             .sheet(item: $editingTask) { task in
@@ -51,9 +52,24 @@ struct TaskListView: View {
                 TaskPreviewView(task: task)
                     .softSheet()
             }
-            .sheet(isPresented: $showArchive) {
-                TaskArchiveView(vm: vm)
+            .sheet(isPresented: $showSearch) {
+                TaskSearchView(vm: vm)
                     .softSheet()
+            }
+            .sheet(isPresented: $showDatePicker) {
+                CycleCalendarSheet(
+                    selectedDate: Binding(
+                        get: { vm.selectedDate },
+                        set: { vm.selectedDate = $0 }
+                    ),
+                    recordedDays: vm.recordedDays,
+                    onSelect: { date in
+                        vm.jumpToDate(date)
+                        showDatePicker = false
+                    }
+                )
+                .presentationDetents([.medium])
+                .presentationBackground(DesignSystem.Colors.background)
             }
             .sheet(isPresented: $showDeleted) {
                 TaskDeletedView(vm: vm)
@@ -118,6 +134,9 @@ struct TaskListView: View {
                 )
             }
 
+            WeekCalendarView(vm: vm)
+                .padding(.bottom, DesignSystem.Spacing.sm)
+
             taskListOrEmptyState
         }
         .background(DesignSystem.Colors.backgroundGradient)
@@ -134,43 +153,59 @@ struct TaskListView: View {
 
     private var header: some View {
         TaskHeader(
+            selectedDate: vm.selectedDate,
+            onToday: {
+                withAnimation(DesignSystem.Timing.bouncySpring) {
+                    vm.jumpToDate(Date())
+                }
+            },
             isReorderMode: isReorderMode,
             onToggleReorderMode: {
                 withAnimation {
                     isReorderMode.toggle()
                 }
             },
-            onShowArchive: {
-                showArchive = true
+            onShowSearch: {
+                showSearch = true
             },
-            onShowDeleted: {
-                showDeleted = true
+            onShowDatePicker: {
+                showDatePicker = true
             },
             onShowTemplates: {
                 showTemplates = true
+            },
+            onShowDeleted: {
+                showDeleted = true
             }
         )
     }
 
     @ViewBuilder
     private var taskListOrEmptyState: some View {
-        // 表示対象（未完了+完了）が無ければ空表示。
-        // vm.tasks はソフトデリート済みも含むため、それで判定すると
-        // 全削除後に「空でも一覧でもない」ブランクになるので使わない。
-        if vm.incompleteTasks.isEmpty && vm.completedTasks.isEmpty {
+        // 選択日に表示するもの（未完了・完了・見送り）が無ければ空表示。
+        let date = vm.selectedDate
+        let incomplete = vm.incompleteTasks(on: date)
+        let completed = vm.completedTasks(on: date)
+        let archivedCompleted = vm.archivedCompletedTasks(on: date)
+        let skipped = vm.skippedItems(on: date)
+
+        if incomplete.isEmpty && completed.isEmpty && archivedCompleted.isEmpty && skipped.isEmpty {
             EmptyStateView(
                 icon: "checkmark.circle",
-                title: "タスクはありません",
+                title: "この日のタスクはありません",
                 titleColor: DesignSystem.Colors.textTertiary
             )
+            .frame(maxHeight: .infinity)
         } else {
             ZStack(alignment: .top) {
                 TaskList(
-                    incompleteTasks: vm.incompleteTasks,
-                    completedTasks: vm.completedTasks,
+                    incompleteTasks: incomplete,
+                    completedTasks: completed,
+                    archivedCompletedTasks: archivedCompleted,
+                    skippedItems: skipped,
                     isReorderMode: isReorderMode,
                     onMove: { source, destination in
-                        vm.moveIncompleteTasks(from: source, to: destination)
+                        vm.moveIncompleteTasks(on: date, from: source, to: destination)
                     },
                     onToggleCompletion: { task in
                         let wasCompleted = task.isCompleted
@@ -189,11 +224,14 @@ struct TaskListView: View {
                     onPreview: { task in
                         previewingTask = task
                     },
-                    onArchive: { task in
-                        vm.archiveTask(task)
-                    },
                     onSkip: { task in
                         skippingTask = task
+                    },
+                    onDeleteArchived: { task in
+                        vm.deleteArchivedTask(task)
+                    },
+                    onResume: { item in
+                        vm.resumeSkippedTask(item)
                     }
                 )
                 .refreshable {

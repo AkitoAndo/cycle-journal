@@ -9,9 +9,9 @@ import SwiftUI
 import Pow
 
 /// 週単位のカレンダービューコンポーネント
-/// 横スワイプで週を切り替え、日付タップで選択可能
-struct WeekCalendarView: View {
-    @ObservedObject var vm: JournalViewModel
+/// 横スワイプで週を切り替え、日付タップで選択可能（ジャーナル・タスクリストで共用）
+struct WeekCalendarView<Model: WeekCalendarNavigating>: View {
+    @ObservedObject var vm: Model
     @Namespace private var selectionNamespace
 
     var body: some View {
@@ -24,13 +24,22 @@ struct WeekCalendarView: View {
         .tabViewStyle(.page(indexDisplayMode: .never))
         .frame(height: DesignSystem.ComponentSize.weekStripHeight)
         .onChange(of: vm.currentWeekOffset) {
-            vm.updateSelectedDateForCurrentWeek()
+            updateSelectedDateForCurrentWeek()
+        }
+    }
+
+    /// 選択日が表示中の週に含まれていない場合、週の最初の日を選択する
+    private func updateSelectedDateForCurrentWeek() {
+        let currentWeek = WeekNavigation.days(offset: vm.currentWeekOffset)
+        if !currentWeek.contains(where: { Calendar.current.isDate($0, inSameDayAs: vm.selectedDate) }),
+           let firstDay = currentWeek.first {
+            vm.selectedDate = firstDay
         }
     }
 
     /// 1週間分の日付を表示
     private func weekView(for weekOffset: Int) -> some View {
-        let week = vm.getWeekDays(offset: weekOffset)
+        let week = WeekNavigation.days(offset: weekOffset)
 
         return HStack(spacing: 0) {
             ForEach(week, id: \.self) { date in
@@ -44,7 +53,7 @@ struct WeekCalendarView: View {
     private func dayCell(for date: Date) -> some View {
         let isSelected = Calendar.current.isDate(date, inSameDayAs: vm.selectedDate)
         let isToday = Calendar.current.isDateInToday(date)
-        let hasRecord = vm.hasEntries(on: date)
+        let hasRecord = vm.hasRecord(on: date)
 
         return VStack(spacing: DesignSystem.Spacing.sm) {
             // 曜日

@@ -223,18 +223,22 @@ enum CatalogRegistry {
                     CatalogProp("onEdit", "() -> Void", "編集"),
                     CatalogProp("onDelete", "() -> Void", "削除"),
                     CatalogProp("onPreview", "() -> Void", "プレビュー"),
-                    CatalogProp("onArchive", "(() -> Void)?", required: false, default: "nil", "アーカイブ（完了時のみ）"),
+                    CatalogProp("onSkip", "(() -> Void)?", required: false, default: "nil", "見送る（未完了時のみ）"),
                 ],
                 preview: AnyView(TaskRowPreview())
             ),
             CatalogItem(
                 name: "TaskHeader",
-                description: "タスク画面のヘッダー（タイトル + メニュー）",
+                description: "タスク画面のヘッダー（年月 + 今日へ戻る + メニュー）",
                 category: .molecules,
                 props: [
+                    CatalogProp("selectedDate", "Date", "選択中の日付（年月表示に使う）"),
+                    CatalogProp("onToday", "(() -> Void)?", required: false, default: "nil", "今日へ戻る（今日以外を表示中のみ）"),
                     CatalogProp("isReorderMode", "Bool", "並び替えモード表示"),
                     CatalogProp("onToggleReorderMode", "() -> Void", "並び替え切り替え"),
-                    CatalogProp("onShowArchive", "() -> Void", "アーカイブ表示"),
+                    CatalogProp("onShowSearch", "() -> Void", "検索表示"),
+                    CatalogProp("onShowDatePicker", "() -> Void", "日付選択表示"),
+                    CatalogProp("onShowTemplates", "() -> Void", "テンプレート管理表示"),
                     CatalogProp("onShowDeleted", "() -> Void", "削除済み表示"),
                 ],
                 preview: AnyView(TaskHeaderPreview())
@@ -279,7 +283,7 @@ enum CatalogRegistry {
         [
             CatalogItem(
                 name: "TaskList",
-                description: "タスク一覧（未完了 + 完了セクション、並び替え対応）",
+                description: "1日分のタスク一覧（未完了 + 完了 + 見送りセクション、並び替え対応）",
                 category: .organisms,
                 props: [
                     CatalogProp("incompleteTasks", "[TaskItem]", "未完了タスク配列"),
@@ -290,7 +294,9 @@ enum CatalogRegistry {
                     CatalogProp("onEdit", "(TaskItem) -> Void", "編集"),
                     CatalogProp("onDelete", "(TaskItem) -> Void", "削除"),
                     CatalogProp("onPreview", "(TaskItem) -> Void", "プレビュー"),
-                    CatalogProp("onArchive", "(TaskItem) -> Void", "アーカイブ"),
+                    CatalogProp("skippedItems", "[SkippedTaskArchiveItem]", required: false, default: "[]", "その日に見送ったタスク"),
+                    CatalogProp("onSkip", "(TaskItem) -> Void", "見送る"),
+                    CatalogProp("onResume", "(SkippedTaskArchiveItem) -> Void", required: false, default: "{ _ in }", "見送りから再開"),
                 ],
                 preview: AnyView(TaskListPreview())
             ),
@@ -506,8 +512,7 @@ private struct TaskRowPreview: View {
                     onToggleCompletion: {},
                     onEdit: {},
                     onDelete: {},
-                    onPreview: {},
-                    onArchive: nil
+                    onPreview: {}
                 )
             }
             previewSection("Completed") {
@@ -523,8 +528,7 @@ private struct TaskRowPreview: View {
                     onToggleCompletion: {},
                     onEdit: {},
                     onDelete: {},
-                    onPreview: {},
-                    onArchive: {}
+                    onPreview: {}
                 )
             }
         }
@@ -536,20 +540,24 @@ private struct TaskHeaderPreview: View {
         VStack(spacing: 12) {
             previewSection("Normal") {
                 TaskHeader(
+                    selectedDate: Date(),
                     isReorderMode: false,
                     onToggleReorderMode: {},
-                    onShowArchive: {},
-                    onShowDeleted: {},
-                    onShowTemplates: {}
+                    onShowSearch: {},
+                    onShowDatePicker: {},
+                    onShowTemplates: {},
+                    onShowDeleted: {}
                 )
             }
             previewSection("Reorder Mode") {
                 TaskHeader(
+                    selectedDate: Date(),
                     isReorderMode: true,
                     onToggleReorderMode: {},
-                    onShowArchive: {},
-                    onShowDeleted: {},
-                    onShowTemplates: {}
+                    onShowSearch: {},
+                    onShowDatePicker: {},
+                    onShowTemplates: {},
+                    onShowDeleted: {}
                 )
             }
         }
@@ -634,10 +642,10 @@ private struct TaskListPreview: View {
         VStack(spacing: 8) {
             previewSection("Task List (3 items)") {
                 VStack(spacing: 8) {
-                    TaskRow(task: TaskItem(title: "企画書を書く"), isReorderMode: false, onToggleCompletion: {}, onEdit: {}, onDelete: {}, onPreview: {}, onArchive: nil)
-                    TaskRow(task: TaskItem(title: "レビューを依頼する"), isReorderMode: false, onToggleCompletion: {}, onEdit: {}, onDelete: {}, onPreview: {}, onArchive: nil)
+                    TaskRow(task: TaskItem(title: "企画書を書く"), isReorderMode: false, onToggleCompletion: {}, onEdit: {}, onDelete: {}, onPreview: {})
+                    TaskRow(task: TaskItem(title: "レビューを依頼する"), isReorderMode: false, onToggleCompletion: {}, onEdit: {}, onDelete: {}, onPreview: {})
                     let done = { var t = TaskItem(title: "MTG準備"); t.isCompleted = true; t.completedAt = Date(); return t }()
-                    TaskRow(task: done, isReorderMode: false, onToggleCompletion: {}, onEdit: {}, onDelete: {}, onPreview: {}, onArchive: {})
+                    TaskRow(task: done, isReorderMode: false, onToggleCompletion: {}, onEdit: {}, onDelete: {}, onPreview: {})
                 }
             }
         }

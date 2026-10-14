@@ -17,7 +17,6 @@ struct TaskRow: View {
     let onEdit: () -> Void
     let onDelete: () -> Void
     let onPreview: () -> Void
-    let onArchive: (() -> Void)?
     let onSkip: (() -> Void)?
 
     init(
@@ -27,7 +26,6 @@ struct TaskRow: View {
         onEdit: @escaping () -> Void,
         onDelete: @escaping () -> Void,
         onPreview: @escaping () -> Void,
-        onArchive: (() -> Void)?,
         onSkip: (() -> Void)? = nil
     ) {
         self.task = task
@@ -36,7 +34,6 @@ struct TaskRow: View {
         self.onEdit = onEdit
         self.onDelete = onDelete
         self.onPreview = onPreview
-        self.onArchive = onArchive
         self.onSkip = onSkip
     }
 
@@ -46,9 +43,6 @@ struct TaskRow: View {
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 if !isReorderMode {
                     deleteButton
-                    if task.isCompleted, let archiveAction = onArchive {
-                        archiveButton(action: archiveAction)
-                    }
                     if !task.isCompleted, let skipAction = onSkip {
                         skipButton(action: skipAction)
                     }
@@ -139,14 +133,6 @@ struct TaskRow: View {
                 .labelStyle(.iconOnly)
         }
         .tint(DesignSystem.Colors.textSecondary)
-    }
-
-    private func archiveButton(action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Label("アーカイブ", systemImage: "archivebox")
-                .labelStyle(.iconOnly)
-        }
-        .tint(.blue)
     }
 
     private func skipButton(action: @escaping () -> Void) -> some View {

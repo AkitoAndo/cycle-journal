@@ -13,6 +13,8 @@ import SwiftUI
 
 struct TaskNewEntryView: View {
     @ObservedObject var vm: TaskViewModel
+    /// タスクを追加する日（タスクリストで選択中の日）
+    var date: Date = Date()
     @Environment(\.dismiss) private var dismiss
 
     @State private var inputTitle: String = ""
@@ -141,6 +143,7 @@ struct TaskNewEntryView: View {
         guard !trimmedTitle.isEmpty else { return }
 
         vm.addTask(
+            on: date,
             title: trimmedTitle,
             description: inputDescription.trimmingCharacters(in: .whitespacesAndNewlines),
             intent: inputIntent.trimmingCharacters(in: .whitespacesAndNewlines),

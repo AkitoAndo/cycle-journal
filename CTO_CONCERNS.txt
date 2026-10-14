@@ -48,10 +48,13 @@ CTO_CONCERNS.txt - データ・コード周りの懸念点メモ（CTO 判断用
       未完了タスクとして復活する。resumeSkippedTask（再開）との整合も要確認。
 対応案: 見送り時にサーバーへ状態を送る（例: status = "skipped" を API に追加、
       もしくは archiveTask と同様に delete を enqueue）。D-01 の方針と合わせて決める。
+補足(2026-10-14): サーバーに残すのは意図的な設計の可能性あり
+      （CycleTests の skipKeepsSyncedTaskOnServer が「delete を送らない」ことを検証している）。
+      その場合も、別端末で未完了として復活する点の扱いは決めておきたい。
 
 [D-03] 完了タスクのアーカイブ処理が保存失敗を検知しない（中）
 --------------------------------------------------------------------------------
-状態: 未対応
+状態: 画面から呼ばれなくなった（2026-10-14 アーカイブ機能廃止）。関数は未使用のまま残存 → D-05
 該当:
   - ios/Cycle/Features/Tasks/ViewModel/TaskViewModel.swift:505（archiveTask）
   - ios/Cycle/Features/Tasks/ViewModel/TaskViewModel.swift:613（archiveCompletedTasks）
@@ -63,6 +66,36 @@ CTO_CONCERNS.txt - データ・コード周りの懸念点メモ（CTO 判断用
       端末・サーバーの両方から消え、復元できない。
 対応案: skipTask と同じく「アーカイブ保存 → 成功時のみ一覧から除去・delete enqueue、
       失敗時はロールバック + reportPersistenceError()」に揃える。
+
+[D-04] タスクの「表示する日付」に createdAt を使うが、サーバーに送っていない（中）
+--------------------------------------------------------------------------------
+状態: 未対応
+該当:
+  - ios/Cycle/Features/Tasks/ViewModel/TaskViewModel.swift（addTask(on:) / creationDate(on:)）
+  - ios/Cycle/Features/Tasks/ViewModel/TaskViewModel.swift:pushUpsert / fetchServerTasks
+内容: 2026-10-14 にタスクリストを日付管理に変更し、タスクは createdAt の日に表示する
+      ようにした（見た目側の変更。保存形式は変更なし）。
+      ＋ボタンで過去・未来の日を選んで追加すると、createdAt はその日の日時になる。
+      しかし createTask は createdAt を送らず、サーバー側で作成時刻が付く。
+      別端末で fetchServerTasks から新規取り込みすると、サーバーの createdAt が使われる。
+影響: 過去・未来の日付に追加したタスクが、別端末・再インストール後には
+      実際に作成した日に表示される（日付がずれる）。
+対応案: API に「表示日（例: scheduledDate / taskDate）」を追加して送受信する。
+      createdAt とは別の項目にする方が意味が明確。
+
+[D-05] 旧アーカイブ関連の関数・データが未使用のまま残っている（低）
+--------------------------------------------------------------------------------
+状態: 未対応
+該当:
+  - TaskViewModel.archiveTask / archiveCompletedTasks（画面から呼ばれなくなった）
+  - TaskArchive.completedTasks（新規には増えない。既存データは作成日の一覧に表示中）
+内容: アーカイブ機能の廃止は画面側のみで行い、データとロジックは残した。
+      見送ったタスク（skippedTasks）は引き続き task_archives.json に保存している。
+影響: 現状の動作に問題はないが、未使用コードが残る。CycleTests の archiveCompletedTask /
+      archiveRejectsIncompleteTask は未使用関数をテストしている。
+対応案: 既存の completedTasks を通常の tasks へ移す移行処理を入れた上で、
+      archiveTask / archiveCompletedTasks と関連テストを削除する。
+      ファイル名（task_archives.json）や型名も「見送り」用として整理する。
 
 [C-01] Swift 6 で将来エラーになる並行性の警告（中）
 --------------------------------------------------------------------------------

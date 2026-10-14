@@ -49,3 +49,59 @@ CHANGES_2.txt - Treow 開発記録【1.0.11 以降】
       アカウント欄がメール1行になったこと、ボタンが最下部に移ったことを確認。
       ※ 名前ありユーザーの頭文字アバターは、DEBUG のモックユーザーに名前がないため
         画面上では未確認。
+
+[2026-10-14] タスクリストをジャーナルと同じ日付管理に変更・アーカイブ機能を廃止
+--------------------------------------------------------------------------------
+変更ファイル:
+  - ios/Cycle/Features/Tasks/Views/TaskListView.swift
+  - ios/Cycle/Features/Tasks/Views/Components/TaskHeader.swift
+  - ios/Cycle/Features/Tasks/Views/Components/TaskList.swift
+  - ios/Cycle/Features/Tasks/Views/Components/TaskRow.swift
+  - ios/Cycle/Features/Tasks/Views/Components/TaskStatusRow.swift（新規。旧 TaskArchiveRow を切り出し）
+  - ios/Cycle/Features/Tasks/Views/TaskSearchView.swift（新規）
+  - ios/Cycle/Features/Tasks/Views/TaskArchiveView.swift（削除）
+  - ios/Cycle/Features/Tasks/Views/TaskNewEntryView.swift
+  - ios/Cycle/Features/Tasks/Views/TaskSkipView.swift
+  - ios/Cycle/Features/Tasks/ViewModel/TaskViewModel.swift
+  - ios/Cycle/Features/Journal/Views/WeekCalendarView.swift
+  - ios/Cycle/Features/Journal/ViewModel/JournalViewModel.swift
+  - ios/Cycle/Shared/Utilities/WeekNavigation.swift（新規）
+  - ios/Cycle/Shared/DesignSystem/ComponentCatalog.swift
+  - ios/CycleTests/CycleTests.swift
+  - ios/CycleUITests/CycleUITests.swift
+内容:
+  1) 画面構成
+     Before: 見出し「タスクリスト」の下に、全期間の未完了→完了タスクを1本のリストで表示。
+     After:  ジャーナルと同じく、見出しに年月・「今日」ボタン、その下に週カレンダー。
+             選んだ日のタスクだけを「未完了 → 完了 → 見送ったタスク」の順で表示。
+             タスクがある日は週カレンダーにドットを表示。空の日は「この日のタスクはありません」。
+  2) 日付の決め方（オーナー決定）
+     - タスクは作成した日に固定。未完了のまま日をまたいでも今日へ繰り越さない。
+       完了しても作成日に残る。
+     - 見送ったタスクは見送った日に、理由・「見送り」バッジ・「再開」スワイプ付きで表示。
+       再開すると未完了に戻り、作成日の一覧へ戻る。
+     - ＋ボタンで追加したタスクは、選択中の日付に入る（過去・未来の日にも追加できる）。
+     - 旧アーカイブに入っている完了タスクも、作成日の一覧に「完了」バッジ付きで表示。
+  3) アーカイブ機能の廃止
+     - 完了タスクのスワイプ「アーカイブ」と、メニューの「アーカイブ」画面を削除。
+     - アーカイブ画面にあった「ワードで検索」は、右上メニューの「検索」へ移動。
+       全期間の未完了・完了・見送りタスクを日付ごとに表示し、タップでその日へ移動する。
+  4) メニュー
+     Before: 並び替え / アーカイブ / テンプレート管理 / 最近削除した項目
+     After:  検索 / 日付選択 / 並び替え / テンプレート管理 / 最近削除した項目
+             （並び替えは選択中の日のタスクの中で行う）
+  5) ホーム画面のタスク表示も同じルール（作成日で振り分け）に統一。
+     Before: 今日には全期間の未完了タスクを表示。
+  6) 週カレンダー（WeekCalendarView）をジャーナルとタスクリストで共用できるよう汎用化。
+     ジャーナルの見た目・動作は変更なし。
+  7) 一覧の末尾が右下の＋ボタンに隠れないよう、下に余白を追加。
+  8) 見送り画面の説明文を「今日の日付に『見送ったタスク』として残します」に変更。
+目的: タスクを日付で管理できるようにし、別画面のアーカイブを不要にするため（オーナー要望）。
+データ: 保存形式は変更なし。見送ったタスク・旧アーカイブの完了タスクは従来どおり
+        task_archives.json に保存される。日付の判定には既存の createdAt / skippedAt を使用。
+結果: ビルド成功。iPhone 16 Pro (iOS 18.1) シミュレータで以下を確認。
+      日付切り替え・「今日」ボタン、過去日への追加、見送り（見送った日へ移動）、
+      再開（作成日へ戻る）、検索とタップでの日付移動、ジャーナルの週カレンダー。
+      ユニットテスト 148件すべて成功（日付別表示・過去日への追加・見送り日の表示・
+      日付内の並び替えのテストを追加）。
+      UIテスト（検索、見送り→再開の流れ）2件成功。
