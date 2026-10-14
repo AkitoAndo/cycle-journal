@@ -1,0 +1,99 @@
+================================================================================
+CTO_CONCERNS.txt - データ・コード周りの懸念点メモ（CTO 判断用）
+================================================================================
+
+作成: 2026-10-14（develop 0e57b42 / iOS 1.0.11 時点のコードを確認）
+目的: 見た目の改善はオーナー側、データ・コード周りは CTO 主導で進めるため、
+      見た目以外の改善作業中に気づいたデータ・コードの懸念をここに集約する。
+運用: 懸念を見つけたら末尾に追記する。対応済みになったら「状態」を更新する。
+
+エントリ形式:
+  [ID] タイトル（優先度）
+  --------------------------------------------------------------------------------
+  状態: 未対応 / 対応中 / 対応済み（PR番号）
+  該当: ファイルパス:行
+  内容: 何が起きているか
+  影響: ユーザーにどう影響するか
+  対応案: 考えられる直し方（参考）
+
+================================================================================
+
+[D-01] タスクの振り返り項目がサーバーに同期されない（高）
+--------------------------------------------------------------------------------
+状態: 未対応
+該当:
+  - ios/Cycle/Features/Tasks/ViewModel/TaskViewModel.swift:458（pushUpsert）
+  - ios/Cycle/Services/TaskService.swift:10-22（createTask / updateTask の引数）
+内容: サーバーへ送っているのは title / description / status（完了状態）のみ。
+      TaskItem の以下6項目は端末内 JSON にしか保存されない。
+        intent（意図）/ achievementVision（完了イメージ）/ notes（注意点）
+        fact（事実）/ insight（気づき）/ nextAction（次の一手）
+      また TaskArchive（完了・見送り履歴）と TaskTemplate（テンプレート）も
+      サーバー同期の仕組みがなく、端末ローカルのみ。
+影響: 機種変更・アプリ再インストール・複数端末利用で、振り返り内容・履歴・
+      テンプレートが失われる。振り返りはアプリの中核体験のため影響が大きい。
+対応案: API の Task スキーマに6項目を追加し、create/update で送受信する。
+      アーカイブ・テンプレートは API 追加 or タスクの状態（archived/skipped）
+      としてサーバー側で表現する、のいずれかを検討。
+
+[D-02] 「見送る」したタスクがサーバー上では未完了のまま残る（高）
+--------------------------------------------------------------------------------
+状態: 未対応
+該当: ios/Cycle/Features/Tasks/ViewModel/TaskViewModel.swift:530（skipTask）
+内容: skipTask はタスクを端末の一覧から外してアーカイブへ移すが、
+      サーバーへは削除も状態変更も送らない（enqueueDelete / enqueueUpsert なし）。
+      同じ端末では fetchServerTasks がアーカイブ済み serverId を除外するため
+      再出現しないが、サーバー上は pending のまま。
+影響: 同じアカウントの別端末・再インストール後に、見送ったタスクが
+      未完了タスクとして復活する。resumeSkippedTask（再開）との整合も要確認。
+対応案: 見送り時にサーバーへ状態を送る（例: status = "skipped" を API に追加、
+      もしくは archiveTask と同様に delete を enqueue）。D-01 の方針と合わせて決める。
+
+[D-03] 完了タスクのアーカイブ処理が保存失敗を検知しない（中）
+--------------------------------------------------------------------------------
+状態: 未対応
+該当:
+  - ios/Cycle/Features/Tasks/ViewModel/TaskViewModel.swift:505（archiveTask）
+  - ios/Cycle/Features/Tasks/ViewModel/TaskViewModel.swift:613（archiveCompletedTasks）
+内容: TaskArchiveStore.save / persist() の戻り値（@discardableResult）を見ずに、
+      タスクを一覧から削除し、サーバーへ delete を enqueue している。
+      一方、新しい skipTask / resumeSkippedTask は失敗時にロールバックして
+      persistenceError を出す実装になっており、処理方針が不統一。
+影響: ストレージ容量不足などで履歴の保存に失敗すると、完了タスクが
+      端末・サーバーの両方から消え、復元できない。
+対応案: skipTask と同じく「アーカイブ保存 → 成功時のみ一覧から除去・delete enqueue、
+      失敗時はロールバック + reportPersistenceError()」に揃える。
+
+[C-01] Swift 6 で将来エラーになる並行性の警告（中）
+--------------------------------------------------------------------------------
+状態: 未対応
+該当:
+  - ios/Cycle/Features/Tasks/ViewModel/TaskViewModel.swift:46
+  - ios/Cycle/Features/Journal/ViewModel/JournalViewModel.swift:61-62
+内容: Debug ビルドで11件の警告。main actor に属する init() / shared を
+      nonisolated な文脈から呼んでいる（"this is an error in the Swift 6
+      language mode"）。
+影響: 現状は動作するが、Swift 6 言語モードへ移行するとビルドが通らなくなる。
+対応案: 該当プロパティ・イニシャライザに @MainActor を付ける、
+      もしくはデフォルト引数での生成をやめて呼び出し側で注入する。
+
+[C-02] 肥大化したファイル（低）
+--------------------------------------------------------------------------------
+状態: 未対応
+該当:
+  - ios/Cycle/Features/Tasks/ViewModel/TaskViewModel.swift（約800行）
+  - ios/Cycle/Shared/DesignSystem/ComponentCatalog.swift（約770行）
+  - ios/Cycle/Features/Home/Views/HomeView.swift（約660行）
+  - ios/Cycle/Features/Settings/Views/SettingsView.swift（約620行）
+内容: TaskViewModel にタスク管理・サーバー同期・アーカイブ・テンプレートが
+      同居している。
+影響: 修正時の影響範囲が読みにくく、不具合を生みやすい。
+対応案: 同期（Outbox 処理）・アーカイブ・テンプレートを別クラスに分離する。
+
+[C-03] 未解決の GitHub Issue（参考）
+--------------------------------------------------------------------------------
+状態: 未対応（外部要因待ちを含む）
+内容:
+  - #79  Vertex AI Claude のクォータ復帰後に Gemini fallback を撤回する
+         （クォータ付与待ち）
+  - #144 アプリ全体の英語化（en-US）と英語圏向けリリース対応

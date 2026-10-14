@@ -35,51 +35,8 @@ struct SettingsView: View {
                 // アカウントセクション
                 Section("アカウント") {
                     if authStore.state.isAuthenticated {
-                        // ログイン済み
-                        HStack {
-                            Image(systemName: "person.circle.fill")
-                                .font(DesignSystem.Fonts.screenTitle)
-                                .foregroundColor(DesignSystem.Colors.accent)
-
-                            VStack(alignment: .leading) {
-                                if let user = authStore.currentUser {
-                                    Text(user.fullName ?? user.email ?? "ユーザー")
-                                        .font(DesignSystem.Fonts.button)
-                                    if let email = user.email {
-                                        Text(email)
-                                            .font(DesignSystem.Fonts.caption)
-                                            .foregroundColor(.secondary)
-                                    }
-                                } else {
-                                    Text("ログイン済み")
-                                        .font(DesignSystem.Fonts.button)
-                                }
-                            }
-
-                            Spacer()
-                        }
-                        .padding(.vertical, 4)
-
-                        Button(role: .destructive, action: { showingSignOutAlert = true }) {
-                            HStack {
-                                Image(systemName: "rectangle.portrait.and.arrow.right")
-                                Text("サインアウト")
-                            }
-                        }
-
-                        Button(role: .destructive, action: { showingDeleteAccountAlert = true }) {
-                            HStack {
-                                if isDeletingAccount {
-                                    ProgressView()
-                                        .padding(.trailing, 4)
-                                } else {
-                                    Image(systemName: "trash")
-                                }
-                                Text(isDeletingAccount ? "アカウントを削除中..." : "アカウントを削除")
-                            }
-                        }
-                        .disabled(isDeletingAccount)
-                        .accessibilityIdentifier("delete_account_button")
+                        // ログイン済み（サインアウト・アカウント削除は画面最下部のセクションへ移動）
+                        accountProfileRow
                     } else {
                         // 未ログイン
                         HStack {
@@ -256,6 +213,33 @@ struct SettingsView: View {
                 }
                 .listRowBackground(GlassListRowBackground())
 
+                // サインアウト・アカウント削除（取り消しにくい操作のため最下部に置く）
+                if authStore.state.isAuthenticated {
+                    Section {
+                        Button(role: .destructive, action: { showingSignOutAlert = true }) {
+                            HStack {
+                                Image(systemName: "rectangle.portrait.and.arrow.right")
+                                Text("サインアウト")
+                            }
+                        }
+
+                        Button(role: .destructive, action: { showingDeleteAccountAlert = true }) {
+                            HStack {
+                                if isDeletingAccount {
+                                    ProgressView()
+                                        .padding(.trailing, 4)
+                                } else {
+                                    Image(systemName: "trash")
+                                }
+                                Text(isDeletingAccount ? "アカウントを削除中..." : "アカウントを削除")
+                            }
+                        }
+                        .disabled(isDeletingAccount)
+                        .accessibilityIdentifier("delete_account_button")
+                    }
+                    .listRowBackground(GlassListRowBackground())
+                }
+
                 // デバッグセクション（開発用）
                 #if DEBUG
                 Section("開発者オプション") {
@@ -341,6 +325,51 @@ struct SettingsView: View {
                 await checkNotificationPermission()
             }
         }
+    }
+
+    // MARK: - Account Row
+
+    /// ログイン中ユーザーの表示。名前がない場合（Apple は初回サインイン時しか名前を渡さない）は
+    /// メールアドレスを1行だけ表示し、同じ文字列が2行続かないようにする。
+    @ViewBuilder
+    private var accountProfileRow: some View {
+        let user = authStore.currentUser
+        let name = user?.fullName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let displayName = (name?.isEmpty == false) ? name : nil
+
+        HStack(spacing: DesignSystem.Spacing.md) {
+            if let initial = displayName?.first {
+                Text(String(initial))
+                    .font(DesignSystem.Fonts.button)
+                    .foregroundColor(.white)
+                    .frame(width: 36, height: 36)
+                    .background(Circle().fill(DesignSystem.Colors.accent))
+                    .accessibilityHidden(true)
+            } else {
+                Image(systemName: "person.circle.fill")
+                    .font(DesignSystem.Fonts.screenTitle)
+                    .foregroundColor(DesignSystem.Colors.accent)
+                    .accessibilityHidden(true)
+            }
+
+            VStack(alignment: .leading) {
+                if let displayName {
+                    Text(displayName)
+                        .font(DesignSystem.Fonts.button)
+                    if let email = user?.email {
+                        Text(email)
+                            .font(DesignSystem.Fonts.caption)
+                            .foregroundColor(.secondary)
+                    }
+                } else {
+                    Text(user?.email ?? "ログイン済み")
+                        .font(DesignSystem.Fonts.button)
+                }
+            }
+
+            Spacer()
+        }
+        .padding(.vertical, 4)
     }
 
     // MARK: - Plan Row
