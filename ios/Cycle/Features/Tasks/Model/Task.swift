@@ -58,6 +58,13 @@ struct TaskItem: Identifiable, Codable, Hashable {
 
     /// 次の一手
     var nextAction: String = ""
+
+    /// タスクを行う日（その日の0時）。
+    /// nil は日付を持たない旧タスク（2026-10 以前に作成）で、作成日の日付として扱う。
+    var scheduledDate: Date?
+
+    /// 締切日時。nil の場合は終日
+    var deadline: Date?
 }
 
 extension TaskItem {
@@ -70,5 +77,42 @@ extension TaskItem {
     /// 一覧の2行目に出すプレビュー（テンプレート一覧と同じ仕様: 詳細 → 意図 → 注意点の順で最初の非空欄）
     var previewText: String {
         [description, intent, notes].first { !$0.isEmpty } ?? ""
+    }
+
+    /// 一覧・カレンダーで使う日付（日付を持たない旧タスクは作成日）
+    var displayDate: Date {
+        scheduledDate ?? createdAt
+    }
+
+    /// 終日のタスクか（締切時刻が無い）
+    var isAllDay: Bool {
+        deadline == nil
+    }
+
+    /// 期限切れか。未完了で、締切時刻を過ぎた（終日なら、その日が終わった）もの。
+    func isOverdue(now: Date = Date(), calendar: Calendar = .current) -> Bool {
+        guard !isCompleted, deadline != nil || scheduledDate != nil else { return false }
+        if let deadline {
+            return deadline < now
+        }
+        let endOfDay = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: displayDate)) ?? displayDate
+        return endOfDay <= now
+    }
+
+    /// 日付と時刻から締切日時を組み立てる（終日なら nil）
+    static func deadline(
+        on date: Date,
+        time: Date?,
+        isAllDay: Bool,
+        calendar: Calendar = .current
+    ) -> Date? {
+        guard !isAllDay, let time else { return nil }
+        let components = calendar.dateComponents([.hour, .minute], from: time)
+        return calendar.date(
+            bySettingHour: components.hour ?? 0,
+            minute: components.minute ?? 0,
+            second: 0,
+            of: date
+        )
     }
 }

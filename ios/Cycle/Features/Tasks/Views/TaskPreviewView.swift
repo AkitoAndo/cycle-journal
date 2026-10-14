@@ -61,7 +61,18 @@ struct TaskPreviewView: View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.xl) {
             titleSection
             descriptionSection
+            fieldSection(title: "日付", content: scheduleText)
         }
+    }
+
+    /// 例: 「10月15日（木）終日」「10月15日（木）18:00まで」
+    private var scheduleText: String {
+        let dateText = task.displayDate.formatted(
+            .dateTime.month().day().weekday(.abbreviated).locale(Locale(identifier: "ja_JP"))
+        )
+        guard let deadline = task.deadline else { return "\(dateText) 終日" }
+        let timeText = deadline.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits))
+        return "\(dateText) \(timeText)まで"
     }
 
     private var detailSectionContent: some View {

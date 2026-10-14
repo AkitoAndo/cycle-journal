@@ -84,19 +84,20 @@ final class TaskViewModel: ObservableObject {
 
     // MARK: - Date-based Lists
     //
-    // タスクは「作成した日」に属する（完了しても日付は移らない）。
+    // タスクは「タスクの日付」（scheduledDate。旧タスクは作成日）に属する。
+    // 完了しても日付は移らない。
 
-    /// 指定日に作成された未完了タスク（sortOrder順）
+    /// 指定日の未完了タスク（sortOrder順）
     func incompleteTasks(on date: Date, calendar: Calendar = .current) -> [TaskItem] {
         Self.incompleteTasks(on: date, tasks: tasks, calendar: calendar)
     }
 
-    /// 指定日に作成された完了タスク（完了日時の降順）
+    /// 指定日の完了タスク（完了日時の降順）
     func completedTasks(on date: Date, calendar: Calendar = .current) -> [TaskItem] {
         Self.completedTasks(on: date, tasks: tasks, calendar: calendar)
     }
 
-    /// 旧アーカイブ機能で保管された完了タスクのうち、指定日に作成されたもの
+    /// 旧アーカイブ機能で保管された完了タスクのうち、指定日のもの
     func archivedCompletedTasks(on date: Date, calendar: Calendar = .current) -> [TaskItem] {
         Self.archivedCompletedTasks(on: date, archives: archives, calendar: calendar)
     }
@@ -111,8 +112,8 @@ final class TaskViewModel: ObservableObject {
     /// 表示するものがある日（日付選択シートのドット用）
     var recordedDays: Set<DateComponents> {
         let calendar = Calendar.current
-        let taskDates = tasks.filter { $0.deletedAt == nil }.map(\.createdAt)
-        let archivedDates = archives.flatMap(\.completedTasks).map(\.createdAt)
+        let taskDates = tasks.filter { $0.deletedAt == nil }.map(\.displayDate)
+        let archivedDates = archives.flatMap(\.completedTasks).map(\.displayDate)
         return Set((taskDates + archivedDates).map {
             calendar.dateComponents([.year, .month, .day], from: $0)
         })
@@ -124,7 +125,7 @@ final class TaskViewModel: ObservableObject {
         currentWeekOffset = WeekNavigation.weekOffset(for: date)
     }
 
-    /// ホームの日付ビューに表示するタスク（タスクリストと同じく作成日で振り分ける）
+    /// ホームの日付ビューに表示するタスク（タスクリストと同じくタスクの日付で振り分ける）
     func homeTasks(on date: Date, calendar: Calendar = .current) -> [TaskItem] {
         Self.homeTasks(on: date, tasks: tasks, archives: archives, calendar: calendar)
     }
@@ -146,28 +147,32 @@ final class TaskViewModel: ObservableObject {
 
     static func incompleteTasks(on date: Date, tasks: [TaskItem], calendar: Calendar = .current) -> [TaskItem] {
         tasks
-            .filter { !$0.isCompleted && $0.deletedAt == nil && calendar.isDate($0.createdAt, inSameDayAs: date) }
+            .filter { !$0.isCompleted && $0.deletedAt == nil && calendar.isDate($0.displayDate, inSameDayAs: date) }
             .sorted { $0.sortOrder < $1.sortOrder }
     }
 
     static func completedTasks(on date: Date, tasks: [TaskItem], calendar: Calendar = .current) -> [TaskItem] {
         tasks
-            .filter { $0.isCompleted && $0.deletedAt == nil && calendar.isDate($0.createdAt, inSameDayAs: date) }
+            .filter { $0.isCompleted && $0.deletedAt == nil && calendar.isDate($0.displayDate, inSameDayAs: date) }
             .sorted { ($0.completedAt ?? $0.createdAt) > ($1.completedAt ?? $1.createdAt) }
     }
 
     static func archivedCompletedTasks(on date: Date, archives: [TaskArchive], calendar: Calendar = .current) -> [TaskItem] {
         archives
             .flatMap(\.completedTasks)
-            .filter { calendar.isDate($0.createdAt, inSameDayAs: date) }
+            .filter { calendar.isDate($0.displayDate, inSameDayAs: date) }
             .sorted { ($0.completedAt ?? $0.createdAt) > ($1.completedAt ?? $1.createdAt) }
     }
 
     // MARK: - Task Management
 
     /// 新しいタスクを追加
+    /// - Parameters:
+    ///   - date: タスクの日付（タスクリストで選択中の日）
+    ///   - deadline: 締切日時。nil なら終日
     func addTask(
         on date: Date = Date(),
+        deadline: Date? = nil,
         title: String,
         description: String = "",
         intent: String = "",
@@ -188,7 +193,8 @@ final class TaskViewModel: ObservableObject {
             notes: notes
         )
         newTask.sortOrder = maxSortOrder + 1
-        newTask.createdAt = Self.creationDate(on: date)
+        newTask.scheduledDate = Calendar.current.startOfDay(for: date)
+        newTask.deadline = deadline
         newTask.fact = fact
         newTask.insight = insight
         newTask.nextAction = nextAction
@@ -314,16 +320,19 @@ final class TaskViewModel: ObservableObject {
         persist()
     }
 
-    /// 選択日に追加するタスクの作成日時。今日なら現在時刻、それ以外の日はその日の同じ時刻にする。
-    static func creationDate(on date: Date, now: Date = Date(), calendar: Calendar = .current) -> Date {
-        guard !calendar.isDate(date, inSameDayAs: now) else { return now }
-        let time = calendar.dateComponents([.hour, .minute, .second], from: now)
-        return calendar.date(
-            bySettingHour: time.hour ?? 0,
-            minute: time.minute ?? 0,
-            second: time.second ?? 0,
-            of: date
-        ) ?? date
+    /// タスクの日付と締切を変更する。別の日へ移す場合は、移動先の未完了タスクの末尾に並べる。
+    func updateSchedule(for task: TaskItem, date: Date, deadline: Date?) {
+        guard let index = findTaskIndex(task) else { return }
+        let newDay = Calendar.current.startOfDay(for: date)
+        let movesToAnotherDay = !Calendar.current.isDate(tasks[index].displayDate, inSameDayAs: newDay)
+
+        tasks[index].scheduledDate = newDay
+        tasks[index].deadline = deadline
+        if movesToAnotherDay {
+            tasks[index].sortOrder = (incompleteTasks(on: newDay).map(\.sortOrder).max() ?? -1) + 1
+        }
+        persist()
+        enqueueUpsert(for: tasks[index].id)
     }
 
     // MARK: - Data Loading

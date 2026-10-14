@@ -69,7 +69,7 @@ CTO_CONCERNS.txt - データ・コード周りの懸念点メモ（CTO 判断用
 
 [D-04] タスクの「表示する日付」に createdAt を使うが、サーバーに送っていない（中）
 --------------------------------------------------------------------------------
-状態: 未対応
+状態: 端末側は解消（2026-10-15 scheduledDate 追加）。同期の課題は D-07 へ移管
 該当:
   - ios/Cycle/Features/Tasks/ViewModel/TaskViewModel.swift（addTask(on:) / creationDate(on:)）
   - ios/Cycle/Features/Tasks/ViewModel/TaskViewModel.swift:pushUpsert / fetchServerTasks
@@ -82,6 +82,24 @@ CTO_CONCERNS.txt - データ・コード周りの懸念点メモ（CTO 判断用
       実際に作成した日に表示される（日付がずれる）。
 対応案: API に「表示日（例: scheduledDate / taskDate）」を追加して送受信する。
       createdAt とは別の項目にする方が意味が明確。
+
+[D-07] タスクの日付・締切（scheduledDate / deadline）がサーバーに同期されない（高）
+--------------------------------------------------------------------------------
+状態: 未対応
+該当:
+  - ios/Cycle/Features/Tasks/Model/Task.swift（scheduledDate / deadline を追加）
+  - ios/Cycle/Features/Tasks/ViewModel/TaskViewModel.swift:pushUpsert / fetchServerTasks
+  - ios/Cycle/Services/TaskService.swift
+内容: 2026-10-15 にタスクへ「日付」「締切日時（空なら終日）」を追加した（オーナー要望）。
+      端末内の JSON には保存されるが、API には送っていない。
+      fetchServerTasks で別端末から取り込んだタスクは scheduledDate が空になり、
+      作成日に表示され、締切も消える。
+影響: 機種変更・再インストール・複数端末で、タスクの日付と締切が失われる。
+対応案: API の Task スキーマに scheduledDate（日付）と deadline（日時・nullable）を
+      追加し、create / update / 一覧取得で送受信する。D-01 と同じ対応でまとめられる。
+補足: D-04（createdAt を表示日に流用していた件）は、この変更で端末側は解消
+      （新規タスクは scheduledDate を使い、createdAt は本当の作成日時に戻した）。
+      サーバー同期の課題は D-07 に一本化。
 
 [D-05] 旧アーカイブ関連の関数・データが未使用のまま残っている（低）
 --------------------------------------------------------------------------------

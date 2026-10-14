@@ -746,13 +746,83 @@ struct TaskViewModelTests {
         #expect(todayTasks.isEmpty)
     }
 
-    @Test func creationDateUsesSelectedDayWithCurrentTime() {
+    @Test func addTaskStoresScheduledDayAndDeadline() {
+        let vm = TaskViewModel()
+        let calendar = Calendar.current
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: Date())!
+        let deadline = TaskItem.deadline(
+            on: tomorrow,
+            time: calendar.date(bySettingHour: 18, minute: 30, second: 0, of: Date())!,
+            isAllDay: false
+        )
+
+        vm.addTask(on: tomorrow, deadline: deadline, title: "明日18:30まで")
+        guard let task = vm.tasks.last else { return }
+
+        #expect(task.scheduledDate == calendar.startOfDay(for: tomorrow))
+        #expect(task.deadline.map { calendar.component(.hour, from: $0) } == 18)
+        #expect(task.deadline.map { calendar.component(.minute, from: $0) } == 30)
+        #expect(task.deadline.map { calendar.isDate($0, inSameDayAs: tomorrow) } == true)
+        #expect(!task.isAllDay)
+        #expect(vm.incompleteTasks(on: tomorrow).contains { $0.id == task.id })
+    }
+
+    @Test func allDayTaskHasNoDeadline() {
+        #expect(TaskItem.deadline(on: Date(), time: Date(), isAllDay: true) == nil)
+        #expect(TaskItem.deadline(on: Date(), time: nil, isAllDay: false) == nil)
+    }
+
+    @Test func updateScheduleMovesTaskToAnotherDay() {
+        let vm = TaskViewModel()
+        vm.addTask(title: "日付を変えるタスク")
+        guard let task = vm.tasks.last else { return }
+        let nextWeek = Calendar.current.date(byAdding: .day, value: 7, to: Date())!
+
+        vm.updateSchedule(for: task, date: nextWeek, deadline: nil)
+
+        #expect(!vm.incompleteTasks(on: Date()).contains { $0.id == task.id })
+        #expect(vm.incompleteTasks(on: nextWeek).contains { $0.id == task.id })
+    }
+
+    @Test func legacyTaskWithoutScheduleUsesCreatedAtAndDecodes() throws {
+        let createdAt = Date(timeIntervalSince1970: 1_700_000_000)
+        var legacy = TaskItem(title: "旧タスク")
+        legacy.createdAt = createdAt
+        let encoder = JSONEncoder()
+        var json = try JSONSerialization.jsonObject(with: encoder.encode(legacy)) as! [String: Any]
+        json.removeValue(forKey: "scheduledDate")
+        json.removeValue(forKey: "deadline")
+        let data = try JSONSerialization.data(withJSONObject: json)
+
+        let decoded = try JSONDecoder().decode(TaskItem.self, from: data)
+
+        #expect(decoded.scheduledDate == nil)
+        #expect(decoded.isAllDay)
+        #expect(decoded.displayDate == createdAt)
+        // 日付を持たない旧タスクは期限切れ扱いにしない
+        #expect(!decoded.isOverdue(now: createdAt.addingTimeInterval(86_400 * 30)))
+    }
+
+    @Test func overdueRules() {
         let calendar = Calendar(identifier: .gregorian)
         let now = Date(timeIntervalSince1970: 1_700_000_000)
-        let threeDaysAgo = calendar.date(byAdding: .day, value: -3, to: now)!
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: now)!
 
-        #expect(TaskViewModel.creationDate(on: now, now: now, calendar: calendar) == now)
-        #expect(TaskViewModel.creationDate(on: threeDaysAgo, now: now, calendar: calendar) == threeDaysAgo)
+        var timed = TaskItem(title: "1時間前が締切")
+        timed.scheduledDate = calendar.startOfDay(for: now)
+        timed.deadline = now.addingTimeInterval(-3600)
+        #expect(timed.isOverdue(now: now, calendar: calendar))
+
+        var allDayToday = TaskItem(title: "今日の終日")
+        allDayToday.scheduledDate = calendar.startOfDay(for: now)
+        #expect(!allDayToday.isOverdue(now: now, calendar: calendar))
+
+        var allDayYesterday = TaskItem(title: "昨日の終日")
+        allDayYesterday.scheduledDate = calendar.startOfDay(for: yesterday)
+        #expect(allDayYesterday.isOverdue(now: now, calendar: calendar))
+
+        allDayYesterday.isCompleted = true
+        #expect(!allDayYesterday.isOverdue(now: now, calendar: calendar))
     }
 
     @Test func addTaskOnSelectedDateAppearsOnlyOnThatDay() {

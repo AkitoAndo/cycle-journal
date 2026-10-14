@@ -20,6 +20,9 @@ struct TaskEditView: View {
     @State private var editFact: String
     @State private var editInsight: String
     @State private var editNextAction: String
+    @State private var editDate: Date
+    @State private var editIsAllDay: Bool
+    @State private var editDeadlineTime: Date
     @State private var selectedSection: TaskSectionTabs.Section = .basic
 
     init(vm: TaskViewModel, task: TaskItem) {
@@ -33,6 +36,9 @@ struct TaskEditView: View {
         _editFact = State(initialValue: task.fact)
         _editInsight = State(initialValue: task.insight)
         _editNextAction = State(initialValue: task.nextAction)
+        _editDate = State(initialValue: task.displayDate)
+        _editIsAllDay = State(initialValue: task.isAllDay)
+        _editDeadlineTime = State(initialValue: task.deadline ?? TaskScheduleFields.defaultDeadlineTime())
     }
 
     var body: some View {
@@ -97,6 +103,11 @@ struct TaskEditView: View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.xl) {
             titleSection
             descriptionSection
+            TaskScheduleFields(
+                date: $editDate,
+                isAllDay: $editIsAllDay,
+                deadlineTime: $editDeadlineTime
+            )
         }
     }
 
@@ -127,6 +138,13 @@ struct TaskEditView: View {
         let trimmedFact = editFact.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedInsight = editInsight.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedNextAction = editNextAction.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let newDeadline = TaskItem.deadline(on: editDate, time: editDeadlineTime, isAllDay: editIsAllDay)
+        let dateChanged = !Calendar.current.isDate(editDate, inSameDayAs: task.displayDate)
+            || task.scheduledDate == nil
+        if dateChanged || newDeadline != task.deadline {
+            vm.updateSchedule(for: task, date: editDate, deadline: newDeadline)
+        }
 
         vm.updateTask(
             task,
