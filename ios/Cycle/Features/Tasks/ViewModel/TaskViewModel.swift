@@ -85,7 +85,6 @@ final class TaskViewModel: ObservableObject {
     // MARK: - Date-based Lists
     //
     // タスクは「作成した日」に属する（完了しても日付は移らない）。
-    // 見送ったタスクは「見送った日」に表示する。
 
     /// 指定日に作成された未完了タスク（sortOrder順）
     func incompleteTasks(on date: Date, calendar: Calendar = .current) -> [TaskItem] {
@@ -102,20 +101,11 @@ final class TaskViewModel: ObservableObject {
         Self.archivedCompletedTasks(on: date, archives: archives, calendar: calendar)
     }
 
-    /// 指定日に見送ったタスク（見送った日時の降順）
-    func skippedItems(on date: Date, calendar: Calendar = .current) -> [SkippedTaskArchiveItem] {
-        archives
-            .flatMap(\.skippedTasks)
-            .filter { calendar.isDate($0.skippedAt, inSameDayAs: date) }
-            .sorted { $0.skippedAt > $1.skippedAt }
-    }
-
     /// 指定日に表示するものが1件でもあるか（週カレンダー・日付選択のドット用）
     func hasRecord(on date: Date) -> Bool {
         !incompleteTasks(on: date).isEmpty
             || !completedTasks(on: date).isEmpty
             || !archivedCompletedTasks(on: date).isEmpty
-            || !skippedItems(on: date).isEmpty
     }
 
     /// 表示するものがある日（日付選択シートのドット用）
@@ -123,8 +113,7 @@ final class TaskViewModel: ObservableObject {
         let calendar = Calendar.current
         let taskDates = tasks.filter { $0.deletedAt == nil }.map(\.createdAt)
         let archivedDates = archives.flatMap(\.completedTasks).map(\.createdAt)
-        let skippedDates = archives.flatMap(\.skippedTasks).map(\.skippedAt)
-        return Set((taskDates + archivedDates + skippedDates).map {
+        return Set((taskDates + archivedDates).map {
             calendar.dateComponents([.year, .month, .day], from: $0)
         })
     }
@@ -364,6 +353,62 @@ final class TaskViewModel: ObservableObject {
     /// アーカイブをロード
     private func loadArchives() {
         archives = TaskArchiveStore.loadAll()
+        migrateSkippedTasksToIncomplete()
+    }
+
+    /// 見送り機能の廃止（2026-10）に伴い、以前に見送ったタスクを未完了タスクへ戻す。
+    /// 見送り理由は消さずに「注意点」の末尾へ残す。
+    /// 保存に失敗した場合は何も変えず、次回の読み込み時に再試行する。
+    private func migrateSkippedTasksToIncomplete() {
+        let skippedItems = archives.flatMap(\.skippedTasks)
+        guard !skippedItems.isEmpty else { return }
+
+        let existingIDs = Set(tasks.map(\.id))
+        var nextSortOrder = (tasks.map(\.sortOrder).max() ?? -1) + 1
+        var restoredTasks: [TaskItem] = []
+        for item in skippedItems where !existingIDs.contains(item.id) {
+            var task = item.task
+            task.isCompleted = false
+            task.completedAt = nil
+            task.deletedAt = nil
+            task.sortOrder = nextSortOrder
+            nextSortOrder += 1
+            task.notes = Self.notesAppendingSkipReason(task.notes, reason: item.reason)
+            restoredTasks.append(task)
+        }
+
+        let updatedArchives = archives.compactMap { archive -> TaskArchive? in
+            var updated = archive
+            updated.skippedTasks = []
+            return updated.isEmpty ? nil : updated
+        }
+
+        let previousTasks = tasks
+        tasks.append(contentsOf: restoredTasks)
+        guard persist() else {
+            tasks = previousTasks
+            return
+        }
+        guard TaskArchiveStore.saveAll(updatedArchives) else {
+            tasks = previousTasks
+            _ = TaskStore.saveAll(previousTasks)
+            return
+        }
+        archives = updatedArchives
+
+        guard !restoredTasks.isEmpty else { return }
+        for task in restoredTasks {
+            TaskSyncMutationStore.enqueueUpsert(localTaskID: task.id)
+        }
+        scheduleMutationFlush()
+    }
+
+    /// 見送り理由を「注意点」の末尾に1行足す（理由が空なら何もしない）
+    static func notesAppendingSkipReason(_ notes: String, reason: String) -> String {
+        let trimmedReason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedReason.isEmpty else { return notes }
+        let line = "見送り理由: \(trimmedReason)"
+        return notes.isEmpty ? line : notes + "\n" + line
     }
 
     // MARK: - Private Helpers - Finding
@@ -606,85 +651,6 @@ final class TaskViewModel: ObservableObject {
         tasks.removeAll { $0.id == task.id }
 
         persist()
-        loadArchives()
-    }
-
-    /// 未完了タスクを、任意の理由とともに今日の「見送ったタスク」へ移す。
-    func skipTask(_ task: TaskItem, reason: String) {
-        guard let taskIndex = findTaskIndex(task) else { return }
-        let currentTask = tasks[taskIndex]
-        guard !currentTask.isCompleted, currentTask.deletedAt == nil else { return }
-
-        let previousTasks = tasks
-        let previousArchives = TaskArchiveStore.loadAll()
-        let today = TaskArchive.todayStart
-        var archive = TaskArchiveStore.load(for: today) ?? TaskArchive(date: today, completedTasks: [])
-        let existingIds = Set(archive.allTasks.map(\.id))
-
-        if !existingIds.contains(currentTask.id) {
-            archive.skippedTasks.append(
-                SkippedTaskArchiveItem(
-                    task: currentTask,
-                    reason: reason.trimmingCharacters(in: .whitespacesAndNewlines),
-                    skippedAt: Date()
-                )
-            )
-        }
-
-        guard TaskArchiveStore.save(archive) else {
-            reportPersistenceError()
-            return
-        }
-        tasks.removeAll { $0.id == currentTask.id }
-        guard persist() else {
-            tasks = previousTasks
-            _ = TaskArchiveStore.saveAll(previousArchives)
-            loadArchives()
-            reportPersistenceError()
-            return
-        }
-        loadArchives()
-    }
-
-    /// 見送ったタスクを未完了として一覧の末尾へ戻す。
-    func resumeSkippedTask(_ skippedItem: SkippedTaskArchiveItem) {
-        var updatedArchives = archives
-        var archivedTask: TaskItem?
-
-        for archiveIndex in updatedArchives.indices {
-            if let taskIndex = updatedArchives[archiveIndex].skippedTasks.firstIndex(
-                where: { $0.id == skippedItem.id }
-            ) {
-                archivedTask = updatedArchives[archiveIndex].skippedTasks.remove(at: taskIndex).task
-                if updatedArchives[archiveIndex].isEmpty {
-                    updatedArchives.remove(at: archiveIndex)
-                }
-                break
-            }
-        }
-
-        guard var resumedTask = archivedTask else { return }
-        resumedTask.isCompleted = false
-        resumedTask.completedAt = nil
-        resumedTask.deletedAt = nil
-        resumedTask.sortOrder = (incompleteTasks.map(\.sortOrder).max() ?? -1) + 1
-
-        let previousTasks = tasks
-        tasks.removeAll { $0.id == resumedTask.id }
-        tasks.append(resumedTask)
-        guard persist() else {
-            tasks = previousTasks
-            reportPersistenceError()
-            return
-        }
-
-        guard TaskArchiveStore.saveAll(updatedArchives) else {
-            tasks = previousTasks
-            _ = TaskStore.saveAll(previousTasks)
-            reportPersistenceError()
-            return
-        }
-        enqueueUpsert(for: resumedTask.id)
         loadArchives()
     }
 

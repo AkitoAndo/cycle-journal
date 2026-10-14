@@ -17,7 +17,6 @@ struct TaskRow: View {
     let onEdit: () -> Void
     let onDelete: () -> Void
     let onPreview: () -> Void
-    let onSkip: (() -> Void)?
 
     init(
         task: TaskItem,
@@ -25,8 +24,7 @@ struct TaskRow: View {
         onToggleCompletion: @escaping () -> Void,
         onEdit: @escaping () -> Void,
         onDelete: @escaping () -> Void,
-        onPreview: @escaping () -> Void,
-        onSkip: (() -> Void)? = nil
+        onPreview: @escaping () -> Void
     ) {
         self.task = task
         self.isReorderMode = isReorderMode
@@ -34,7 +32,6 @@ struct TaskRow: View {
         self.onEdit = onEdit
         self.onDelete = onDelete
         self.onPreview = onPreview
-        self.onSkip = onSkip
     }
 
     var body: some View {
@@ -43,9 +40,6 @@ struct TaskRow: View {
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 if !isReorderMode {
                     deleteButton
-                    if !task.isCompleted, let skipAction = onSkip {
-                        skipButton(action: skipAction)
-                    }
                     editButton
                     previewButton
                 }
@@ -135,12 +129,4 @@ struct TaskRow: View {
         .tint(DesignSystem.Colors.textSecondary)
     }
 
-    private func skipButton(action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Label("見送る", systemImage: "archivebox")
-                .labelStyle(.iconOnly)
-        }
-        .tint(DesignSystem.Colors.accent)
-        .accessibilityIdentifier("task_skip_\(task.id.uuidString.lowercased())")
-    }
 }

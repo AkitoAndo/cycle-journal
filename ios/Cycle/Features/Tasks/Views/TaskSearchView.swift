@@ -3,7 +3,7 @@
 //  Cycle
 //
 //  タスクのワード検索（旧アーカイブ画面の検索を、タスクリストの右上メニューへ移したもの）。
-//  全期間の未完了・完了・見送りタスクを対象にし、結果をタップするとその日付へ移動する。
+//  全期間の未完了・完了タスクを対象にし、結果をタップするとその日付へ移動する。
 //
 
 import SwiftUI
@@ -14,12 +14,11 @@ struct TaskSearchView: View {
     @State private var searchText = ""
     @FocusState private var isSearchFocused: Bool
 
-    /// 検索結果1件分（表示する日付は、タスクは作成日・見送りは見送った日）
+    /// 検索結果1件分（表示する日付はタスクの作成日）
     private struct Result: Identifiable {
         let task: TaskItem
         let status: TaskStatusRow.Status
         let date: Date
-        var reason: String? = nil
 
         var id: UUID { task.id }
     }
@@ -39,13 +38,9 @@ struct TaskSearchView: View {
             .flatMap(\.completedTasks)
             .filter { $0.matches(query) }
             .map { Result(task: $0, status: .completed, date: $0.createdAt) }
-        let skippedResults = vm.archives
-            .flatMap(\.skippedTasks)
-            .filter { $0.task.matches(query) || $0.reason.localizedCaseInsensitiveContains(query) }
-            .map { Result(task: $0.task, status: .skipped, date: $0.skippedAt, reason: $0.reason) }
 
         let calendar = Calendar.current
-        let grouped = Dictionary(grouping: activeResults + archivedResults + skippedResults) {
+        let grouped = Dictionary(grouping: activeResults + archivedResults) {
             calendar.startOfDay(for: $0.date)
         }
         return grouped
@@ -116,7 +111,7 @@ struct TaskSearchView: View {
             ForEach(groupedResults, id: \.day) { group in
                 Section {
                     ForEach(group.results) { result in
-                        TaskStatusRow(task: result.task, status: result.status, reason: result.reason)
+                        TaskStatusRow(task: result.task, status: result.status)
                             .contentShape(Rectangle())
                             .onTapGesture {
                                 vm.jumpToDate(group.day)
