@@ -137,14 +137,14 @@ struct HomeView: View {
 
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
-            // App Store の「Today」と同じ形: 小さな日付の上に大きな「今日」（挨拶は出さない）
+            // 見出しは今日の日付（挨拶は出さない）。大きく「10月24日」、下に小さく曜日
             VStack(alignment: .leading, spacing: 2) {
-                Text(Date().formatted(.dateTime.month().day().weekday(.wide).locale(Locale(identifier: "ja_JP"))))
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(DesignSystem.Colors.textSecondary)
-                Text("今日")
+                Text(Date().formatted(.dateTime.month().day().locale(Locale(identifier: "ja_JP"))))
                     .font(.largeTitle.bold())
                     .foregroundStyle(DesignSystem.Colors.textPrimary)
+                Text(Date().formatted(.dateTime.weekday(.wide).locale(Locale(identifier: "ja_JP"))))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(DesignSystem.Colors.textSecondary)
             }
             Spacer()
             menuButton
