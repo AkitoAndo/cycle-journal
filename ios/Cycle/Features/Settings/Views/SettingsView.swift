@@ -44,14 +44,14 @@ struct SettingsView: View {
                         // 未ログイン
                         HStack {
                             Image(systemName: "person.circle")
-                                .font(DesignSystem.Fonts.screenTitle)
+                                .font(.system(size: 34))
                                 .foregroundColor(.secondary)
 
                             VStack(alignment: .leading) {
                                 Text("未ログイン")
-                                    .font(DesignSystem.Fonts.button)
+                                    .font(.headline)
                                 Text("サインインするとコーチ機能が使えます")
-                                    .font(DesignSystem.Fonts.caption)
+                                    .font(.footnote)
                                     .foregroundColor(.secondary)
                             }
 
@@ -77,31 +77,32 @@ struct SettingsView: View {
                                 ProgressView()
                                     .padding(.trailing, 4)
                                 Text("サインイン中...")
-                                    .font(DesignSystem.Fonts.caption)
+                                    .font(.footnote)
                                     .foregroundColor(.secondary)
                             }
                         }
 
                         if let error = authStore.error {
                             Text(error)
-                                .font(DesignSystem.Fonts.caption)
+                                .font(.footnote)
                                 .foregroundColor(.red)
                         }
                     }
                 }
-                .listRowBackground(GlassListRowBackground())
+                .listRowBackground(DesignSystem.Colors.surface)
 
                 // 料金プラン
                 Section("料金プラン") {
                     premiumRow
                 }
-                .listRowBackground(GlassListRowBackground())
+                .listRowBackground(DesignSystem.Colors.surface)
 
                 // 表示設定
                 Section("表示") {
                     VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
                         Label("外観モード", systemImage: "circle.lefthalf.filled")
-                            .font(DesignSystem.Fonts.bodyMedium)
+                            .font(.body.weight(.medium))
+                            .labelStyle(AccentIconLabelStyle())
 
                         Picker("外観モード", selection: appearanceModeBinding) {
                             ForEach(AppearanceMode.allCases) { mode in
@@ -112,12 +113,12 @@ struct SettingsView: View {
                         .accessibilityIdentifier("appearance_mode_picker")
 
                         Text(appearanceMode.description)
-                            .font(DesignSystem.Fonts.caption)
+                            .font(.footnote)
                             .foregroundColor(.secondary)
                     }
                     .padding(.vertical, DesignSystem.Spacing.xs)
                 }
-                .listRowBackground(GlassListRowBackground())
+                .listRowBackground(DesignSystem.Colors.surface)
 
                 // 通知セクション
                 Section("通知") {
@@ -126,7 +127,7 @@ struct SettingsView: View {
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .foregroundColor(.orange)
                             Text("通知が許可されていません")
-                                .font(DesignSystem.Fonts.caption)
+                                .font(.footnote)
                                 .foregroundColor(.secondary)
                             Spacer()
                             Button("設定を開く") {
@@ -134,7 +135,7 @@ struct SettingsView: View {
                                     UIApplication.shared.open(url)
                                 }
                             }
-                            .font(DesignSystem.Fonts.caption)
+                            .font(.footnote)
                         }
                     }
 
@@ -157,29 +158,34 @@ struct SettingsView: View {
                         }
                     }
                 }
-                .listRowBackground(GlassListRowBackground())
+                .listRowBackground(DesignSystem.Colors.surface)
 
                 // タスクセクション
                 Section("タスク") {
                     VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                         Toggle("完了時に事後情報を記入", isOn: $isPostActionPromptEnabled)
                         Text("タスクをチェックした時に、事実・気づき・次の一手の入力フォームを表示します")
-                            .font(DesignSystem.Fonts.caption)
+                            .font(.footnote)
                             .foregroundColor(.secondary)
                     }
                 }
-                .listRowBackground(GlassListRowBackground())
+                .listRowBackground(DesignSystem.Colors.surface)
 
                 // データセクション
                 Section("データ") {
                     Button(action: { showingDataExport = true }) {
                         HStack {
-                            Image(systemName: "square.and.arrow.up")
-                            Text("データをエクスポート")
+                            Label("データをエクスポート", systemImage: "square.and.arrow.up")
+                                .labelStyle(AccentIconLabelStyle())
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.footnote.weight(.semibold))
+                                .foregroundColor(.secondary)
                         }
                     }
+                    .foregroundColor(.primary)
                 }
-                .listRowBackground(GlassListRowBackground())
+                .listRowBackground(DesignSystem.Colors.surface)
 
                 // サポートセクション
                 Section("サポート") {
@@ -214,7 +220,7 @@ struct SettingsView: View {
                             .foregroundColor(.secondary)
                     }
                 }
-                .listRowBackground(GlassListRowBackground())
+                .listRowBackground(DesignSystem.Colors.surface)
 
                 // サインアウト・アカウント削除（取り消しにくい操作のため最下部に置く）
                 if authStore.state.isAuthenticated {
@@ -240,7 +246,7 @@ struct SettingsView: View {
                         .disabled(isDeletingAccount)
                         .accessibilityIdentifier("delete_account_button")
                     }
-                    .listRowBackground(GlassListRowBackground())
+                    .listRowBackground(DesignSystem.Colors.surface)
                 }
 
                 // デバッグセクション（開発用）
@@ -248,10 +254,11 @@ struct SettingsView: View {
                 Section("開発者オプション") {
                     Button(action: { showingComponentCatalog = true }) {
                         HStack {
-                            Image(systemName: "paintpalette")
-                            Text("Component Catalog")
+                            Label("Component Catalog", systemImage: "paintpalette")
+                                .labelStyle(AccentIconLabelStyle())
                             Spacer()
                             Image(systemName: "chevron.right")
+                                .font(.footnote.weight(.semibold))
                                 .foregroundColor(.secondary)
                         }
                     }
@@ -278,11 +285,10 @@ struct SettingsView: View {
                             .foregroundColor(.secondary)
                     }
                 }
-                .listRowBackground(GlassListRowBackground())
+                .listRowBackground(DesignSystem.Colors.surface)
                 #endif
             }
             .navigationTitle("マイページ")
-            .modifier(GlassNavBarModifier())
             .toolbar {
                 if showsCloseButton {
                     ToolbarItem(placement: .confirmationAction) {
@@ -351,14 +357,14 @@ struct SettingsView: View {
         HStack(spacing: DesignSystem.Spacing.md) {
             if let initial = displayName?.first {
                 Text(String(initial))
-                    .font(DesignSystem.Fonts.button)
+                    .font(.headline)
                     .foregroundColor(.white)
                     .frame(width: 36, height: 36)
                     .background(Circle().fill(DesignSystem.Colors.accent))
                     .accessibilityHidden(true)
             } else {
                 Image(systemName: "person.circle.fill")
-                    .font(DesignSystem.Fonts.screenTitle)
+                    .font(.system(size: 34))
                     .foregroundColor(DesignSystem.Colors.accent)
                     .accessibilityHidden(true)
             }
@@ -366,15 +372,15 @@ struct SettingsView: View {
             VStack(alignment: .leading) {
                 if let displayName {
                     Text(displayName)
-                        .font(DesignSystem.Fonts.button)
+                        .font(.headline)
                     if let email = user?.email {
                         Text(email)
-                            .font(DesignSystem.Fonts.caption)
+                            .font(.footnote)
                             .foregroundColor(.secondary)
                     }
                 } else {
                     Text(user?.email ?? "ログイン済み")
-                        .font(DesignSystem.Fonts.button)
+                        .font(.headline)
                 }
             }
 
@@ -392,9 +398,9 @@ struct SettingsView: View {
                 .foregroundColor(DesignSystem.Colors.accent)
             VStack(alignment: .leading) {
                 Text("Treow 無料版")
-                    .font(DesignSystem.Fonts.button)
+                    .font(.headline)
                 Text("現在、すべての機能を無料で利用できます")
-                    .font(DesignSystem.Fonts.caption)
+                    .font(.footnote)
                     .foregroundColor(.secondary)
             }
             Spacer()
@@ -527,16 +533,16 @@ struct DataExportView: View {
                 Spacer()
 
                 Image(systemName: "square.and.arrow.up")
-                    .font(DesignSystem.Fonts.heroIcon)
+                    .font(.system(size: 50))
                     .foregroundColor(DesignSystem.Colors.accent)
 
                 VStack(spacing: DesignSystem.Spacing.sm) {
                     Text("データエクスポート")
-                        .font(DesignSystem.Fonts.title2)
+                        .font(.title2)
                         .fontWeight(.bold)
 
                     Text("日記、タスク、振り返り、コーチ会話の\nデータをエクスポートします")
-                        .font(DesignSystem.Fonts.body)
+                        .font(.body)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                 }
@@ -544,7 +550,7 @@ struct DataExportView: View {
                 // フォーマット選択
                 VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
                     Text("エクスポート形式")
-                        .font(DesignSystem.Fonts.headline)
+                        .font(.headline)
 
                     Picker("形式", selection: $selectedFormat) {
                         ForEach(ExportFormat.allCases) { format in
@@ -575,7 +581,7 @@ struct DataExportView: View {
                         Text("エクスポートする")
                     }
                 }
-                .font(DesignSystem.Fonts.button)
+                .font(.headline)
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding()
@@ -607,11 +613,11 @@ struct DataExportView: View {
     private func dataCountRow(label: String, count: Int) -> some View {
         HStack {
             Text(label)
-                .font(DesignSystem.Fonts.body)
+                .font(.body)
                 .foregroundColor(.secondary)
             Spacer()
             Text("\(count)件")
-                .font(DesignSystem.Fonts.body)
+                .font(.body)
                 .foregroundColor(.secondary)
         }
     }
@@ -658,4 +664,18 @@ struct DataExportView: View {
 
 #Preview {
     SettingsView()
+}
+
+// MARK: - Label Style
+
+/// 設定アプリのように、行の先頭アイコンだけアクセント色にする
+struct AccentIconLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: DesignSystem.Spacing.md) {
+            configuration.icon
+                .foregroundStyle(DesignSystem.Colors.accent)
+                .frame(width: 24)
+            configuration.title
+        }
+    }
 }
