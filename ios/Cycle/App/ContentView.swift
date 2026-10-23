@@ -59,20 +59,15 @@ struct ContentView: View {
             // 非選択タブは accessibilityHidden + allowsHitTesting(false) で
             // VoiceOver / タップ対象から外す。
             ZStack {
+                // タブは3つ（U-04）: ホーム / コーチ / 記録。マイページはホーム右上から開く
                 tabContainer(index: 0) {
                     NavigationStack { HomeView() }
                 }
                 tabContainer(index: 1) {
-                    NavigationStack { JournalListView() }
-                }
-                tabContainer(index: 2) {
                     NavigationStack { CoachHomeView() }
                 }
-                tabContainer(index: 3) {
-                    NavigationStack { TaskListView() }
-                }
-                tabContainer(index: 4) {
-                    MyPageView()
+                tabContainer(index: 2) {
+                    NavigationStack { RecordsView() }
                 }
             }
             .padding(.bottom, 55)
@@ -80,7 +75,7 @@ struct ContentView: View {
             CustomTabBar(selectedTab: $selectedTab)
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToCoachChat)) { _ in
-            selectedTab = 2
+            selectedTab = 1
             coachStore.shouldOpenChat = true
         }
         .ignoresSafeArea(.keyboard)
@@ -140,7 +135,10 @@ struct CustomTabBar: View {
     @Namespace private var indicatorNamespace
 
     var body: some View {
+        // 各タブを固定幅にし、間と両端を Spacer で埋めて、見た目の隙間
+        // （端・ホーム・ロゴ・記録・端）がすべて同じになるようにする
         HStack(spacing: 0) {
+            Spacer()
             TabBarButton(
                 icon: "house",
                 selectedIcon: "house.fill",
@@ -150,49 +148,31 @@ struct CustomTabBar: View {
                 namespace: indicatorNamespace,
                 action: { select(0) }
             )
-
-            TabBarButton(
-                icon: "leaf",
-                selectedIcon: "leaf.fill",
-                label: "ジャーナル",
-                identifier: "tab_Journal",
-                isSelected: selectedTab == 1,
-                namespace: indicatorNamespace,
-                action: { select(1) }
-            )
-
+            Spacer()
             TabBarButton(
                 // Cycleロゴ（大樹アイコン）をそのまま表示。中央タブとして大きめに
                 icon: "CycleIcon",
                 selectedIcon: "CycleIcon",
-                label: "セッション",
+                label: "コーチ",
                 identifier: "tab_Coach",
                 isAssetIcon: true,
                 isProminent: true,
+                isSelected: selectedTab == 1,
+                namespace: indicatorNamespace,
+                action: { select(1) }
+            )
+            Spacer()
+            TabBarButton(
+                // 家のアイコンと同じ重さに見える「閉じた本」
+                icon: "book.closed",
+                selectedIcon: "book.closed.fill",
+                label: "記録",
+                identifier: "tab_Records",
                 isSelected: selectedTab == 2,
                 namespace: indicatorNamespace,
                 action: { select(2) }
             )
-
-            TabBarButton(
-                icon: "checklist",
-                selectedIcon: "checklist.checked",
-                label: "タスクリスト",
-                identifier: "tab_Tasks",
-                isSelected: selectedTab == 3,
-                namespace: indicatorNamespace,
-                action: { select(3) }
-            )
-
-            TabBarButton(
-                icon: "person",
-                selectedIcon: "person.fill",
-                label: "マイページ",
-                identifier: "tab_MyPage",
-                isSelected: selectedTab == 4,
-                namespace: indicatorNamespace,
-                action: { select(4) }
-            )
+            Spacer()
         }
         .frame(height: 55)
         .background(DesignSystem.Colors.background)
@@ -239,6 +219,7 @@ struct TabBarButton: View {
                     } else {
                         // トランジションなしで即アイコン切替（ふわっとしない）
                         Image(systemName: isSelected ? selectedIcon : icon)
+                            .font(.system(size: 22, weight: .regular))
                     }
                 }
                 .font(.system(size: DesignSystem.FontSize.title3))
@@ -252,7 +233,9 @@ struct TabBarButton: View {
             }
             .foregroundStyle(isSelected ? DesignSystem.Colors.accent : DesignSystem.Colors.textSecondary)
             .padding(.vertical, 6)
-            .frame(maxWidth: .infinity)
+            // 見た目の幅で固定する（中央ロゴは描画サイズと同じ 72pt）。
+            // タブバー側が Spacer で隙間を等しく配る
+            .frame(width: isProminent ? iconSize : 56)
         }
         .accessibilityLabel(label)
         .accessibilityIdentifier(identifier)
