@@ -2,6 +2,11 @@
 //  CoachHomeView.swift
 //  CycleJournal
 //
+//  コーチタブ（U-04 実装単位3で iOS 17 の形に）。
+//  - 大きなタイトル「コーチ」、右上に履歴
+//  - 呼吸に合わせて広がる大樹ロゴ（タップで呼吸セッション）
+//  - 「話しかける」の大きなボタンと、日記から話す / 1週間をふりかえる のリスト
+//
 
 import SwiftUI
 
@@ -15,116 +20,145 @@ struct CoachHomeView: View {
     @State private var showingHistory = false
     @State private var showingDiaryPicker = false
     @State private var showingBreathing = false
+    @State private var showingWeeklyReview = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.cycleTabIsActive) private var cycleTabIsActive
 
+    private var week: WeeklyReviewWeek { WeeklyReviewWeek(containing: Date()) }
+
     var body: some View {
-        VStack(spacing: 0) {
-                sessionHeader
-                Spacer()
-
-                Button(action: { showingBreathing = true }) {
-                    ZStack {
-                        // 呼吸に合わせて広がるハロー。正弦波駆動の連続アニメーションで
-                        // 折り返しの止まりがなく、常に滑らかに満ち引きする
-                        TimelineView(.animation(paused: !shouldAnimateBreathing)) { context in
-                            breathingVisual(
-                                phase: shouldAnimateBreathing
-                                    ? breathPhase(at: context.date)
-                                    : 0.5
-                            )
-                        }
-                    }
-                    // ハローの見た目いっぱいまでタップ可能にする
-                    .frame(width: 200, height: 200)
-                    .contentShape(Circle())
-                }
-                .buttonStyle(PressableButtonStyle(scale: 0.94))
-                .accessibilityLabel("呼吸セッションを始める")
-                .accessibilityIdentifier("coach_breathing_button")
-                .staggeredAppear(index: 0, group: "coach_home")
-
-                Text("タップして、呼吸を整える")
-                    .font(DesignSystem.Fonts.caption)
-                    .foregroundStyle(DesignSystem.Colors.textSecondary)
-                    .padding(.top, DesignSystem.Spacing.md)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 28) {
+                header
+                    .staggeredAppear(index: 0, group: "coach_home")
+                hero
                     .staggeredAppear(index: 1, group: "coach_home")
-
-                Spacer().frame(height: DesignSystem.Spacing.xl)
-
-                // 挨拶メッセージ
-                VStack(spacing: DesignSystem.Spacing.sm) {
-                    Text(greetingMessage)
-                        .font(DesignSystem.Fonts.sectionTitle)
-                        .foregroundStyle(DesignSystem.Colors.textPrimary)
-                        .multilineTextAlignment(.center)
-
-                    Text("今日はどんな一日だった？")
-                        .font(DesignSystem.Fonts.body)
-                        .foregroundStyle(DesignSystem.Colors.textSecondary)
-                        .multilineTextAlignment(.center)
-                }
-                .padding(.horizontal, DesignSystem.Spacing.lg)
-                .staggeredAppear(index: 2, group: "coach_home")
-
-                Spacer()
-
-                // アクションボタン
-                VStack(spacing: DesignSystem.Spacing.lg) {
-                    PrimaryButton("話しかける", icon: "bubble.left") {
-                        startNewChat()
-                    }
-
-                    SecondaryButton("日記から話す", icon: "book") {
-                        showingDiaryPicker = true
-                    }
-                }
-                .padding(.horizontal, DesignSystem.Spacing.lg)
-                .padding(.bottom, DesignSystem.Spacing.xxl * 2)
-                .staggeredAppear(index: 3, group: "coach_home")
+                talkButton
+                    .staggeredAppear(index: 2, group: "coach_home")
+                otherWays
+                    .staggeredAppear(index: 3, group: "coach_home")
             }
-            .background(DesignSystem.Colors.backgroundGradient)
-            .navigationBarHidden(true)
-            .fullScreenCover(isPresented: $showingChat) {
-                CoachChatView()
-                    .environmentObject(coachStore)
-                    .environmentObject(authStore)
+            .padding(.horizontal, DesignSystem.Spacing.xl)
+            .padding(.top, DesignSystem.Spacing.sm)
+            // タブバー中央の大樹ロゴ（上に飛び出している）に隠れないよう下を空ける
+            .padding(.bottom, 88)
+        }
+        .background(DesignSystem.Colors.backgroundGradient)
+        .navigationBarHidden(true)
+        .fullScreenCover(isPresented: $showingChat) {
+            CoachChatView()
+                .environmentObject(coachStore)
+                .environmentObject(authStore)
+        }
+        .onReceive(coachStore.$shouldOpenChat) { shouldOpen in
+            if shouldOpen {
+                showingChat = true
+                coachStore.shouldOpenChat = false
             }
-            .onReceive(coachStore.$shouldOpenChat) { shouldOpen in
-                if shouldOpen {
-                    showingChat = true
-                    coachStore.shouldOpenChat = false
-                }
-            }
-            .sheet(isPresented: $showingHistory) {
-                SessionHistoryView()
-                    .environmentObject(coachStore)
-                    .environmentObject(meditationStore)
-                    .softSheet()
-            }
-            .sheet(isPresented: $showingBreathing) {
-                BreathingSessionView()
-                    .environmentObject(meditationStore)
-                    .softSheet()
-            }
-            .sheet(isPresented: $showingDiaryPicker) {
-                DiaryPickerView(onSelect: { entry in
-                    let diaryContent = entry.text
-                    showingDiaryPicker = false
-
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        Task {
-                            await coachStore.startSessionWithDiary(diaryContent)
-                        }
-                        showingChat = true
-                    }
-                })
-                .environmentObject(journalViewModel)
+        }
+        .sheet(isPresented: $showingHistory) {
+            SessionHistoryView()
+                .environmentObject(coachStore)
+                .environmentObject(meditationStore)
                 .softSheet()
+        }
+        .sheet(isPresented: $showingBreathing) {
+            BreathingSessionView()
+                .environmentObject(meditationStore)
+                .softSheet()
+        }
+        .sheet(isPresented: $showingDiaryPicker) {
+            DiaryPickerView(onSelect: { entry in
+                let diaryContent = entry.text
+                showingDiaryPicker = false
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    Task {
+                        await coachStore.startSessionWithDiary(diaryContent)
+                    }
+                    showingChat = true
+                }
+            })
+            .environmentObject(journalViewModel)
+            .softSheet()
+        }
+        .sheet(isPresented: $showingWeeklyReview) {
+            WeeklyReviewPrepView(week: week) { material in
+                showingWeeklyReview = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    Task {
+                        await coachStore.startWeeklyReview(material: material)
+                    }
+                    showingChat = true
+                }
             }
+            .softSheet()
+        }
     }
 
-    // MARK: - 呼吸ハロー
+    // MARK: - ヘッダー（大きなタイトル）
+
+    private var header: some View {
+        HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("コーチ")
+                    .font(.largeTitle.bold())
+                    .foregroundStyle(DesignSystem.Colors.textPrimary)
+                Text("Treow")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(DesignSystem.Colors.textSecondary)
+            }
+            Spacer()
+            Button(action: { showingHistory = true }) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.system(size: 22))
+                    .foregroundStyle(DesignSystem.Colors.accent)
+                    .frame(width: 44, height: 44)
+            }
+            .accessibilityLabel("履歴")
+            .accessibilityIdentifier("coach_history_button")
+        }
+    }
+
+    // MARK: - 呼吸ハローと問いかけ
+
+    private var hero: some View {
+        VStack(spacing: DesignSystem.Spacing.md) {
+            Button(action: { showingBreathing = true }) {
+                // 呼吸に合わせて広がるハロー。正弦波駆動の連続アニメーションで
+                // 折り返しの止まりがなく、常に滑らかに満ち引きする
+                TimelineView(.animation(paused: !shouldAnimateBreathing)) { context in
+                    breathingVisual(
+                        phase: shouldAnimateBreathing
+                            ? breathPhase(at: context.date)
+                            : 0.5
+                    )
+                }
+                // ハローの見た目いっぱいまでタップ可能にする
+                .frame(width: 200, height: 200)
+                .contentShape(Circle())
+            }
+            .buttonStyle(PressableButtonStyle(scale: 0.94))
+            .accessibilityLabel("呼吸セッションを始める")
+            .accessibilityIdentifier("coach_breathing_button")
+
+            Text("タップして、呼吸を整える")
+                .font(.caption)
+                .foregroundStyle(DesignSystem.Colors.textSecondary)
+
+            VStack(spacing: DesignSystem.Spacing.xs) {
+                Text(greetingMessage)
+                    .font(.headline)
+                    .foregroundStyle(DesignSystem.Colors.textPrimary)
+                Text("今日はどんな一日だった？")
+                    .font(.body)
+                    .foregroundStyle(DesignSystem.Colors.textSecondary)
+            }
+            .multilineTextAlignment(.center)
+            .padding(.top, DesignSystem.Spacing.sm)
+        }
+        .frame(maxWidth: .infinity)
+    }
 
     private var shouldAnimateBreathing: Bool {
         cycleTabIsActive
@@ -133,6 +167,7 @@ struct CoachHomeView: View {
             && !showingHistory
             && !showingDiaryPicker
             && !showingBreathing
+            && !showingWeeklyReview
     }
 
     /// 1呼吸（吸って吐く）の周期（秒）。ゆったりした腹式呼吸のテンポ
@@ -187,29 +222,43 @@ struct CoachHomeView: View {
             .opacity(0.55 + 0.45 * (1 - p))
     }
 
-    // MARK: - Header
+    // MARK: - 話しかける
 
-    private var sessionHeader: some View {
-        HStack(alignment: .center) {
-            Text("セッション")
-                .font(DesignSystem.Fonts.screenTitle)
-                .foregroundStyle(DesignSystem.Colors.textPrimary)
-
-            Spacer()
-
-            Button(action: { showingHistory = true }) {
-                Image(systemName: "clock.arrow.circlepath")
-                    // ジャーナル/タスクのヘッダーボタンとサイズを統一
-                    .font(.system(size: 21))
-                    .foregroundStyle(DesignSystem.Colors.textSecondary)
-                    .modifier(GlassIconModifier())
-            }
-            .accessibilityLabel("セッション履歴")
-            .accessibilityIdentifier("coach_history_button")
+    /// この画面でいちばん目立つ1つのボタン
+    private var talkButton: some View {
+        Button(action: startNewChat) {
+            Label("話しかける", systemImage: "bubble.left")
+                .font(.headline)
+                .foregroundStyle(Self.talkForeground)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, DesignSystem.Spacing.mlg)
+                .background(Capsule().fill(DesignSystem.Colors.accent))
         }
-        .padding(.horizontal, DesignSystem.Spacing.lg)
-        .padding(.vertical, DesignSystem.Spacing.md)
-        .background(DesignSystem.Colors.background)
+        .buttonStyle(PressableButtonStyle())
+        .accessibilityIdentifier("coach_talk_button")
+    }
+
+    /// 茶色のボタンの上の文字色（ライト/ダークで同じ見た目にするため固定色）
+    private static let talkForeground = Color(red: 0.99, green: 0.97, blue: 0.93)
+
+    // MARK: - ほかの話し方
+
+    private var otherWays: some View {
+        let isReviewDay = week.isReviewDay(Date())
+        return InsetGroup {
+            InsetNavigationRow(title: "日記から話す", systemImage: "book") {
+                showingDiaryPicker = true
+            }
+            InsetRowDivider(leadingInset: 56)
+            InsetNavigationRow(
+                title: "1週間をふりかえる",
+                systemImage: "leaf",
+                detail: isReviewDay ? "今日" : "日曜の夜",
+                detailColor: isReviewDay ? DesignSystem.Colors.accent : DesignSystem.Colors.textSecondary
+            ) {
+                showingWeeklyReview = true
+            }
+        }
     }
 
     // MARK: - Helpers
