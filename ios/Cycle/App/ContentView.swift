@@ -170,8 +170,8 @@ struct CustomTabBar: View {
                 action: { select(2) }
             )
         }
-        // 3つしかないので、両端に広げず中央寄りに詰める（左右と中央ロゴの間隔をそろえる）
-        .frame(maxWidth: 276)
+        // 3つの中心を画面幅の 1/4・1/2・3/4 に置き、端・ホーム・ロゴ・記録・端の間隔を等しくする
+        .containerRelativeFrame(.horizontal) { width, _ in width * 0.75 }
         .frame(maxWidth: .infinity)
         .frame(height: 55)
         .background(DesignSystem.Colors.background)
