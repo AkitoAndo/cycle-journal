@@ -29,6 +29,14 @@ struct CoachChatView: View {
         "考えを整理したい",
     ]
 
+    /// 週のふりかえり（U-03）の書き出しの提案。1週間を思い返すきっかけにする
+    private static let weeklyReviewStarterSuggestions = [
+        "心に残っていることがある",
+        "今週はちょっと疲れた",
+        "うまくいったことがあった",
+        "まだうまく言葉にならない",
+    ]
+
     private var isLoggedIn: Bool {
         authStore.state.isAuthenticated
     }
@@ -194,14 +202,24 @@ struct CoachChatView: View {
 
     // MARK: - Conversation Starters
 
-    /// 初回挨拶だけの状態（ユーザーがまだ発言していない）かどうか
+    /// 初回挨拶だけの状態（ユーザーがまだ発言していない）かどうか。
+    /// 週のふりかえりは自動で送る最初のメッセージを発言に数えない
     private var showsConversationStarters: Bool {
-        !coachStore.isLoading && !visibleMessages.contains { $0.role == .user }
+        var userMessages = visibleMessages.filter { $0.role == .user }
+        if coachStore.isCurrentSessionWeeklyReview,
+           userMessages.first?.content == CoachStore.weeklyReviewOpening {
+            userMessages.removeFirst()
+        }
+        return !coachStore.isLoading && userMessages.isEmpty
+    }
+
+    private var starterSuggestions: [String] {
+        coachStore.isCurrentSessionWeeklyReview ? Self.weeklyReviewStarterSuggestions : Self.starterSuggestions
     }
 
     private var conversationStarters: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
-            ForEach(Self.starterSuggestions, id: \.self) { starter in
+            ForEach(starterSuggestions, id: \.self) { starter in
                 Button {
                     sendCount += 1
                     isTextFieldFocused = false

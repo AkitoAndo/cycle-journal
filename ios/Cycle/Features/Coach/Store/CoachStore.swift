@@ -19,6 +19,11 @@ class CoachStore: ObservableObject {
     @Published var showReauthPrompt: Bool = false
     /// ContentView → CoachHomeView へチャット画面を開くよう通知するフラグ
     @Published var shouldOpenChat: Bool = false
+    /// 週のふりかえり（U-03）として始めたセッションの ID。返答候補の出し分けに使う
+    @Published private(set) var weeklyReviewSessionId: UUID?
+
+    /// 週のふりかえりを始めるときに自動で送る最初のメッセージ
+    static let weeklyReviewOpening = "今週をふりかえりたいです"
 
     private let userDefaults = UserDefaults.standard
     private var sessionsKey: String {
@@ -303,14 +308,26 @@ class CoachStore: ObservableObject {
     func startWeeklyReview(material: String?) async {
         await startSession(
             context: material,
-            initialUserMessage: "今週をふりかえりたいです",
-            mockMessage: "今週も、おつかれさま。\n\n今週をふりかえって、いちばん心に残っていることは何かな？"
+            initialUserMessage: Self.weeklyReviewOpening,
+            mockMessage: "今週も、おつかれさま。\n\n今週をふりかえって、いちばん心に残っていることは何かな？",
+            isWeeklyReview: true
         )
+    }
+
+    /// 現在のセッションが週のふりかえりか
+    var isCurrentSessionWeeklyReview: Bool {
+        guard let id = currentSession?.id else { return false }
+        return id == weeklyReviewSessionId
     }
 
     /// 最初のメッセージを送ってセッションを開始する（context はコーチに渡す日記などの材料）
     @MainActor
-    private func startSession(context: String?, initialUserMessage: String, mockMessage: String) async {
+    private func startSession(
+        context: String?,
+        initialUserMessage: String,
+        mockMessage: String,
+        isWeeklyReview: Bool = false
+    ) async {
         // 先にローディング状態にしてからセッションを作成
         isLoading = true
         error = nil
@@ -318,6 +335,7 @@ class CoachStore: ObservableObject {
 
         let session = startNewSession(withContext: context)
         currentSession = session
+        weeklyReviewSessionId = isWeeklyReview ? session.id : nil
 
         do {
             if useAPI {
