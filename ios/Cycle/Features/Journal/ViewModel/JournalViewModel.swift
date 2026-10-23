@@ -446,12 +446,20 @@ final class JournalViewModel: ObservableObject {
         }
     }
 
-    /// UserDefaultsから利用可能なタグを読み込み
+    /// 初めて使うときに用意しておくタグ。保存済みのタグがまったくない（キー自体がない）ときだけ使う。
+    /// ユーザーが全部消した場合は空の配列が保存されているので、復活はしない
+    static let defaultTags = ["気づき", "感謝", "運動", "仕事", "読書"]
+
+    /// UserDefaultsから利用可能なタグを読み込み（未保存なら標準のタグを保存して返す）
     private func loadAvailableTags() -> [String] {
-        guard let data = UserDefaults.standard.data(
-            forKey: UserDataScope.scopedDefaultsKey("availableTags")
-        ),
-              let tags = try? JSONDecoder().decode([String].self, from: data) else {
+        let key = UserDataScope.scopedDefaultsKey("availableTags")
+        guard let data = UserDefaults.standard.data(forKey: key) else {
+            if let encoded = try? JSONEncoder().encode(Self.defaultTags) {
+                UserDefaults.standard.set(encoded, forKey: key)
+            }
+            return Self.defaultTags
+        }
+        guard let tags = try? JSONDecoder().decode([String].self, from: data) else {
             return []
         }
         return tags

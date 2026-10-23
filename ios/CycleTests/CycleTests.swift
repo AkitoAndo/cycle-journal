@@ -329,6 +329,22 @@ struct JournalViewModelTests {
         #expect(vm.deletedEntries.contains { $0.id == toDelete.id } == true)
     }
 
+    @Test func seedsDefaultTagsOnFirstLaunch() {
+        // init() でタグのキーを消しているので、初回起動と同じ状態
+        let vm = JournalViewModel()
+        #expect(vm.availableTags == JournalViewModel.defaultTags)
+    }
+
+    @Test func keepsEmptyTagsWhenUserRemovedAll() {
+        // ユーザーが全部消した（空の配列が保存されている）ときは復活させない
+        UserDefaults.standard.set(
+            try! JSONEncoder().encode([String]()),
+            forKey: UserDataScope.scopedDefaultsKey("availableTags")
+        )
+        let vm = JournalViewModel()
+        #expect(vm.availableTags.isEmpty)
+    }
+
     @Test func addTag() {
         let vm = JournalViewModel()
         vm.addTag("新しいタグ")
