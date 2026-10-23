@@ -27,6 +27,8 @@ struct HomeView: View {
     @State private var showingTimeline = false
     /// 日記の新規作成
     @State private var showingNewEntry = false
+    /// 今日のタスクの新規作成
+    @State private var showingNewTask = false
     /// 今週のふりかえりの開始前画面
     @State private var showingWeeklyReview = false
     /// タップで開くタスクのプレビュー
@@ -91,7 +93,7 @@ struct HomeView: View {
             .padding(.horizontal, DesignSystem.Spacing.xl)
             .padding(.top, DesignSystem.Spacing.sm)
             // タブバー中央の大樹ロゴ（上に飛び出している）に隠れないよう下を空ける
-            .padding(.bottom, DesignSystem.Spacing.xxl * 2)
+            .padding(.bottom, 88)
         }
         .background(DesignSystem.Colors.backgroundGradient)
         .navigationBarHidden(true)
@@ -107,6 +109,10 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showingNewEntry) {
             JournalNewEntryView(vm: journalViewModel)
+                .softSheet()
+        }
+        .sheet(isPresented: $showingNewTask) {
+            TaskNewEntryView(vm: taskViewModel, date: Date())
                 .softSheet()
         }
         .sheet(item: $previewingTask) { task in
@@ -127,12 +133,12 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - ヘッダー（大きなタイトル）
+    // MARK: - ヘッダー（大きなタイトル＝挨拶）
 
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("ホーム")
+                Text(greeting)
                     .font(.largeTitle.bold())
                     .foregroundStyle(DesignSystem.Colors.textPrimary)
                 Text(Date().formatted(.dateTime.month().day().weekday(.wide).locale(Locale(identifier: "ja_JP"))))
@@ -175,13 +181,15 @@ struct HomeView: View {
     private var promptCard: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.lg) {
             VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
-                Text(todayJournalCount > 0 ? "\(greeting)・今日は\(todayJournalCount)つ書いています" : greeting)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Self.promptForeground.opacity(0.75))
                 Text(prompt)
                     .font(.title2.bold())
                     .foregroundStyle(Self.promptForeground)
                     .fixedSize(horizontal: false, vertical: true)
+                if todayJournalCount > 0 {
+                    Text("今日は\(todayJournalCount)つ書いています")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Self.promptForeground.opacity(0.75))
+                }
             }
 
             HStack(spacing: DesignSystem.Spacing.md) {
@@ -246,17 +254,26 @@ struct HomeView: View {
 
     private var stepsSection: some View {
         HomeSection("今日の一歩") {
-            if todayTasks.isEmpty {
-                Text("今日のタスクはまだありません")
-                    .font(.body)
-                    .foregroundStyle(DesignSystem.Colors.textTertiary)
-                    .homeRow()
-            } else {
-                ForEach(Array(todayTasks.prefix(5).enumerated()), id: \.element.id) { index, task in
-                    if index > 0 { HomeRowDivider(leadingInset: 50) }
-                    taskRow(task)
-                }
+            ForEach(Array(todayTasks.prefix(5).enumerated()), id: \.element.id) { index, task in
+                if index > 0 { HomeRowDivider(leadingInset: 50) }
+                taskRow(task)
             }
+            if !todayTasks.isEmpty { HomeRowDivider(leadingInset: 50) }
+            // リマインダーAppと同じく、リストの最後から追加できる
+            Button(action: { showingNewTask = true }) {
+                HStack(spacing: DesignSystem.Spacing.md) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundStyle(DesignSystem.Colors.accent)
+                    Text(todayTasks.isEmpty ? "今日の一歩を追加" : "一歩を追加")
+                        .font(.body)
+                        .foregroundStyle(DesignSystem.Colors.accent)
+                    Spacer(minLength: 0)
+                }
+                .homeRow()
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("home_add_step_button")
         }
     }
 
@@ -298,22 +315,21 @@ struct HomeView: View {
         let isReviewDay = week.isReviewDay(Date())
         return HomeSection("今週") {
             VStack(spacing: DesignSystem.Spacing.lg) {
-                HStack(spacing: DesignSystem.Spacing.lg) {
+                VStack(spacing: DesignSystem.Spacing.sm) {
                     WeeklyTreeView(leafCount: weekLeafCount)
-                        .frame(width: 56, height: 56)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("今週の樹")
-                            .font(.headline)
-                            .foregroundStyle(DesignSystem.Colors.textPrimary)
-                        Text(weekLeafCount == 0 ? "これから葉がついていきます" : "\(weekLeafCount)枚の葉がつきました")
-                            .font(.subheadline)
-                            .foregroundStyle(DesignSystem.Colors.textSecondary)
-                    }
-                    Spacer(minLength: 0)
+                        .frame(height: 130)
+                    Text(weekLeafCount == 0 ? "これから葉がついていきます" : "今週、\(weekLeafCount)枚の葉がつきました")
+                        .font(.headline)
+                        .foregroundStyle(DesignSystem.Colors.textPrimary)
+                    Text("日記・対話・瞑想・完了した一歩が葉になります")
+                        .font(.footnote)
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
                 }
+                .frame(maxWidth: .infinity)
                 HomeWeekStrip(days: week.days()) { recordCount(on: $0) > 0 }
             }
-            .padding(DesignSystem.Spacing.lg)
+            .padding(.horizontal, DesignSystem.Spacing.md)
+            .padding(.vertical, DesignSystem.Spacing.lg)
 
             HomeRowDivider(leadingInset: DesignSystem.Spacing.lg)
 
