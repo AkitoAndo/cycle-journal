@@ -161,6 +161,7 @@ export default defineConfig({
             items: [
               { text: 'U-01: オンボーディング', link: '/backlog/ux/U-01-onboarding' },
               { text: 'U-02: エラーハンドリング', link: '/backlog/ux/U-02-error-handling' },
+              { text: 'U-03: 1週間のふりかえりサイクル', link: '/backlog/ux/U-03-weekly-cycle' },
             ],
           },
         ],
