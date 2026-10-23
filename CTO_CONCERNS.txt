@@ -159,6 +159,15 @@ CTO_CONCERNS.txt - データ・コード周りの懸念点メモ（CTO 判断用
 対応案: 1 は日記を複数件渡せる API にする。2 はプライバシーポリシーの記載と
       合わせて決める（保存しない場合も、生成された一文・一歩は保存する）。
       3〜4 は D-01 / D-07 の API 拡張とまとめて設計する。
+追記（2026-10-23、feature/weekly-review-entry）:
+      週のふりかえりの入口を、API を変えずに実装した。選んだ日記・完了タスクを
+      1つの文にまとめ、「日記から話す」と同じ CoachRequest.diaryContent で送っている
+      （ios/Cycle/Features/WeeklyReview/Model/WeeklyReviewWeek.swift:material）。
+      サーバー側では次のとおり扱われる（api/app/routers/coach.py:_remember_diary_context）。
+        - セッションの diary_context として Firestore に保存される（= 2 の「保存する」状態）
+        - coach_context_diary_max_chars（8,000字）で切られる。日記の多い週は後半が落ちる
+        - コーチには「日記」として渡るため、週のふりかえり用の問い方にはならない
+      専用の API・プロンプトを用意するときは、この暫定の送り方を置き換える。
 
 [C-01] Swift 6 で将来エラーになる並行性の警告（中）
 --------------------------------------------------------------------------------
