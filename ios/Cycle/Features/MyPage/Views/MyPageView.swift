@@ -12,8 +12,11 @@
 import SwiftUI
 
 struct MyPageView: View {
+    /// シートとして開いたときに右上に「完了」を出す（U-04: ホーム右上から開く）
+    var showsCloseButton = false
+
     var body: some View {
-        SettingsView()
+        SettingsView(showsCloseButton: showsCloseButton)
     }
 }
 

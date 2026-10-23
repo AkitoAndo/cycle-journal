@@ -385,3 +385,31 @@ CHANGES_2.txt - Treow 開発記録【1.0.11 以降】
       スクリーンショット、オンボーディング）を書いた。
 目的: タブを確定させてから機能とデザインを考える（オーナー要望）。
 結果: ドキュメントのみ。
+
+[2026-10-24] 下タブを3つ（ホーム / コーチ / 記録）にする（U-04 実装単位1）
+--------------------------------------------------------------------------------
+変更ファイル:
+  - ios/Cycle/App/ContentView.swift
+  - ios/Cycle/Features/Records/Views/RecordsView.swift（新規）
+  - ios/Cycle/Features/Home/Views/HomeView.swift
+  - ios/Cycle/Features/MyPage/Views/MyPageView.swift
+  - ios/Cycle/Features/Settings/Views/SettingsView.swift
+  - docs/backlog/ux/U-04-three-tabs.md
+内容:
+  Before: 5タブ（ホーム / ジャーナル / セッション（中央ロゴ）/ タスクリスト / マイページ）。
+  After:  3タブ（ホーム / コーチ（中央ロゴ）/ 記録）。
+  1) タブバー: 「ジャーナル」「タスクリスト」「マイページ」を外し、中央ロゴのラベルを
+     「セッション」から「コーチ」に。右に「記録」（本のアイコン、識別子 tab_Records）。
+     コーチの対話を開く通知（navigateToCoachChat）の移動先を 2 → 1 に修正。
+  2) 記録タブ: 暫定の RecordsView。上の切り替え（日記 / 一歩）で、既存の日記一覧
+     （JournalListView）とタスク一覧（TaskListView）を出し分ける。機能はすべてそのまま。
+     U-04 実装単位2で、1画面に「日記」と「一歩」の2つのリストを並べる形に置き換える。
+  3) マイページ: ホーム右上に人のアイコン（person.circle）を追加。タップでマイページ
+     （SettingsView）をシートで開く。シートのときは右上に「完了」。
+目的: 下タブを確定させてから機能とデザインを考える（オーナー決定: 3つに絞る）。
+結果: ビルド成功。iPhone 16 Pro (iOS 18.1) シミュレータで、3つのタブ、記録タブの
+      切り替えで日記一覧が出ること、ホーム右上からマイページが開き「完了」で閉じることを確認。
+      ※ 記録タブの「一歩」側（タスク一覧）は切り替えて画面では未確認。
+      ※ UI テスト・Maestro は tab_Journal / tab_Tasks / tab_MyPage を使っていなかった
+        （ContentView 以外に参照なし）。
+      ※ ユニットテストは流していない（C-04）。

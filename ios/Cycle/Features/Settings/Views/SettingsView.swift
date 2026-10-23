@@ -6,6 +6,9 @@
 import SwiftUI
 
 struct SettingsView: View {
+    /// シートとして開いたときに右上に「完了」を出す
+    var showsCloseButton = false
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var authStore: AuthStore
     @EnvironmentObject var journalViewModel: JournalViewModel
     @EnvironmentObject var taskViewModel: TaskViewModel
@@ -280,6 +283,14 @@ struct SettingsView: View {
             }
             .navigationTitle("マイページ")
             .modifier(GlassNavBarModifier())
+            .toolbar {
+                if showsCloseButton {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("完了") { dismiss() }
+                            .foregroundStyle(DesignSystem.Colors.accent)
+                    }
+                }
+            }
             .scrollContentBackground(.hidden)
             .background(DesignSystem.Colors.backgroundGradient)
             .tint(DesignSystem.Colors.accent)

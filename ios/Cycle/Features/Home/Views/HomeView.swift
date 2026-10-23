@@ -33,6 +33,8 @@ struct HomeView: View {
     @State private var showingWeeklyReview = false
     /// タップで開くタスクのプレビュー
     @State private var previewingTask: TaskItem?
+    /// マイページ（タブから外し、右上のアイコンから開く。U-04）
+    @State private var showingMyPage = false
 
     private var calendar: Calendar { Calendar.current }
     private var week: WeeklyReviewWeek { WeeklyReviewWeek(containing: Date()) }
@@ -118,6 +120,10 @@ struct HomeView: View {
         .sheet(item: $previewingTask) { task in
             TaskPreviewView(task: task)
         }
+        .sheet(isPresented: $showingMyPage) {
+            MyPageView(showsCloseButton: true)
+                .softSheet()
+        }
         .sheet(isPresented: $showingWeeklyReview) {
             WeeklyReviewPrepView(week: week) { material in
                 showingWeeklyReview = false
@@ -147,8 +153,22 @@ struct HomeView: View {
                     .foregroundStyle(DesignSystem.Colors.textSecondary)
             }
             Spacer()
-            menuButton
+            HStack(spacing: 0) {
+                menuButton
+                myPageButton
+            }
         }
+    }
+
+    private var myPageButton: some View {
+        Button(action: { showingMyPage = true }) {
+            Image(systemName: "person.circle")
+                .font(.system(size: 22))
+                .foregroundStyle(DesignSystem.Colors.accent)
+                .frame(width: 44, height: 44)
+        }
+        .accessibilityLabel("マイページ")
+        .accessibilityIdentifier("home_mypage_button")
     }
 
     private var menuButton: some View {

@@ -59,20 +59,15 @@ struct ContentView: View {
             // 非選択タブは accessibilityHidden + allowsHitTesting(false) で
             // VoiceOver / タップ対象から外す。
             ZStack {
+                // タブは3つ（U-04）: ホーム / コーチ / 記録。マイページはホーム右上から開く
                 tabContainer(index: 0) {
                     NavigationStack { HomeView() }
                 }
                 tabContainer(index: 1) {
-                    NavigationStack { JournalListView() }
-                }
-                tabContainer(index: 2) {
                     NavigationStack { CoachHomeView() }
                 }
-                tabContainer(index: 3) {
-                    NavigationStack { TaskListView() }
-                }
-                tabContainer(index: 4) {
-                    MyPageView()
+                tabContainer(index: 2) {
+                    NavigationStack { RecordsView() }
                 }
             }
             .padding(.bottom, 55)
@@ -80,7 +75,7 @@ struct ContentView: View {
             CustomTabBar(selectedTab: $selectedTab)
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToCoachChat)) { _ in
-            selectedTab = 2
+            selectedTab = 1
             coachStore.shouldOpenChat = true
         }
         .ignoresSafeArea(.keyboard)
@@ -152,46 +147,26 @@ struct CustomTabBar: View {
             )
 
             TabBarButton(
-                icon: "leaf",
-                selectedIcon: "leaf.fill",
-                label: "ジャーナル",
-                identifier: "tab_Journal",
+                // Cycleロゴ（大樹アイコン）をそのまま表示。中央タブとして大きめに
+                icon: "CycleIcon",
+                selectedIcon: "CycleIcon",
+                label: "コーチ",
+                identifier: "tab_Coach",
+                isAssetIcon: true,
+                isProminent: true,
                 isSelected: selectedTab == 1,
                 namespace: indicatorNamespace,
                 action: { select(1) }
             )
 
             TabBarButton(
-                // Cycleロゴ（大樹アイコン）をそのまま表示。中央タブとして大きめに
-                icon: "CycleIcon",
-                selectedIcon: "CycleIcon",
-                label: "セッション",
-                identifier: "tab_Coach",
-                isAssetIcon: true,
-                isProminent: true,
+                icon: "book",
+                selectedIcon: "book.fill",
+                label: "記録",
+                identifier: "tab_Records",
                 isSelected: selectedTab == 2,
                 namespace: indicatorNamespace,
                 action: { select(2) }
-            )
-
-            TabBarButton(
-                icon: "checklist",
-                selectedIcon: "checklist.checked",
-                label: "タスクリスト",
-                identifier: "tab_Tasks",
-                isSelected: selectedTab == 3,
-                namespace: indicatorNamespace,
-                action: { select(3) }
-            )
-
-            TabBarButton(
-                icon: "person",
-                selectedIcon: "person.fill",
-                label: "マイページ",
-                identifier: "tab_MyPage",
-                isSelected: selectedTab == 4,
-                namespace: indicatorNamespace,
-                action: { select(4) }
             )
         }
         .frame(height: 55)
