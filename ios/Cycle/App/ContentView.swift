@@ -160,8 +160,9 @@ struct CustomTabBar: View {
             )
 
             TabBarButton(
-                icon: "book",
-                selectedIcon: "book.fill",
+                // 家のアイコンと同じ重さに見える「閉じた本」
+                icon: "book.closed",
+                selectedIcon: "book.closed.fill",
                 label: "記録",
                 identifier: "tab_Records",
                 isSelected: selectedTab == 2,
@@ -169,6 +170,9 @@ struct CustomTabBar: View {
                 action: { select(2) }
             )
         }
+        // 3つしかないので、両端に広げず中央寄りに詰める（左右と中央ロゴの間隔をそろえる）
+        .frame(maxWidth: 276)
+        .frame(maxWidth: .infinity)
         .frame(height: 55)
         .background(DesignSystem.Colors.background)
     }
@@ -214,6 +218,7 @@ struct TabBarButton: View {
                     } else {
                         // トランジションなしで即アイコン切替（ふわっとしない）
                         Image(systemName: isSelected ? selectedIcon : icon)
+                            .font(.system(size: 22, weight: .regular))
                     }
                 }
                 .font(.system(size: DesignSystem.FontSize.title3))
