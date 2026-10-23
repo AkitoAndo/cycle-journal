@@ -191,25 +191,22 @@ struct HomeView: View {
 
     // MARK: - 今日の問いかけ
 
-    /// 問いかけカードの色。ライト/ダークで同じ見た目にするため固定色にする
-    private static let promptForeground = Color(red: 0.99, green: 0.97, blue: 0.93)
-    private static let promptBackground = LinearGradient(
-        colors: [Color(red: 0.55, green: 0.45, blue: 0.35), DesignSystem.Colors.brownDark],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
+    /// 茶色のボタンの上の文字色（ライト/ダークで同じ見た目にするため固定色）
+    private static let onAccent = Color(red: 0.99, green: 0.97, blue: 0.93)
 
+    /// 今日の問いかけ。カードに入れず、セリフ体の文字と2つのボタンをそのまま置く
+    /// （茶の塗りは「書く」ひとつだけ）
     private var promptCard: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.lg) {
             VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                 Text(prompt)
                     .font(.title2.bold())
-                    .foregroundStyle(Self.promptForeground)
+                    .foregroundStyle(DesignSystem.Colors.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
                 if todayJournalCount > 0 {
                     Text("今日は\(todayJournalCount)つ書いています")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Self.promptForeground.opacity(0.75))
+                        .font(.subheadline)
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
                 }
             }
 
@@ -217,10 +214,10 @@ struct HomeView: View {
                 Button(action: { showingNewEntry = true }) {
                     Label("書く", systemImage: "square.and.pencil")
                         .font(.headline)
-                        .foregroundStyle(DesignSystem.Colors.brownDark)
+                        .foregroundStyle(Self.onAccent)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, DesignSystem.Spacing.md)
-                        .background(Capsule().fill(Self.promptForeground))
+                        .background(Capsule().fill(DesignSystem.Colors.accent))
                 }
                 .buttonStyle(PressableButtonStyle())
                 .accessibilityIdentifier("home_write_button")
@@ -228,21 +225,16 @@ struct HomeView: View {
                 Button(action: startChat) {
                     Label("話す", systemImage: "bubble.left")
                         .font(.headline)
-                        .foregroundStyle(Self.promptForeground)
+                        .foregroundStyle(DesignSystem.Colors.accent)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, DesignSystem.Spacing.md)
-                        .background(Capsule().fill(Self.promptForeground.opacity(0.18)))
+                        .overlay(Capsule().stroke(DesignSystem.Colors.accent.opacity(0.5), lineWidth: 1))
                 }
                 .buttonStyle(PressableButtonStyle())
                 .accessibilityIdentifier("home_talk_button")
             }
         }
-        .padding(DesignSystem.Spacing.xl)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: DesignSystem.Spacing.xl, style: .continuous)
-                .fill(Self.promptBackground)
-        )
+        .padding(.top, DesignSystem.Spacing.sm)
     }
 
     // MARK: - 今日の予定
@@ -342,9 +334,12 @@ struct HomeView: View {
                     Text(weekLeafCount == 0 ? "これから葉がついていきます" : "今週、\(weekLeafCount)枚の葉がつきました")
                         .font(.headline)
                         .foregroundStyle(DesignSystem.Colors.textPrimary)
-                    Text("日記・対話・瞑想・完了した一歩が葉になります")
-                        .font(.footnote)
-                        .foregroundStyle(DesignSystem.Colors.textSecondary)
+                    // 何が葉になるかの説明は、まだ葉がない週だけ出す（1枚ついたら役目を終える）
+                    if weekLeafCount == 0 {
+                        Text("日記・対話・瞑想・完了した一歩が葉になります")
+                            .font(.footnote)
+                            .foregroundStyle(DesignSystem.Colors.textSecondary)
+                    }
                 }
                 .frame(maxWidth: .infinity)
                 HomeWeekStrip(days: week.days()) { recordCount(on: $0) > 0 }
@@ -412,6 +407,11 @@ private struct HomeSection<Content: View>: View {
             }
             .background(DesignSystem.Colors.surface)
             .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous))
+            // 塗りに頼らず、細い線で輪郭を出す（Claude アプリのカードと同じ考え方）
+            .overlay(
+                RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous)
+                    .stroke(DesignSystem.Colors.grey, lineWidth: 0.5)
+            )
         }
     }
 }

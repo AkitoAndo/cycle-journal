@@ -100,14 +100,9 @@ struct CoachHomeView: View {
 
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("コーチ")
-                    .font(.largeTitle.bold())
-                    .foregroundStyle(DesignSystem.Colors.textPrimary)
-                Text("Treow")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(DesignSystem.Colors.textSecondary)
-            }
+            Text("コーチ")
+                .font(.largeTitle.bold())
+                .foregroundStyle(DesignSystem.Colors.textPrimary)
             Spacer()
             Button(action: { showingHistory = true }) {
                 Image(systemName: "clock.arrow.circlepath")

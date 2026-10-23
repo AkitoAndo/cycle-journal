@@ -266,7 +266,7 @@ struct RecordsView: View {
     private var journalSection: some View {
         Section {
             if entries.isEmpty {
-                Text("この日の日記はありません")
+                Text("まだ何も書いていません")
                     .font(.body)
                     .foregroundStyle(DesignSystem.Colors.textTertiary)
                     .listRowBackground(DesignSystem.Colors.surface)
