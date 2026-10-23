@@ -162,6 +162,7 @@ export default defineConfig({
               { text: 'U-01: オンボーディング', link: '/backlog/ux/U-01-onboarding' },
               { text: 'U-02: エラーハンドリング', link: '/backlog/ux/U-02-error-handling' },
               { text: 'U-03: 1週間のふりかえりサイクル', link: '/backlog/ux/U-03-weekly-cycle' },
+              { text: 'U-04: 下タブを3つに', link: '/backlog/ux/U-04-three-tabs' },
             ],
           },
         ],

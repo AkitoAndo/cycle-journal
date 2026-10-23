@@ -169,6 +169,10 @@ enum DesignSystem {
         static let accent = brown
         static let accentLight = brownLight
 
+        /// 葉の色（ホームの「今週の樹」・1週間の帯で記録を表す）
+        static let leaf = adaptive(light: (0.47, 0.58, 0.38), dark: (0.60, 0.71, 0.49))
+        static let leafLight = adaptive(light: (0.66, 0.75, 0.55), dark: (0.42, 0.52, 0.34))
+
         /// アクセントのグラデーション — プライマリボタン、選択インジケーター等
         static let accentGradient = LinearGradient(
             colors: [brown, brownDark],
