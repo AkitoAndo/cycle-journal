@@ -133,17 +133,18 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - ヘッダー（大きなタイトル＝挨拶）
+    // MARK: - ヘッダー（大きなタイトル）
 
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
+            // App Store の「Today」と同じ形: 小さな日付の上に大きな「今日」（挨拶は出さない）
             VStack(alignment: .leading, spacing: 2) {
-                Text(greeting)
+                Text(Date().formatted(.dateTime.month().day().weekday(.wide).locale(Locale(identifier: "ja_JP"))))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(DesignSystem.Colors.textSecondary)
+                Text("今日")
                     .font(.largeTitle.bold())
                     .foregroundStyle(DesignSystem.Colors.textPrimary)
-                Text(Date().formatted(.dateTime.month().day().weekday(.wide).locale(Locale(identifier: "ja_JP"))))
-                    .font(.subheadline)
-                    .foregroundStyle(DesignSystem.Colors.textSecondary)
             }
             Spacer()
             menuButton
@@ -352,14 +353,6 @@ struct HomeView: View {
     }
 
     // MARK: - Helpers
-
-    private var greeting: String {
-        switch calendar.component(.hour, from: Date()) {
-        case 5..<11: return "おはよう"
-        case 11..<17: return "こんにちは"
-        default: return "おつかれさま"
-        }
-    }
 
     /// 時間帯に合わせた今日の問いかけ
     private var prompt: String {
