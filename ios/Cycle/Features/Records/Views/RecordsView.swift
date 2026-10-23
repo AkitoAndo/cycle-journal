@@ -175,7 +175,6 @@ struct RecordsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(selectedDate.formatted(.dateTime.month().day().locale(Locale(identifier: "ja_JP"))))
                         .font(.largeTitle.bold())
-                        .fontDesign(.serif)
                         .foregroundStyle(DesignSystem.Colors.textPrimary)
                     Text(weekdayText)
                         .font(.subheadline.weight(.semibold))
