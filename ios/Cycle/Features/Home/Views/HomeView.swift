@@ -147,7 +147,6 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(Date().formatted(.dateTime.month().day().locale(Locale(identifier: "ja_JP"))))
                     .font(.largeTitle.bold())
-                    .fontDesign(.serif)
                     .foregroundStyle(DesignSystem.Colors.textPrimary)
                 Text(Date().formatted(.dateTime.weekday(.wide).locale(Locale(identifier: "ja_JP"))))
                     .font(.subheadline.weight(.semibold))
@@ -201,8 +200,7 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.lg) {
             VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
                 Text(prompt)
-                    .font(.title.weight(.semibold))
-                    .fontDesign(.serif)
+                    .font(.title2.bold())
                     .foregroundStyle(DesignSystem.Colors.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
                 if todayJournalCount > 0 {
