@@ -100,14 +100,10 @@ struct CoachHomeView: View {
 
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("コーチ")
-                    .font(.largeTitle.bold())
-                    .foregroundStyle(DesignSystem.Colors.textPrimary)
-                Text("Treow")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(DesignSystem.Colors.textSecondary)
-            }
+            Text("コーチ")
+                .font(.largeTitle.bold())
+                .fontDesign(.serif)
+                .foregroundStyle(DesignSystem.Colors.textPrimary)
             Spacer()
             Button(action: { showingHistory = true }) {
                 Image(systemName: "clock.arrow.circlepath")
@@ -146,12 +142,15 @@ struct CoachHomeView: View {
                 .font(.caption)
                 .foregroundStyle(DesignSystem.Colors.textSecondary)
 
+            // コーチの言葉はセリフ体で（Claude の返答と同じ、話し手が変わる合図）
             VStack(spacing: DesignSystem.Spacing.xs) {
                 Text(greetingMessage)
-                    .font(.headline)
+                    .font(.title3.weight(.semibold))
+                    .fontDesign(.serif)
                     .foregroundStyle(DesignSystem.Colors.textPrimary)
                 Text("今日はどんな一日だった？")
                     .font(.body)
+                    .fontDesign(.serif)
                     .foregroundStyle(DesignSystem.Colors.textSecondary)
             }
             .multilineTextAlignment(.center)

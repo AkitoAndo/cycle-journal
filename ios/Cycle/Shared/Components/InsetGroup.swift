@@ -31,6 +31,11 @@ struct InsetGroup<Content: View>: View {
             }
             .background(DesignSystem.Colors.surface)
             .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous))
+            // 塗りに頼らず、細い線で輪郭を出す（Claude アプリのカードと同じ考え方）
+            .overlay(
+                RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous)
+                    .stroke(DesignSystem.Colors.grey, lineWidth: 0.5)
+            )
         }
     }
 }

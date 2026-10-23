@@ -175,6 +175,7 @@ struct RecordsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(selectedDate.formatted(.dateTime.month().day().locale(Locale(identifier: "ja_JP"))))
                         .font(.largeTitle.bold())
+                        .fontDesign(.serif)
                         .foregroundStyle(DesignSystem.Colors.textPrimary)
                     Text(weekdayText)
                         .font(.subheadline.weight(.semibold))
@@ -266,7 +267,7 @@ struct RecordsView: View {
     private var journalSection: some View {
         Section {
             if entries.isEmpty {
-                Text("この日の日記はありません")
+                Text("まだ何も書いていません")
                     .font(.body)
                     .foregroundStyle(DesignSystem.Colors.textTertiary)
                     .listRowBackground(DesignSystem.Colors.surface)
