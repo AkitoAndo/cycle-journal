@@ -35,6 +35,7 @@ export default defineConfig({
           { text: 'コーチ設計', link: '/product/coach-design' },
           { text: 'Treowモデル', link: '/product/cycle-model' },
           { text: 'プロンプトカタログ', link: '/product/prompt-catalog' },
+          { text: '理念と循環との整合（2026-10 点検）', link: '/product/cycle-alignment-review' },
           { text: 'App Store説明文', link: '/product/store-description' },
         ],
       },
