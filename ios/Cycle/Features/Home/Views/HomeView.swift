@@ -4,6 +4,7 @@
 //
 //  ホーム画面（2026-10 刷新）
 //  「今日」を中心に、開いてすぐ書く・話すに入れる画面。
+//  見た目は iOS 17 の標準アプリに合わせる（大きなタイトル・角丸でまとめたリスト・標準の文字）。
 //  - 挨拶と、時間帯に合わせた今日の問いかけ（書く / 話す）
 //  - 今日の予定（ある日だけ）と、今日の一歩（その日のタスク）
 //  - 今週の樹と1週間の帯。タップで週のふりかえり（U-03）を始める
@@ -73,7 +74,7 @@ struct HomeView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: DesignSystem.Spacing.xl) {
+            VStack(alignment: .leading, spacing: 28) {
                 header
                     .staggeredAppear(index: 0, group: "home")
                 promptCard
@@ -84,11 +85,11 @@ struct HomeView: View {
                 }
                 stepsSection
                     .staggeredAppear(index: 3, group: "home")
-                weekCard
+                weekSection
                     .staggeredAppear(index: 4, group: "home")
             }
-            .padding(.horizontal, DesignSystem.Spacing.lg)
-            .padding(.top, DesignSystem.Spacing.md)
+            .padding(.horizontal, DesignSystem.Spacing.xl)
+            .padding(.top, DesignSystem.Spacing.sm)
             // タブバー中央の大樹ロゴ（上に飛び出している）に隠れないよう下を空ける
             .padding(.bottom, DesignSystem.Spacing.xxl * 2)
         }
@@ -126,17 +127,17 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - ヘッダー
+    // MARK: - ヘッダー（大きなタイトル）
 
     private var header: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
-                Text(Date().formatted(.dateTime.month().day().weekday(.wide).locale(Locale(identifier: "ja_JP"))))
-                    .font(DesignSystem.Fonts.subheadline)
-                    .foregroundStyle(DesignSystem.Colors.textSecondary)
-                Text(greeting)
-                    .font(DesignSystem.Fonts.largeTitle)
+        HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("ホーム")
+                    .font(.largeTitle.bold())
                     .foregroundStyle(DesignSystem.Colors.textPrimary)
+                Text(Date().formatted(.dateTime.month().day().weekday(.wide).locale(Locale(identifier: "ja_JP"))))
+                    .font(.subheadline)
+                    .foregroundStyle(DesignSystem.Colors.textSecondary)
             }
             Spacer()
             menuButton
@@ -152,10 +153,10 @@ struct HomeView: View {
                 Label("今日のタイムライン", systemImage: "clock")
             }
         } label: {
-            Image(systemName: "line.3.horizontal")
-                .font(.system(size: 21))
-                .foregroundStyle(DesignSystem.Colors.textSecondary)
-                .modifier(GlassIconModifier())
+            Image(systemName: "ellipsis.circle")
+                .font(.system(size: 22))
+                .foregroundStyle(DesignSystem.Colors.accent)
+                .frame(width: 44, height: 44)
         }
         .accessibilityLabel("メニュー")
         .accessibilityIdentifier("home_menu")
@@ -173,22 +174,20 @@ struct HomeView: View {
 
     private var promptCard: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.lg) {
-            VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
+            VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                Text(todayJournalCount > 0 ? "\(greeting)・今日は\(todayJournalCount)つ書いています" : greeting)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Self.promptForeground.opacity(0.75))
                 Text(prompt)
-                    .font(DesignSystem.Fonts.title2)
+                    .font(.title2.bold())
                     .foregroundStyle(Self.promptForeground)
                     .fixedSize(horizontal: false, vertical: true)
-                if todayJournalCount > 0 {
-                    Text("今日は\(todayJournalCount)つ書いています")
-                        .font(DesignSystem.Fonts.subheadline)
-                        .foregroundStyle(Self.promptForeground.opacity(0.8))
-                }
             }
 
             HStack(spacing: DesignSystem.Spacing.md) {
                 Button(action: { showingNewEntry = true }) {
-                    Label("書く", systemImage: "pencil")
-                        .font(DesignSystem.Fonts.button)
+                    Label("書く", systemImage: "square.and.pencil")
+                        .font(.headline)
                         .foregroundStyle(DesignSystem.Colors.brownDark)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, DesignSystem.Spacing.md)
@@ -199,11 +198,11 @@ struct HomeView: View {
 
                 Button(action: startChat) {
                     Label("話す", systemImage: "bubble.left")
-                        .font(DesignSystem.Fonts.button)
+                        .font(.headline)
                         .foregroundStyle(Self.promptForeground)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, DesignSystem.Spacing.md)
-                        .overlay(Capsule().stroke(Self.promptForeground.opacity(0.6), lineWidth: 1))
+                        .background(Capsule().fill(Self.promptForeground.opacity(0.18)))
                 }
                 .buttonStyle(PressableButtonStyle())
                 .accessibilityIdentifier("home_talk_button")
@@ -212,7 +211,7 @@ struct HomeView: View {
         .padding(DesignSystem.Spacing.xl)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: DesignSystem.Spacing.xxl, style: .continuous)
+            RoundedRectangle(cornerRadius: DesignSystem.Spacing.xl, style: .continuous)
                 .fill(Self.promptBackground)
         )
     }
@@ -220,53 +219,43 @@ struct HomeView: View {
     // MARK: - 今日の予定
 
     private var scheduleSection: some View {
-        VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
-            sectionTitle("今日の予定")
-            VStack(spacing: 0) {
-                ForEach(Array(todayEvents.enumerated()), id: \.element.id) { index, event in
-                    if index > 0 { rowDivider }
-                    Button(action: { scheduleEditTarget = .edit(event) }) {
-                        HStack(spacing: DesignSystem.Spacing.md) {
-                            Text(event.timeText)
-                                .font(DesignSystem.Fonts.caption)
-                                .foregroundStyle(DesignSystem.Colors.textSecondary)
-                                .frame(width: 72, alignment: .leading)
-                            Text(event.title)
-                                .font(DesignSystem.Fonts.body)
-                                .foregroundStyle(DesignSystem.Colors.textPrimary)
-                                .lineLimit(1)
-                            Spacer(minLength: 0)
-                        }
-                        .padding(.vertical, DesignSystem.Spacing.md)
-                        .contentShape(Rectangle())
+        HomeSection("今日の予定") {
+            ForEach(Array(todayEvents.enumerated()), id: \.element.id) { index, event in
+                if index > 0 { HomeRowDivider(leadingInset: DesignSystem.Spacing.lg) }
+                Button(action: { scheduleEditTarget = .edit(event) }) {
+                    HStack(spacing: DesignSystem.Spacing.md) {
+                        Text(event.timeText)
+                            .font(.subheadline.monospacedDigit())
+                            .foregroundStyle(DesignSystem.Colors.textSecondary)
+                            .frame(width: 84, alignment: .leading)
+                        Text(event.title)
+                            .font(.body)
+                            .foregroundStyle(DesignSystem.Colors.textPrimary)
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                        HomeChevron()
                     }
-                    .buttonStyle(.plain)
+                    .homeRow()
                 }
+                .buttonStyle(.plain)
             }
-            .padding(.horizontal, DesignSystem.Spacing.lg)
-            .modifier(HomeCardStyle())
         }
     }
 
     // MARK: - 今日の一歩
 
     private var stepsSection: some View {
-        VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
-            sectionTitle("今日の一歩")
+        HomeSection("今日の一歩") {
             if todayTasks.isEmpty {
                 Text("今日のタスクはまだありません")
-                    .font(DesignSystem.Fonts.subheadline)
+                    .font(.body)
                     .foregroundStyle(DesignSystem.Colors.textTertiary)
-                    .padding(.vertical, DesignSystem.Spacing.xs)
+                    .homeRow()
             } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(todayTasks.prefix(5).enumerated()), id: \.element.id) { index, task in
-                        if index > 0 { rowDivider }
-                        taskRow(task)
-                    }
+                ForEach(Array(todayTasks.prefix(5).enumerated()), id: \.element.id) { index, task in
+                    if index > 0 { HomeRowDivider(leadingInset: 50) }
+                    taskRow(task)
                 }
-                .padding(.horizontal, DesignSystem.Spacing.lg)
-                .modifier(HomeCardStyle())
             }
         }
     }
@@ -289,80 +278,64 @@ struct HomeView: View {
             Button(action: { previewingTask = task }) {
                 HStack {
                     Text(task.title)
-                        .font(DesignSystem.Fonts.body)
+                        .font(.body)
                         .foregroundStyle(task.isCompleted ? DesignSystem.Colors.textTertiary : DesignSystem.Colors.textPrimary)
                         .strikethrough(task.isCompleted, color: DesignSystem.Colors.textTertiary)
                         .lineLimit(1)
                     Spacer(minLength: 0)
+                    HomeChevron()
                 }
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }
-        .padding(.vertical, DesignSystem.Spacing.md)
+        .homeRow()
     }
 
     // MARK: - 今週（樹と1週間の帯）
 
-    private var weekCard: some View {
+    private var weekSection: some View {
         let isReviewDay = week.isReviewDay(Date())
-        return Button(action: { showingWeeklyReview = true }) {
-            VStack(alignment: .leading, spacing: DesignSystem.Spacing.lg) {
+        return HomeSection("今週") {
+            VStack(spacing: DesignSystem.Spacing.lg) {
                 HStack(spacing: DesignSystem.Spacing.lg) {
                     WeeklyTreeView(leafCount: weekLeafCount)
-                        .frame(width: 64, height: 64)
-                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                        .frame(width: 56, height: 56)
+                    VStack(alignment: .leading, spacing: 2) {
                         Text("今週の樹")
-                            .font(DesignSystem.Fonts.label)
+                            .font(.headline)
                             .foregroundStyle(DesignSystem.Colors.textPrimary)
                         Text(weekLeafCount == 0 ? "これから葉がついていきます" : "\(weekLeafCount)枚の葉がつきました")
-                            .font(DesignSystem.Fonts.subheadline)
+                            .font(.subheadline)
                             .foregroundStyle(DesignSystem.Colors.textSecondary)
                     }
                     Spacer(minLength: 0)
                 }
-
                 HomeWeekStrip(days: week.days()) { recordCount(on: $0) > 0 }
-
-                HStack(spacing: DesignSystem.Spacing.sm) {
-                    Image(systemName: "leaf")
-                        .font(.system(size: 14, weight: .semibold))
-                    Text(isReviewDay ? "今週も、おつかれさま。少しだけふりかえってみる？" : "日曜の夜に、1週間をふりかえろう")
-                        .font(DesignSystem.Fonts.subheadline)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 13, weight: .semibold))
-                }
-                .foregroundStyle(isReviewDay ? DesignSystem.Colors.surface : DesignSystem.Colors.accent)
-                .padding(.horizontal, DesignSystem.Spacing.lg)
-                .padding(.vertical, DesignSystem.Spacing.md)
-                .background(
-                    Capsule().fill(isReviewDay ? DesignSystem.Colors.accent : DesignSystem.Colors.accent.opacity(0.10))
-                )
             }
             .padding(DesignSystem.Spacing.lg)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .modifier(HomeCardStyle())
+
+            HomeRowDivider(leadingInset: DesignSystem.Spacing.lg)
+
+            Button(action: { showingWeeklyReview = true }) {
+                HStack(spacing: DesignSystem.Spacing.md) {
+                    Text("1週間をふりかえる")
+                        .font(.body)
+                        .foregroundStyle(DesignSystem.Colors.accent)
+                    Spacer(minLength: 0)
+                    Text(isReviewDay ? "今日" : "日曜の夜")
+                        .font(.subheadline)
+                        .foregroundStyle(isReviewDay ? DesignSystem.Colors.accent : DesignSystem.Colors.textSecondary)
+                    HomeChevron()
+                }
+                .homeRow()
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("home_weekly_review_card")
         }
-        .buttonStyle(PressableButtonStyle(scale: 0.98))
-        .accessibilityIdentifier("home_weekly_review_card")
     }
 
     // MARK: - Helpers
-
-    private func sectionTitle(_ title: String) -> some View {
-        Text(title)
-            .font(DesignSystem.Fonts.label)
-            .foregroundStyle(DesignSystem.Colors.textSecondary)
-    }
-
-    private var rowDivider: some View {
-        Rectangle()
-            .fill(DesignSystem.Colors.grey.opacity(0.6))
-            .frame(height: 0.5)
-    }
 
     private var greeting: String {
         switch calendar.component(.hour, from: Date()) {
@@ -387,17 +360,62 @@ struct HomeView: View {
     }
 }
 
-/// ホームのカード（surface+大きめの角丸。iOS 26 以降は Liquid Glass）
-private struct HomeCardStyle: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
-            content
-                .glassEffect(.surfaceTinted.interactive(), in: .rect(cornerRadius: DesignSystem.Spacing.xl))
-        } else {
-            content
-                .background(DesignSystem.Colors.surface)
-                .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.xl, style: .continuous))
+// MARK: - iOS 17 風のリスト部品
+
+/// 見出し + 角丸でまとめたリスト（設定アプリの inset grouped と同じ形）
+private struct HomeSection<Content: View>: View {
+    let title: String
+    @ViewBuilder let content: Content
+
+    init(_ title: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
+            Text(title)
+                .font(.title3.bold())
+                .foregroundStyle(DesignSystem.Colors.textPrimary)
+                .padding(.leading, DesignSystem.Spacing.xs)
+            VStack(spacing: 0) {
+                content
+            }
+            .background(DesignSystem.Colors.surface)
+            .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous))
         }
+    }
+}
+
+/// リストの区切り線（左は本文の位置から始める）
+private struct HomeRowDivider: View {
+    let leadingInset: CGFloat
+
+    var body: some View {
+        Rectangle()
+            .fill(DesignSystem.Colors.grey)
+            .frame(height: 0.5)
+            .padding(.leading, leadingInset)
+    }
+}
+
+/// 行末の「>」
+private struct HomeChevron: View {
+    var body: some View {
+        Image(systemName: "chevron.right")
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(DesignSystem.Colors.textTertiary)
+    }
+}
+
+private extension View {
+    /// リスト1行分の余白（高さ44pt以上）
+    func homeRow() -> some View {
+        self
+            .padding(.horizontal, DesignSystem.Spacing.lg)
+            .padding(.vertical, 11)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .contentShape(Rectangle())
     }
 }
 
