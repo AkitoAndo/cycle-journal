@@ -290,34 +290,52 @@ class CoachStore: ObservableObject {
     /// 日記を元にセッションを開始
     @MainActor
     func startSessionWithDiary(_ diaryContent: String) async {
+        await startSession(
+            context: diaryContent,
+            initialUserMessage: "この日記について話したいです",
+            mockMessage: "日記を読ませてもらったよ。\n\n「\(diaryContent.prefix(50))...」\n\nこの中で、特に心に残っている部分はどこかな？"
+        )
+    }
+
+    /// 週のふりかえりセッションを開始（U-03）
+    /// - Parameter material: ユーザーが選んだ今週の日記・完了タスクをまとめた文。何も選ばなければ nil
+    @MainActor
+    func startWeeklyReview(material: String?) async {
+        await startSession(
+            context: material,
+            initialUserMessage: "今週をふりかえりたいです",
+            mockMessage: "今週も、おつかれさま。\n\n今週をふりかえって、いちばん心に残っていることは何かな？"
+        )
+    }
+
+    /// 最初のメッセージを送ってセッションを開始する（context はコーチに渡す日記などの材料）
+    @MainActor
+    private func startSession(context: String?, initialUserMessage: String, mockMessage: String) async {
         // 先にローディング状態にしてからセッションを作成
         isLoading = true
         error = nil
         lastAPIError = nil
 
-        let session = startNewSession(withContext: diaryContent)
+        let session = startNewSession(withContext: context)
         currentSession = session
 
         do {
             if useAPI {
-                // API呼び出し - 日記内容を含めて最初のメッセージをSSEで送信
-                let initialUserMessage = "この日記について話したいです"
+                // API呼び出し - 材料を含めて最初のメッセージをSSEで送信
                 addUserMessage(initialUserMessage)
 
                 try await streamCoachResponse(
                     message: initialUserMessage,
                     sessionId: session.serverId ?? session.id.uuidString,
-                    diaryContent: diaryContent
+                    diaryContent: context
                 )
 
                 isLoading = false
             } else {
                 // モックレスポンス
-                let initialMessage = "日記を読ませてもらったよ。\n\n「\(diaryContent.prefix(50))...」\n\nこの中で、特に心に残っている部分はどこかな？"
-
                 try await Task.sleep(nanoseconds: 500_000_000)
 
-                addCoachMessage(initialMessage)
+                addCoachMessage(mockMessage)
                 isLoading = false
             }
         } catch {

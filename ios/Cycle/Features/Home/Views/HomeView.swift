@@ -40,6 +40,8 @@ struct HomeView: View {
     @State private var scheduleEditTarget: ScheduleEditTarget?
     /// 1日のタイムライン表示
     @State private var showingTimeline = false
+    /// 今週のふりかえりの開始前画面
+    @State private var showingWeeklyReview = false
 
     private var calendar: Calendar { Calendar.current }
 
@@ -108,6 +110,9 @@ struct HomeView: View {
             schedulePanel
                 .frame(maxHeight: .infinity, alignment: .top)
 
+            // 今週のふりかえり（U-03）への入口
+            weeklyReviewCard
+
             // セクションボタン（縦長・横並び3つ。タップでシートが下から出る）
             // カレンダーの週数（5週/6週）で高さが変わっても位置がぶれないよう下端に固定
             sectionButtons
@@ -123,6 +128,62 @@ struct HomeView: View {
                 defaultDate: selectedDate
             )
         }
+        .sheet(isPresented: $showingWeeklyReview) {
+            WeeklyReviewPrepView(week: WeeklyReviewWeek(containing: Date())) { material in
+                showingWeeklyReview = false
+                // シートが閉じてからセッションタブへ移り、チャットを開く
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    Task {
+                        await coachStore.startWeeklyReview(material: material)
+                    }
+                    NotificationCenter.default.post(name: .navigateToCoachChat, object: nil)
+                }
+            }
+            .softSheet()
+        }
+    }
+
+    // MARK: - 今週のふりかえり（U-03）
+
+    /// 今週のふりかえりカード。ふりかえり日の当日は色を濃くして目立たせる
+    private var weeklyReviewCard: some View {
+        let isReviewDay = WeeklyReviewWeek(containing: Date()).isReviewDay(Date())
+        return Button(action: { showingWeeklyReview = true }) {
+            HStack(spacing: DesignSystem.Spacing.md) {
+                Image(systemName: "leaf")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(isReviewDay ? DesignSystem.Colors.surface : DesignSystem.Colors.accent)
+                    .frame(width: 40, height: 40)
+                    .background(
+                        Circle().fill(isReviewDay ? DesignSystem.Colors.accent : DesignSystem.Colors.accent.opacity(0.12))
+                    )
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("今週のふりかえり")
+                        .font(DesignSystem.Fonts.label)
+                        .foregroundStyle(DesignSystem.Colors.textPrimary)
+                    Text(isReviewDay ? "今週も、おつかれさま。少しだけふりかえってみる？" : "日曜の夜に、1週間をふりかえろう")
+                        .font(DesignSystem.Fonts.caption)
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(DesignSystem.Colors.textTertiary)
+            }
+            .padding(.horizontal, DesignSystem.Spacing.lg)
+            .padding(.vertical, DesignSystem.Spacing.md)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(.plain)
+        .modifier(SurfaceCardStyleLike())
+        .padding(.horizontal, DesignSystem.Spacing.lg)
+        .padding(.top, DesignSystem.Spacing.sm)
+        .accessibilityIdentifier("home_weekly_review_card")
     }
 
     // MARK: - 予定（アプリ独自）
