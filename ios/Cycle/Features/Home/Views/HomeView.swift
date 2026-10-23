@@ -2,10 +2,11 @@
 //  HomeView.swift
 //  Cycle
 //
-//  ホーム画面（0710バージョンで新設）
-//  選択中の1日の ジャーナル / セッション / タスク を3セクションで表示する。
-//  - 日付ヘッダー: タップで月カレンダーを開き、日付を選ぶと3セクションを更新
-//  - 各セクション: 畳み（横スクロール）/ 展開（縦全件）をトグルできる
+//  ホーム画面（2026-10 刷新）
+//  「今日」を中心に、開いてすぐ書く・話すに入れる画面。
+//  - 挨拶と、時間帯に合わせた今日の問いかけ（書く / 話す）
+//  - 今日の予定（ある日だけ）と、今日の一歩（その日のタスク）
+//  - 今週の樹と1週間の帯。タップで週のふりかえり（U-03）を始める
 //
 
 import SwiftUI
@@ -16,23 +17,6 @@ struct HomeView: View {
     @EnvironmentObject private var meditationStore: MeditationStore
     @EnvironmentObject private var taskViewModel: TaskViewModel
 
-    /// 選択中の日付（既定は今日）
-    @State private var selectedDate = Date()
-
-    /// シート表示中のセクション（ボタンタップで下から表示）
-    @State private var presentedSection: HomeSectionKind?
-
-    /// スワイプ「編集」で開くジャーナル（ジャーナル一覧と同じ JournalEditView）
-    @State private var editingJournalEntry: JournalEntry?
-    /// スワイプ「編集」で開くタスク（アーカイブ一覧と同じ TaskEditView）
-    @State private var editingTask: TaskItem?
-    /// スワイプ「プレビュー」で開くタスク
-    @State private var previewingTask: TaskItem?
-    /// スワイプ「チェック」で開くセッション（履歴と同じ SessionDetailView）
-    @State private var viewingSession: CoachSession?
-    /// セッションシート内のタブ（0: セッション / 1: 瞑想。履歴画面と同じ構成）
-    @State private var sessionTab = 0
-
     /// アプリ独自の予定（ローカル保存）
     @StateObject private var scheduleStore = ScheduleStore()
 
@@ -40,96 +24,95 @@ struct HomeView: View {
     @State private var scheduleEditTarget: ScheduleEditTarget?
     /// 1日のタイムライン表示
     @State private var showingTimeline = false
+    /// 日記の新規作成
+    @State private var showingNewEntry = false
     /// 今週のふりかえりの開始前画面
     @State private var showingWeeklyReview = false
+    /// タップで開くタスクのプレビュー
+    @State private var previewingTask: TaskItem?
 
     private var calendar: Calendar { Calendar.current }
+    private var week: WeeklyReviewWeek { WeeklyReviewWeek(containing: Date()) }
 
-    /// 選択日の予定
-    private var dayEvents: [ScheduleEvent] {
-        scheduleStore.events(on: selectedDate)
+    // MARK: - 今日のデータ
+
+    private var todayJournalCount: Int {
+        journalViewModel.entries.filter { $0.deletedAt == nil && calendar.isDateInToday($0.date) }.count
     }
 
-    // MARK: - 選択日のデータ
-
-    private var dayJournals: [JournalEntry] {
-        // 1日の流れを上から追えるよう古い順（時系列順）で表示する
-        journalViewModel.entries
-            .filter { $0.deletedAt == nil && calendar.isDate($0.date, inSameDayAs: selectedDate) }
-            .sorted { $0.date < $1.date }
+    private var todayEvents: [ScheduleEvent] {
+        scheduleStore.events(on: Date())
     }
 
-    private var daySessions: [CoachSession] {
-        coachStore.sessions
-            .filter { calendar.isDate($0.createdAt, inSameDayAs: selectedDate) }
-            .sorted { $0.createdAt > $1.createdAt }
+    /// 今日のタスク（未完了を先、完了を後）
+    private var todayTasks: [TaskItem] {
+        let tasks = taskViewModel.homeTasks(on: Date())
+        return tasks.filter { !$0.isCompleted } + tasks.filter(\.isCompleted)
     }
 
-    private var dayMeditations: [MeditationLog] {
-        meditationStore.logs
-            .filter { calendar.isDate($0.date, inSameDayAs: selectedDate) }
-            .sorted { $0.date > $1.date }
+    // MARK: - 今週の記録
+
+    /// その日の記録数（日記・対話・瞑想・完了したタスク）
+    private func recordCount(on day: Date) -> Int {
+        let journals = journalViewModel.entries.filter { $0.deletedAt == nil && calendar.isDate($0.date, inSameDayAs: day) }.count
+        // 開いただけで話していないセッションは数えない（同期で取得した履歴は要約の有無で判断）
+        let sessions = coachStore.sessions.filter {
+            calendar.isDate($0.createdAt, inSameDayAs: day)
+                && ($0.messages.contains { $0.role == .user } || $0.summary != nil)
+        }.count
+        let meditations = meditationStore.logs.filter { calendar.isDate($0.date, inSameDayAs: day) }.count
+        let steps = taskViewModel.homeTasks(on: day).filter(\.isCompleted).count
+        return journals + sessions + meditations + steps
     }
 
-    private var dayTasks: [TaskItem] {
-        taskViewModel.homeTasks(on: selectedDate)
-    }
-
-    /// カレンダーに記録ドットを出す日（ジャーナル/セッション/タスクのいずれかがある日）
-    private var recordedDays: Set<DateComponents> {
-        var days = Set<DateComponents>()
-        let add: (Date) -> Void = { date in
-            days.insert(self.calendar.dateComponents([.year, .month, .day], from: date))
-        }
-        journalViewModel.entries.filter { $0.deletedAt == nil }.forEach { add($0.date) }
-        coachStore.sessions.forEach { add($0.createdAt) }
-        meditationStore.logs.forEach { add($0.date) }
-        taskViewModel.completedTasks.compactMap(\.completedAt).forEach { add($0) }
-        taskViewModel.archives.filter { !$0.completedTasks.isEmpty }.forEach { add($0.date) }
-        if !taskViewModel.incompleteTasks.isEmpty { add(Date()) }
-        scheduleStore.events.forEach { add($0.startDate) }
-        return days
+    private var weekLeafCount: Int {
+        week.days().reduce(0) { $0 + recordCount(on: $1) }
     }
 
     // MARK: - Body
 
     var body: some View {
-        VStack(spacing: 0) {
-            // 月カレンダーを常時表示する（折り畳みなし・スクロールしても固定）
-            CycleCalendarView(
-                selectedDate: $selectedDate,
-                recordedDays: recordedDays,
-                showsTodayButton: true
-            )
+        ScrollView {
+            VStack(alignment: .leading, spacing: DesignSystem.Spacing.xl) {
+                header
+                    .staggeredAppear(index: 0, group: "home")
+                promptCard
+                    .staggeredAppear(index: 1, group: "home")
+                if !todayEvents.isEmpty {
+                    scheduleSection
+                        .staggeredAppear(index: 2, group: "home")
+                }
+                stepsSection
+                    .staggeredAppear(index: 3, group: "home")
+                weekCard
+                    .staggeredAppear(index: 4, group: "home")
+            }
             .padding(.horizontal, DesignSystem.Spacing.lg)
-            .padding(.bottom, DesignSystem.Spacing.sm)
-            .background(DesignSystem.Colors.background)
-
-            // その日の予定（アプリ独自・ローカル保存）
-            // 予定が少ない/無い日でもヘッダー位置が動かないよう上端に揃える
-            schedulePanel
-                .frame(maxHeight: .infinity, alignment: .top)
-
-            // 今週のふりかえり（U-03）への入口
-            weeklyReviewCard
-
-            // セクションボタン（縦長・横並び3つ。タップでシートが下から出る）
-            // カレンダーの週数（5週/6週）で高さが変わっても位置がぶれないよう下端に固定
-            sectionButtons
+            .padding(.top, DesignSystem.Spacing.md)
+            // タブバー中央の大樹ロゴ（上に飛び出している）に隠れないよう下を空ける
+            .padding(.bottom, DesignSystem.Spacing.xxl * 2)
         }
         .background(DesignSystem.Colors.backgroundGradient)
-        .sheet(item: $presentedSection) { kind in
-            sectionSheet(kind)
-        }
+        .navigationBarHidden(true)
         .sheet(item: $scheduleEditTarget) { target in
             ScheduleEditView(
                 store: scheduleStore,
                 editing: target.event,
-                defaultDate: selectedDate
+                defaultDate: Date()
             )
         }
+        .sheet(isPresented: $showingTimeline) {
+            DayTimelineView(store: scheduleStore, date: Date())
+        }
+        .sheet(isPresented: $showingNewEntry) {
+            JournalNewEntryView(vm: journalViewModel)
+                .softSheet()
+        }
+        .sheet(item: $previewingTask) { task in
+            TaskPreviewView(task: task)
+        }
         .sheet(isPresented: $showingWeeklyReview) {
-            WeeklyReviewPrepView(week: WeeklyReviewWeek(containing: Date())) { material in
+            WeeklyReviewPrepView(week: week) { material in
                 showingWeeklyReview = false
                 // シートが閉じてからセッションタブへ移り、チャットを開く
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -143,571 +126,277 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - 今週のふりかえり（U-03）
+    // MARK: - ヘッダー
 
-    /// 今週のふりかえりカード。ふりかえり日の当日は色を濃くして目立たせる
-    private var weeklyReviewCard: some View {
-        let isReviewDay = WeeklyReviewWeek(containing: Date()).isReviewDay(Date())
-        return Button(action: { showingWeeklyReview = true }) {
-            HStack(spacing: DesignSystem.Spacing.md) {
-                Image(systemName: "leaf")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(isReviewDay ? DesignSystem.Colors.surface : DesignSystem.Colors.accent)
-                    .frame(width: 40, height: 40)
-                    .background(
-                        Circle().fill(isReviewDay ? DesignSystem.Colors.accent : DesignSystem.Colors.accent.opacity(0.12))
-                    )
+    private var header: some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                Text(Date().formatted(.dateTime.month().day().weekday(.wide).locale(Locale(identifier: "ja_JP"))))
+                    .font(DesignSystem.Fonts.subheadline)
+                    .foregroundStyle(DesignSystem.Colors.textSecondary)
+                Text(greeting)
+                    .font(DesignSystem.Fonts.largeTitle)
+                    .foregroundStyle(DesignSystem.Colors.textPrimary)
+            }
+            Spacer()
+            menuButton
+        }
+    }
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("今週のふりかえり")
-                        .font(DesignSystem.Fonts.label)
-                        .foregroundStyle(DesignSystem.Colors.textPrimary)
-                    Text(isReviewDay ? "今週も、おつかれさま。少しだけふりかえってみる？" : "日曜の夜に、1週間をふりかえろう")
-                        .font(DesignSystem.Fonts.caption)
-                        .foregroundStyle(DesignSystem.Colors.textSecondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+    private var menuButton: some View {
+        Menu {
+            Button(action: { scheduleEditTarget = .new }) {
+                Label("予定を追加", systemImage: "calendar.badge.plus")
+            }
+            Button(action: { showingTimeline = true }) {
+                Label("今日のタイムライン", systemImage: "clock")
+            }
+        } label: {
+            Image(systemName: "line.3.horizontal")
+                .font(.system(size: 21))
+                .foregroundStyle(DesignSystem.Colors.textSecondary)
+                .modifier(GlassIconModifier())
+        }
+        .accessibilityLabel("メニュー")
+        .accessibilityIdentifier("home_menu")
+    }
+
+    // MARK: - 今日の問いかけ
+
+    /// 問いかけカードの色。ライト/ダークで同じ見た目にするため固定色にする
+    private static let promptForeground = Color(red: 0.99, green: 0.97, blue: 0.93)
+    private static let promptBackground = LinearGradient(
+        colors: [Color(red: 0.55, green: 0.45, blue: 0.35), DesignSystem.Colors.brownDark],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+
+    private var promptCard: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.lg) {
+            VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
+                Text(prompt)
+                    .font(DesignSystem.Fonts.title2)
+                    .foregroundStyle(Self.promptForeground)
+                    .fixedSize(horizontal: false, vertical: true)
+                if todayJournalCount > 0 {
+                    Text("今日は\(todayJournalCount)つ書いています")
+                        .font(DesignSystem.Fonts.subheadline)
+                        .foregroundStyle(Self.promptForeground.opacity(0.8))
                 }
+            }
 
-                Spacer(minLength: 0)
+            HStack(spacing: DesignSystem.Spacing.md) {
+                Button(action: { showingNewEntry = true }) {
+                    Label("書く", systemImage: "pencil")
+                        .font(DesignSystem.Fonts.button)
+                        .foregroundStyle(DesignSystem.Colors.brownDark)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, DesignSystem.Spacing.md)
+                        .background(Capsule().fill(Self.promptForeground))
+                }
+                .buttonStyle(PressableButtonStyle())
+                .accessibilityIdentifier("home_write_button")
 
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(DesignSystem.Colors.textTertiary)
+                Button(action: startChat) {
+                    Label("話す", systemImage: "bubble.left")
+                        .font(DesignSystem.Fonts.button)
+                        .foregroundStyle(Self.promptForeground)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, DesignSystem.Spacing.md)
+                        .overlay(Capsule().stroke(Self.promptForeground.opacity(0.6), lineWidth: 1))
+                }
+                .buttonStyle(PressableButtonStyle())
+                .accessibilityIdentifier("home_talk_button")
+            }
+        }
+        .padding(DesignSystem.Spacing.xl)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: DesignSystem.Spacing.xxl, style: .continuous)
+                .fill(Self.promptBackground)
+        )
+    }
+
+    // MARK: - 今日の予定
+
+    private var scheduleSection: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
+            sectionTitle("今日の予定")
+            VStack(spacing: 0) {
+                ForEach(Array(todayEvents.enumerated()), id: \.element.id) { index, event in
+                    if index > 0 { rowDivider }
+                    Button(action: { scheduleEditTarget = .edit(event) }) {
+                        HStack(spacing: DesignSystem.Spacing.md) {
+                            Text(event.timeText)
+                                .font(DesignSystem.Fonts.caption)
+                                .foregroundStyle(DesignSystem.Colors.textSecondary)
+                                .frame(width: 72, alignment: .leading)
+                            Text(event.title)
+                                .font(DesignSystem.Fonts.body)
+                                .foregroundStyle(DesignSystem.Colors.textPrimary)
+                                .lineLimit(1)
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.vertical, DesignSystem.Spacing.md)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
             }
             .padding(.horizontal, DesignSystem.Spacing.lg)
-            .padding(.vertical, DesignSystem.Spacing.md)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .modifier(HomeCardStyle())
         }
-        .buttonStyle(.plain)
-        .modifier(SurfaceCardStyleLike())
-        .padding(.horizontal, DesignSystem.Spacing.lg)
-        .padding(.top, DesignSystem.Spacing.sm)
+    }
+
+    // MARK: - 今日の一歩
+
+    private var stepsSection: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
+            sectionTitle("今日の一歩")
+            if todayTasks.isEmpty {
+                Text("今日のタスクはまだありません")
+                    .font(DesignSystem.Fonts.subheadline)
+                    .foregroundStyle(DesignSystem.Colors.textTertiary)
+                    .padding(.vertical, DesignSystem.Spacing.xs)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(todayTasks.prefix(5).enumerated()), id: \.element.id) { index, task in
+                        if index > 0 { rowDivider }
+                        taskRow(task)
+                    }
+                }
+                .padding(.horizontal, DesignSystem.Spacing.lg)
+                .modifier(HomeCardStyle())
+            }
+        }
+    }
+
+    private func taskRow(_ task: TaskItem) -> some View {
+        HStack(spacing: DesignSystem.Spacing.md) {
+            Button(action: {
+                withAnimation(DesignSystem.Timing.spring) {
+                    taskViewModel.toggleCompletion(task)
+                }
+            }) {
+                Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 22))
+                    .foregroundStyle(task.isCompleted ? DesignSystem.Colors.leaf : DesignSystem.Colors.greyDark)
+                    .contentTransition(.symbolEffect(.replace))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(task.isCompleted ? "未完了に戻す" : "完了にする")
+
+            Button(action: { previewingTask = task }) {
+                HStack {
+                    Text(task.title)
+                        .font(DesignSystem.Fonts.body)
+                        .foregroundStyle(task.isCompleted ? DesignSystem.Colors.textTertiary : DesignSystem.Colors.textPrimary)
+                        .strikethrough(task.isCompleted, color: DesignSystem.Colors.textTertiary)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.vertical, DesignSystem.Spacing.md)
+    }
+
+    // MARK: - 今週（樹と1週間の帯）
+
+    private var weekCard: some View {
+        let isReviewDay = week.isReviewDay(Date())
+        return Button(action: { showingWeeklyReview = true }) {
+            VStack(alignment: .leading, spacing: DesignSystem.Spacing.lg) {
+                HStack(spacing: DesignSystem.Spacing.lg) {
+                    WeeklyTreeView(leafCount: weekLeafCount)
+                        .frame(width: 64, height: 64)
+                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                        Text("今週の樹")
+                            .font(DesignSystem.Fonts.label)
+                            .foregroundStyle(DesignSystem.Colors.textPrimary)
+                        Text(weekLeafCount == 0 ? "これから葉がついていきます" : "\(weekLeafCount)枚の葉がつきました")
+                            .font(DesignSystem.Fonts.subheadline)
+                            .foregroundStyle(DesignSystem.Colors.textSecondary)
+                    }
+                    Spacer(minLength: 0)
+                }
+
+                HomeWeekStrip(days: week.days()) { recordCount(on: $0) > 0 }
+
+                HStack(spacing: DesignSystem.Spacing.sm) {
+                    Image(systemName: "leaf")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text(isReviewDay ? "今週も、おつかれさま。少しだけふりかえってみる？" : "日曜の夜に、1週間をふりかえろう")
+                        .font(DesignSystem.Fonts.subheadline)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .foregroundStyle(isReviewDay ? DesignSystem.Colors.surface : DesignSystem.Colors.accent)
+                .padding(.horizontal, DesignSystem.Spacing.lg)
+                .padding(.vertical, DesignSystem.Spacing.md)
+                .background(
+                    Capsule().fill(isReviewDay ? DesignSystem.Colors.accent : DesignSystem.Colors.accent.opacity(0.10))
+                )
+            }
+            .padding(DesignSystem.Spacing.lg)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .modifier(HomeCardStyle())
+        }
+        .buttonStyle(PressableButtonStyle(scale: 0.98))
         .accessibilityIdentifier("home_weekly_review_card")
     }
 
-    // MARK: - 予定（アプリ独自）
+    // MARK: - Helpers
 
-    /// その日の予定パネル
-    private var schedulePanel: some View {
-        VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
-            HStack(spacing: DesignSystem.Spacing.sm) {
-                Image(systemName: "calendar")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(DesignSystem.Colors.accent)
-                Text("予定")
-                    .font(DesignSystem.Fonts.sectionTitle)
-                    .foregroundStyle(DesignSystem.Colors.textPrimary)
-                Text("\(dayEvents.count)")
-                    .font(DesignSystem.Fonts.caption)
-                    .foregroundStyle(DesignSystem.Colors.accent)
-                    .padding(.horizontal, DesignSystem.Spacing.sm)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(DesignSystem.Colors.accent.opacity(0.10)))
-                Spacer()
+    private func sectionTitle(_ title: String) -> some View {
+        Text(title)
+            .font(DesignSystem.Fonts.label)
+            .foregroundStyle(DesignSystem.Colors.textSecondary)
+    }
 
-                // 1日のタイムライン表示
-                Button(action: { showingTimeline = true }) {
-                    Image(systemName: "clock")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(DesignSystem.Colors.accent)
-                        .frame(width: 28, height: 28)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("1日のタイムラインを表示")
+    private var rowDivider: some View {
+        Rectangle()
+            .fill(DesignSystem.Colors.grey.opacity(0.6))
+            .frame(height: 0.5)
+    }
 
-                // 予定を追加
-                Button(action: { scheduleEditTarget = .new }) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(DesignSystem.Colors.accent)
-                        .frame(width: 28, height: 28)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("予定を追加")
-            }
-
-            scheduleContent
-        }
-        .padding(.horizontal, DesignSystem.Spacing.lg)
-        .padding(.top, DesignSystem.Spacing.md)
-        .sheet(isPresented: $showingTimeline) {
-            DayTimelineView(store: scheduleStore, date: selectedDate)
+    private var greeting: String {
+        switch calendar.component(.hour, from: Date()) {
+        case 5..<11: return "おはよう"
+        case 11..<17: return "こんにちは"
+        default: return "おつかれさま"
         }
     }
 
-    @ViewBuilder
-    private var scheduleContent: some View {
-        if dayEvents.isEmpty {
-            Text("この日の予定はありません")
-                .font(.subheadline)
-                .foregroundStyle(DesignSystem.Colors.textTertiary)
-                .padding(.vertical, DesignSystem.Spacing.sm)
-        } else {
-            ScrollView {
-                VStack(spacing: DesignSystem.Spacing.sm) {
-                    ForEach(dayEvents) { event in
-                        eventRow(event)
-                    }
-                }
-            }
+    /// 時間帯に合わせた今日の問いかけ
+    private var prompt: String {
+        switch calendar.component(.hour, from: Date()) {
+        case 5..<11: return "今日は、どんな一日にしたい？"
+        case 11..<17: return "いま、どんな気持ち？"
+        default: return "今日は、どんな一日だった？"
         }
     }
 
-    /// 予定1件の行（タップで編集）
-    private func eventRow(_ event: ScheduleEvent) -> some View {
-        Button(action: { scheduleEditTarget = .edit(event) }) {
-            HStack(spacing: DesignSystem.Spacing.md) {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(DesignSystem.Colors.accent)
-                    .frame(width: 4)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(event.title)
-                        .font(DesignSystem.Fonts.body)
-                        .foregroundStyle(DesignSystem.Colors.textPrimary)
-                        .lineLimit(1)
-                    Text(event.timeText)
-                        .font(DesignSystem.Fonts.caption)
-                        .foregroundStyle(DesignSystem.Colors.textSecondary)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, DesignSystem.Spacing.md)
-            .padding(.vertical, DesignSystem.Spacing.sm)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .modifier(EventCardGlassStyle())
-            .fixedSize(horizontal: false, vertical: true)
-        }
-        .buttonStyle(.plain)
-    }
-
-    // MARK: - セクションタブ
-
-    /// セクションの件数
-    private func count(for kind: HomeSectionKind) -> Int {
-        switch kind {
-        case .journal: return dayJournals.count
-        case .session: return daySessions.count + dayMeditations.count
-        case .task: return dayTasks.count
-        }
-    }
-
-    /// 縦長のセクションボタン（横並び3つ）。タップでシートを表示する
-    private var sectionButtons: some View {
-        HStack(spacing: DesignSystem.Spacing.md) {
-            ForEach(HomeSectionKind.allCases, id: \.self) { kind in
-                Button(action: { presentedSection = kind }) {
-                    VStack(spacing: DesignSystem.Spacing.sm) {
-                        Image(systemName: kind.icon)
-                            .font(.system(size: 24, weight: .semibold))
-                            .foregroundStyle(DesignSystem.Colors.accent)
-
-                        Text(kind.title)
-                            .font(DesignSystem.Fonts.label)
-                            .foregroundStyle(DesignSystem.Colors.textPrimary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-
-                        Text("\(count(for: kind))")
-                            .font(DesignSystem.Fonts.caption)
-                            .foregroundStyle(DesignSystem.Colors.accent)
-                            .padding(.horizontal, DesignSystem.Spacing.sm)
-                            .padding(.vertical, 2)
-                            .background(Capsule().fill(DesignSystem.Colors.accent.opacity(0.10)))
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, DesignSystem.Spacing.lg)
-                }
-                .buttonStyle(.plain)
-                .modifier(SurfaceCardStyleLike())
-                .accessibilityIdentifier("home_section_\(kind.title)")
-            }
-        }
-        .padding(.horizontal, DesignSystem.Spacing.lg)
-        .padding(.top, DesignSystem.Spacing.md)
-        // タブバー中央の大樹ロゴ（上に飛び出している）と重ならないよう下は広めに空ける
-        .padding(.bottom, DesignSystem.Spacing.xxl + 3)
-    }
-
-    /// セクション内容のシート（下からせり上がる）
-    private func sectionSheet(_ kind: HomeSectionKind) -> some View {
-        VStack(spacing: 0) {
-            // シートヘッダー
-            HStack(spacing: DesignSystem.Spacing.sm) {
-                Image(systemName: kind.icon)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(DesignSystem.Colors.accent)
-                Text(kind.title)
-                    .font(DesignSystem.Fonts.sectionTitle)
-                    .foregroundStyle(DesignSystem.Colors.textPrimary)
-                Text("\(count(for: kind))")
-                    .font(DesignSystem.Fonts.caption)
-                    .foregroundStyle(DesignSystem.Colors.accent)
-                    .padding(.horizontal, DesignSystem.Spacing.sm)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(DesignSystem.Colors.accent.opacity(0.10)))
-                Spacer()
-                Text(selectedDate.formatted(.dateTime.month().day().weekday(.abbreviated).locale(Locale(identifier: "ja_JP"))))
-                    .font(.subheadline)
-                    .foregroundStyle(DesignSystem.Colors.textSecondary)
-            }
-            .padding(.horizontal, DesignSystem.Spacing.lg)
-            .padding(.vertical, DesignSystem.Spacing.lg)
-
-            // スワイプアクションを使うため List で表示する（各一覧画面と同じ構成）
-            switch kind {
-            case .journal:
-                if dayJournals.isEmpty {
-                    emptyList
-                } else {
-                    sheetList { journalRows }
-                }
-            case .session:
-                // 履歴画面と同じタブ構成（セッション / 瞑想）
-                sessionTabBar
-                if sessionTab == 0 {
-                    if daySessions.isEmpty {
-                        emptyList
-                    } else {
-                        sheetList { sessionRows }
-                    }
-                } else {
-                    if dayMeditations.isEmpty {
-                        emptyList
-                    } else {
-                        sheetList { meditationRows }
-                    }
-                }
-            case .task:
-                if dayTasks.isEmpty {
-                    emptyList
-                } else {
-                    sheetList { taskRows }
-                }
-            }
-        }
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
-        .presentationBackground(DesignSystem.Colors.background)
-        .sheet(item: $editingJournalEntry) { entry in
-            JournalEditView(vm: journalViewModel, entry: entry)
-                .softSheet()
-        }
-        .sheet(item: $editingTask) { task in
-            TaskEditView(vm: taskViewModel, task: task)
-        }
-        .sheet(item: $previewingTask) { task in
-            TaskPreviewView(task: task)
-        }
-        .sheet(item: $viewingSession) { session in
-            SessionDetailView(session: session)
-                .environmentObject(coachStore)
-        }
-    }
-
-    private var emptyMessage: some View {
-        Text("この日の記録はありません")
-            .font(.subheadline)
-            .foregroundStyle(DesignSystem.Colors.textTertiary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, DesignSystem.Spacing.sm)
-    }
-
-    private var emptyList: some View {
-        ScrollView {
-            emptyMessage
-                .padding(.horizontal, DesignSystem.Spacing.lg)
-        }
-    }
-
-    /// シート内リストの共通スタイル
-    private func sheetList<Rows: View>(@ViewBuilder rows: () -> Rows) -> some View {
-        List {
-            rows()
-        }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .contentMargins(.bottom, DesignSystem.Spacing.lg, for: .scrollContent)
-    }
-
-    // MARK: - セッションシート内タブ（履歴画面と同じ構成）
-
-    private var sessionTabBar: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 0) {
-                sessionTabButton(title: "セッション", tab: 0)
-                sessionTabButton(title: "瞑想", tab: 1)
-            }
-
-            GeometryReader { geometry in
-                HStack(spacing: 0) {
-                    Rectangle()
-                        .fill(sessionTab == 0 ? DesignSystem.Colors.accent : DesignSystem.Colors.grey)
-                        .frame(width: geometry.size.width / 2, height: sessionTab == 0 ? 2 : 0.5)
-
-                    Rectangle()
-                        .fill(sessionTab == 1 ? DesignSystem.Colors.accent : DesignSystem.Colors.grey)
-                        .frame(width: geometry.size.width / 2, height: sessionTab == 1 ? 2 : 0.5)
-                }
-            }
-            .frame(height: 2)
-        }
-    }
-
-    private func sessionTabButton(title: String, tab: Int) -> some View {
-        Button(action: { sessionTab = tab }) {
-            Text(title)
-                .font(.system(size: DesignSystem.FontSize.body, weight: sessionTab == tab ? .semibold : .regular))
-                .foregroundStyle(sessionTab == tab ? DesignSystem.Colors.textPrimary : DesignSystem.Colors.textSecondary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, DesignSystem.Spacing.md)
-        }
-    }
-
-    // MARK: - Rows
-
-    private var journalRows: some View {
-        ForEach(dayJournals) { entry in
-            journalCard(entry)
-                .customListRowStyle()
-                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    Button(role: .destructive) {
-                        journalViewModel.deleteEntry(entry)
-                    } label: {
-                        Label("削除", systemImage: "trash")
-                            .labelStyle(.iconOnly)
-                    }
-
-                    Button {
-                        editingJournalEntry = entry
-                    } label: {
-                        Label("編集", systemImage: "pencil")
-                            .labelStyle(.iconOnly)
-                    }
-                    .tint(DesignSystem.Colors.accent)
-                }
-        }
-    }
-
-    private var sessionRows: some View {
-        ForEach(daySessions) { session in
-            sessionCard(session)
-                .customListRowStyle()
-                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    Button(role: .destructive) {
-                        coachStore.deleteSession(session)
-                    } label: {
-                        Label("削除", systemImage: "trash")
-                            .labelStyle(.iconOnly)
-                    }
-
-                    Button {
-                        viewingSession = session
-                    } label: {
-                        Label("チェック", systemImage: "checkmark")
-                            .labelStyle(.iconOnly)
-                    }
-                    .tint(DesignSystem.Colors.textSecondary)
-                }
-        }
-    }
-
-    /// 瞑想ログの行（履歴の瞑想タブと同じくスワイプは削除のみ）
-    private var meditationRows: some View {
-        ForEach(dayMeditations) { log in
-            meditationCard(log)
-                .customListRowStyle()
-                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    Button(role: .destructive) {
-                        meditationStore.deleteLog(log)
-                    } label: {
-                        Label("削除", systemImage: "trash")
-                            .labelStyle(.iconOnly)
-                    }
-                }
-        }
-    }
-
-    private var taskRows: some View {
-        ForEach(dayTasks) { task in
-            taskCard(task)
-                .customListRowStyle()
-                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    Button(role: .destructive) {
-                        if isLiveTask(task) {
-                            taskViewModel.deleteTask(task)
-                        } else {
-                            taskViewModel.deleteArchivedTask(task)
-                        }
-                    } label: {
-                        Label("削除", systemImage: "trash")
-                            .labelStyle(.iconOnly)
-                    }
-
-                    Button {
-                        editingTask = task
-                    } label: {
-                        Label("編集", systemImage: "pencil")
-                            .labelStyle(.iconOnly)
-                    }
-                    .tint(DesignSystem.Colors.accent)
-
-                    Button {
-                        previewingTask = task
-                    } label: {
-                        Label("プレビュー", systemImage: "checkmark")
-                            .labelStyle(.iconOnly)
-                    }
-                    .tint(DesignSystem.Colors.textSecondary)
-                }
-        }
-    }
-
-    private func isLiveTask(_ task: TaskItem) -> Bool {
-        taskViewModel.tasks.contains { $0.id == task.id }
-    }
-
-    // MARK: - Cards
-
-    private func journalCard(_ entry: JournalEntry) -> some View {
-        HomeCard {
-            VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
-                Text(entry.text)
-                    .font(DesignSystem.Fonts.body)
-                    .foregroundStyle(DesignSystem.Colors.textPrimary)
-                    .lineLimit(3)
-                HStack(spacing: DesignSystem.Spacing.sm) {
-                    Text(entry.date.timeHM)
-                        .font(DesignSystem.Fonts.caption)
-                        .foregroundStyle(DesignSystem.Colors.textSecondary)
-                    ForEach(entry.tags.prefix(2), id: \.self) { tag in
-                        TagChip(text: tag)
-                    }
-                }
-            }
-        }
-    }
-
-    private func sessionCard(_ session: CoachSession) -> some View {
-        HomeCard {
-            VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
-                Text(session.summary ?? session.firstUserMessage ?? "セッション")
-                    .font(DesignSystem.Fonts.body)
-                    .foregroundStyle(DesignSystem.Colors.textPrimary)
-                    .lineLimit(3)
-                HStack(spacing: DesignSystem.Spacing.sm) {
-                    Text(session.createdAt.timeHM)
-                        .font(DesignSystem.Fonts.caption)
-                        .foregroundStyle(DesignSystem.Colors.textSecondary)
-                    if let emotion = session.emotionLabel, !emotion.isEmpty {
-                        Text(emotion)
-                            .font(DesignSystem.Fonts.caption)
-                            .foregroundStyle(DesignSystem.Colors.accent)
-                    }
-                }
-            }
-        }
-    }
-
-    private func meditationCard(_ log: MeditationLog) -> some View {
-        HomeCard {
-            VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
-                Text("\(log.durationText)の瞑想")
-                    .font(DesignSystem.Fonts.body)
-                    .foregroundStyle(DesignSystem.Colors.textPrimary)
-                Text(log.date.timeHM)
-                    .font(DesignSystem.Fonts.caption)
-                    .foregroundStyle(DesignSystem.Colors.textSecondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    private func taskCard(_ task: TaskItem) -> some View {
-        HomeCard {
-            HStack(spacing: DesignSystem.Spacing.md) {
-                Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 20))
-                    .foregroundStyle(task.isCompleted ? DesignSystem.Colors.accent : DesignSystem.Colors.greyDark)
-                VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
-                    Text(task.title)
-                        .font(DesignSystem.Fonts.body)
-                        .foregroundStyle(DesignSystem.Colors.textPrimary)
-                        .lineLimit(2)
-                    if !task.previewText.isEmpty {
-                        Text(task.previewText)
-                            .font(DesignSystem.Fonts.caption)
-                            .foregroundStyle(DesignSystem.Colors.textSecondary)
-                            .lineLimit(1)
-                    }
-                }
-                Spacer(minLength: 0)
-            }
-        }
+    private func startChat() {
+        _ = coachStore.startNewSession()
+        NotificationCenter.default.post(name: .navigateToCoachChat, object: nil)
     }
 }
 
-// MARK: - セクション切り替え
-
-/// ホームの3セクション種別
-private enum HomeSectionKind: CaseIterable, Identifiable {
-    case journal, session, task
-
-    var id: Self { self }
-
-    var title: String {
-        switch self {
-        case .journal: return "ジャーナル"
-        case .session: return "セッション"
-        case .task: return "タスク"
-        }
-    }
-
-    var icon: String {
-        switch self {
-        case .journal: return "leaf"
-        case .session: return "bubble.left.and.bubble.right"
-        case .task: return "checklist"
-        }
-    }
-}
-
-/// セクションボタン用のカード風スタイル（surface+角丸。SurfaceCard と同トーン）
-private struct SurfaceCardStyleLike: ViewModifier {
+/// ホームのカード（surface+大きめの角丸。iOS 26 以降は Liquid Glass）
+private struct HomeCardStyle: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
             content
-                .glassEffect(.surfaceTinted.interactive(), in: .rect(cornerRadius: DesignSystem.Spacing.md))
+                .glassEffect(.surfaceTinted.interactive(), in: .rect(cornerRadius: DesignSystem.Spacing.xl))
         } else {
             content
                 .background(DesignSystem.Colors.surface)
-                .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous))
-        }
-    }
-}
-
-/// 予定カード用の Liquid Glass 背景（角丸は小さめ）
-private struct EventCardGlassStyle: ViewModifier {
-    func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
-            content
-                .glassEffect(.surfaceTinted.interactive(), in: .rect(cornerRadius: DesignSystem.Spacing.sm))
-        } else {
-            content
-                .background(DesignSystem.Colors.surface)
-                .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.sm, style: .continuous))
-        }
-    }
-}
-
-/// ホームセクション内のカード（SurfaceCard の薄いラッパー）
-private struct HomeCard<Content: View>: View {
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        SurfaceCard {
-            content
+                .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.xl, style: .continuous))
         }
     }
 }
