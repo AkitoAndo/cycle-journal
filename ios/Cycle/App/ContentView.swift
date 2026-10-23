@@ -135,7 +135,10 @@ struct CustomTabBar: View {
     @Namespace private var indicatorNamespace
 
     var body: some View {
+        // 各タブを固定幅にし、間と両端を Spacer で埋めて、見た目の隙間
+        // （端・ホーム・ロゴ・記録・端）がすべて同じになるようにする
         HStack(spacing: 0) {
+            Spacer()
             TabBarButton(
                 icon: "house",
                 selectedIcon: "house.fill",
@@ -145,7 +148,7 @@ struct CustomTabBar: View {
                 namespace: indicatorNamespace,
                 action: { select(0) }
             )
-
+            Spacer()
             TabBarButton(
                 // Cycleロゴ（大樹アイコン）をそのまま表示。中央タブとして大きめに
                 icon: "CycleIcon",
@@ -158,7 +161,7 @@ struct CustomTabBar: View {
                 namespace: indicatorNamespace,
                 action: { select(1) }
             )
-
+            Spacer()
             TabBarButton(
                 // 家のアイコンと同じ重さに見える「閉じた本」
                 icon: "book.closed",
@@ -169,10 +172,8 @@ struct CustomTabBar: View {
                 namespace: indicatorNamespace,
                 action: { select(2) }
             )
+            Spacer()
         }
-        // 3つの中心を画面幅の 1/4・1/2・3/4 に置き、端・ホーム・ロゴ・記録・端の間隔を等しくする
-        .containerRelativeFrame(.horizontal) { width, _ in width * 0.75 }
-        .frame(maxWidth: .infinity)
         .frame(height: 55)
         .background(DesignSystem.Colors.background)
     }
@@ -232,7 +233,9 @@ struct TabBarButton: View {
             }
             .foregroundStyle(isSelected ? DesignSystem.Colors.accent : DesignSystem.Colors.textSecondary)
             .padding(.vertical, 6)
-            .frame(maxWidth: .infinity)
+            // 見た目の幅で固定する（中央ロゴは描画サイズと同じ 72pt）。
+            // タブバー側が Spacer で隙間を等しく配る
+            .frame(width: isProminent ? iconSize : 56)
         }
         .accessibilityLabel(label)
         .accessibilityIdentifier(identifier)
