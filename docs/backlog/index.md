@@ -87,3 +87,4 @@
 | U-01 | [オンボーディング](./ux/U-01-onboarding) | :memo: Refinement | P2 |
 | U-02 | [エラーハンドリング強化](./ux/U-02-error-handling) | :memo: Refinement | P1 |
 | U-03 | [1週間のふりかえりサイクル（日記・コーチ・タスクをつなぐ）](./ux/U-03-weekly-cycle) | :memo: Refinement | P0 |
+| U-04 | [下タブを3つに絞り、全体を iOS 17 の形に](./ux/U-04-three-tabs) | :construction: In Progress | P0 |
