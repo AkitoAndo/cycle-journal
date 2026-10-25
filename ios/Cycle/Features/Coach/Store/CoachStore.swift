@@ -81,7 +81,10 @@ class CoachStore: ObservableObject {
     }
 
     /// 現在のセッションを終了
-    func endCurrentSession() {
+    /// - Parameters:
+    ///   - insight: まとめ画面で本人が書いた「今回の気づき」（空なら残さない）
+    ///   - nextStep: 「次の一歩」（空なら残さない）
+    func endCurrentSession(insight: String? = nil, nextStep: String? = nil) {
         guard var session = currentSession else { return }
         session.isActive = false
         session.updatedAt = Date()
@@ -90,9 +93,25 @@ class CoachStore: ObservableObject {
         if session.summary == nil {
             session.summary = session.firstUserMessage
         }
+        let trimmedInsight = insight?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let trimmedStep = nextStep?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !trimmedInsight.isEmpty { session.insight = trimmedInsight }
+        if !trimmedStep.isEmpty { session.nextStep = trimmedStep }
 
         updateSession(session)
         currentSession = nil
+    }
+
+    /// 「次の一歩」をタスクにしたことをセッションに記録する（二重に追加しないため）
+    func markNextStepAdded(sessionId: UUID, taskId: UUID) {
+        guard var session = sessions.first(where: { $0.id == sessionId }) else { return }
+        session.nextStepTaskId = taskId
+        updateSession(session)
+    }
+
+    /// 対話の履歴から見つける（まとめ画面・タスクの「元の対話」表示用）
+    func session(id: UUID) -> CoachSession? {
+        sessions.first { $0.id == id }
     }
 
     /// セッションを更新

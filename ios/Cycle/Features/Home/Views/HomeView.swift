@@ -307,11 +307,16 @@ struct HomeView: View {
 
             Button(action: { previewingTask = task }) {
                 HStack {
-                    Text(task.title)
-                        .font(.body)
-                        .foregroundStyle(task.isCompleted ? DesignSystem.Colors.textTertiary : DesignSystem.Colors.textPrimary)
-                        .strikethrough(task.isCompleted, color: DesignSystem.Colors.textTertiary)
-                        .lineLimit(1)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(task.title)
+                            .font(.body)
+                            .foregroundStyle(task.isCompleted ? DesignSystem.Colors.textTertiary : DesignSystem.Colors.textPrimary)
+                            .strikethrough(task.isCompleted, color: DesignSystem.Colors.textTertiary)
+                            .lineLimit(1)
+                        if task.sourceSessionId != nil {
+                            StepOriginChip()
+                        }
+                    }
                     Spacer(minLength: 0)
                     HomeChevron()
                 }

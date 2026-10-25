@@ -593,3 +593,43 @@ CHANGES_2.txt - Treow 開発記録【1.0.11 以降】
 目的: 下タブの中央を対話に変えて左右のボタンと合わせたい（オーナー指示）。
 結果: ビルド成功。iPhone 16 Pro (iOS 18.1) シミュレータでホームの表示を確認。
       ※ 記録タブの一番下の余白（＋ボタン分）はそのまま。
+
+[2026-10-25] 対話の終わりに「まとめ」を残し、次の一歩を今日の一歩に追加できるようにする（U-03 対話→一歩）
+--------------------------------------------------------------------------------
+変更ファイル:
+  - ios/Cycle/Features/Coach/Views/SessionClosingView.swift（新規）
+  - ios/Cycle/Features/Coach/Views/CoachChatView.swift
+  - ios/Cycle/Features/Coach/Views/CoachHomeView.swift
+  - ios/Cycle/Features/Coach/Models/CoachSession.swift
+  - ios/Cycle/Features/Coach/Store/CoachStore.swift
+  - ios/Cycle/Features/Tasks/Model/Task.swift
+  - ios/Cycle/Features/Tasks/ViewModel/TaskViewModel.swift
+  - ios/Cycle/Features/Records/Views/RecordRows.swift
+  - ios/Cycle/Features/Home/Views/HomeView.swift
+  - ios/CycleTests/SessionClosingTests.swift（新規）
+  - docs/backlog/ux/U-03-weekly-cycle.md
+  - CTO_CONCERNS.txt（D-08 に追記）
+内容:
+  Before: 対話の「終了」は確認アラートだけで、話した内容は履歴に残るのみ。
+          対話で決めた行動をタスクにするには、自分でタスク画面に入力し直す必要があった。
+  After:
+  1) 対話の「終了」で、本人が話していれば「対話を終える」画面（シート）が開く。
+     「今回の気づき」「次の一歩」を本人の言葉で書く。どちらも空のまま「対話を終える」でよい
+     （立ち止まる選択。評価や達成の演出はしない）。何も話していない対話は従来どおりアラートで閉じる。
+  2) 次の一歩を書くと「今日の一歩に追加」のスイッチ（初期値オン）が現れ、ボタンが
+     「一歩を追加して終える」に変わる。終えると今日の日付のタスクが作られる。
+  3) 作られたタスクには生まれた対話の ID（sourceSessionId）が残り、ホームと記録タブの行に
+     「対話から」の印（葉のアイコン）が出る。
+  4) セッションには insight / nextStep / nextStepTaskId を保存（二重追加の防止と、後で見返すため）。
+  5) テスト5件を追加（気づき・一歩の保存、空のときは残さない、一歩が今日のタスクになり
+     セッションと結びつく、空の一歩は追加しない、話したかどうかの判定）。
+  CoachChatView に TaskViewModel を渡すため、CoachHomeView の fullScreenCover で注入。
+  AI によるテーマ・気づきの提案と分岐（C-10）、サーバーへの保存は今回の対象外。
+目的: 報告書（docs/product/cycle-alignment-review.md）で最優先とした「対話 → 一歩」の矢印を
+      つなぐ（オーナー指示）。
+結果: ビルド成功。ユニットテストは別端末（iPhone 15 Pro）で 163件すべて成功。
+      iPhone 16 Pro (iOS 18.1) シミュレータで、対話 → 候補を1つ送る → 終了 → まとめ画面 →
+      次の一歩「walk 10 min」を入力 → スイッチとボタンの文言が変わる → 終えると
+      ホームの今日の一歩に「対話から」の印つきで入り、樹の葉が1枚増えることを確認。
+      ※ 気づき欄に書いたときの保存、記録タブ側の印は画面では未確認（テストで確認）。
+      ※ 対話から生まれたタスクをシミュレータに残している（walk 10 min）。

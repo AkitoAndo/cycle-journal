@@ -15,6 +15,7 @@ struct CoachHomeView: View {
     @EnvironmentObject var journalViewModel: JournalViewModel
     @EnvironmentObject var authStore: AuthStore
     @EnvironmentObject var meditationStore: MeditationStore
+    @EnvironmentObject var taskViewModel: TaskViewModel
 
     @State private var showingChat = false
     @State private var showingHistory = false
@@ -49,6 +50,7 @@ struct CoachHomeView: View {
             CoachChatView()
                 .environmentObject(coachStore)
                 .environmentObject(authStore)
+                .environmentObject(taskViewModel)
         }
         .onReceive(coachStore.$shouldOpenChat) { shouldOpen in
             if shouldOpen {
@@ -281,4 +283,5 @@ struct CoachHomeView: View {
         .environmentObject(CoachStore())
         .environmentObject(JournalViewModel())
         .environmentObject(MeditationStore())
+        .environmentObject(TaskViewModel())
 }

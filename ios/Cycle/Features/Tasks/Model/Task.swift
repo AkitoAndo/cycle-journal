@@ -65,6 +65,9 @@ struct TaskItem: Identifiable, Codable, Hashable {
 
     /// 締切日時。nil の場合は終日
     var deadline: Date?
+
+    /// コーチとの対話から生まれた一歩なら、そのセッションの ID（U-03 対話→一歩）
+    var sourceSessionId: UUID?
 }
 
 extension TaskItem {

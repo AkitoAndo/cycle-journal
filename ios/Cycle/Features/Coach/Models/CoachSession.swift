@@ -15,6 +15,12 @@ struct CoachSession: Identifiable, Codable {
     var summary: String?
     var emotionLabel: String?
     var isActive: Bool
+    /// まとめ（U-03 対話→一歩）: 対話の終わりに本人が残す「今回の気づき」
+    var insight: String?
+    /// まとめ: 「次の一歩」（1つだけ、短く）
+    var nextStep: String?
+    /// 「次の一歩」を「タスクに追加」したときのタスク ID（二重に追加しないため）
+    var nextStepTaskId: UUID?
 
     init(
         id: UUID = UUID(),
@@ -24,7 +30,10 @@ struct CoachSession: Identifiable, Codable {
         updatedAt: Date = Date(),
         summary: String? = nil,
         emotionLabel: String? = nil,
-        isActive: Bool = true
+        isActive: Bool = true,
+        insight: String? = nil,
+        nextStep: String? = nil,
+        nextStepTaskId: UUID? = nil
     ) {
         self.id = id
         self.serverId = serverId
@@ -34,6 +43,14 @@ struct CoachSession: Identifiable, Codable {
         self.summary = summary
         self.emotionLabel = emotionLabel
         self.isActive = isActive
+        self.insight = insight
+        self.nextStep = nextStep
+        self.nextStepTaskId = nextStepTaskId
+    }
+
+    /// 対話で本人が話したか（開いただけのセッションと区別する）
+    var hasUserMessages: Bool {
+        messages.contains { $0.role == .user }
     }
 
     /// セッションの最初のユーザーメッセージを取得

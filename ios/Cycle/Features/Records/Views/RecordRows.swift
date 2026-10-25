@@ -110,6 +110,9 @@ struct RecordStepRow: View {
                                 .foregroundStyle(DesignSystem.Colors.textSecondary)
                                 .lineLimit(1)
                         }
+                        if task.sourceSessionId != nil {
+                            StepOriginChip()
+                        }
                         if let scheduleLabel {
                             scheduleLabelView(scheduleLabel)
                         }
@@ -187,6 +190,16 @@ struct RecordStepRow: View {
 }
 
 // MARK: - 共通部品
+
+/// コーチとの対話から生まれた一歩の印（U-03 対話→一歩）
+struct StepOriginChip: View {
+    var body: some View {
+        Label("対話から", systemImage: "leaf")
+            .font(.caption)
+            .foregroundStyle(DesignSystem.Colors.leaf)
+            .accessibilityLabel("コーチとの対話から生まれた一歩")
+    }
+}
 
 /// 行末の「>」
 struct RecordChevron: View {

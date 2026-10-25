@@ -180,7 +180,8 @@ final class TaskViewModel: ObservableObject {
         notes: String = "",
         fact: String = "",
         insight: String = "",
-        nextAction: String = ""
+        nextAction: String = "",
+        sourceSessionId: UUID? = nil
     ) {
         guard let trimmedTitle = trimTitle(title), !trimmedTitle.isEmpty else { return }
 
@@ -198,11 +199,21 @@ final class TaskViewModel: ObservableObject {
         newTask.fact = fact
         newTask.insight = insight
         newTask.nextAction = nextAction
+        newTask.sourceSessionId = sourceSessionId
 
         tasks.append(newTask)
         persist()
 
         enqueueUpsert(for: newTask.id)
+    }
+
+    /// コーチとの対話で決めた「次の一歩」を今日のタスクにする（U-03 対話→一歩）。
+    /// 追加したタスクの ID を返す（タイトルが空なら nil）
+    @discardableResult
+    func addStep(from sessionId: UUID, title: String, on date: Date = Date()) -> UUID? {
+        guard let trimmedTitle = trimTitle(title), !trimmedTitle.isEmpty else { return nil }
+        addTask(on: date, title: trimmedTitle, sourceSessionId: sessionId)
+        return tasks.last { $0.sourceSessionId == sessionId && $0.title == trimmedTitle }?.id
     }
 
     /// タスクの完了状態を切り替え

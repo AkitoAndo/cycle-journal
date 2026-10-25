@@ -13,6 +13,8 @@ struct CoachChatView: View {
 
     @State private var messageText = ""
     @State private var showingEndSessionAlert = false
+    /// 対話の終わりに出す「まとめ」画面（U-03 対話→一歩）
+    @State private var showingClosing = false
     @State private var sendCount = 0
     /// 進行中の送信タスク。停止ボタンでキャンセルする
     @State private var sendTask: Task<Void, Never>?
@@ -73,7 +75,12 @@ struct CoachChatView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("終了") {
-                        showingEndSessionAlert = true
+                        // 何も話していなければ、まとめは出さずにそのまま閉じる
+                        if coachStore.currentSession?.hasUserMessages == true {
+                            showingClosing = true
+                        } else {
+                            showingEndSessionAlert = true
+                        }
                     }
                     .foregroundStyle(DesignSystem.Colors.accent)
                 }
@@ -86,6 +93,14 @@ struct CoachChatView: View {
                 }
             } message: {
                 Text("この会話は履歴に保存されます")
+            }
+            .sheet(isPresented: $showingClosing) {
+                SessionClosingView(onFinish: {
+                    showingClosing = false
+                    dismiss()
+                })
+                .environmentObject(coachStore)
+                .softSheet()
             }
             .alert("再ログインが必要です", isPresented: $coachStore.showReauthPrompt) {
                 Button("OK") {
