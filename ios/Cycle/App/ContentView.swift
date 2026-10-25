@@ -136,7 +136,7 @@ struct CustomTabBar: View {
 
     var body: some View {
         // 各タブを固定幅にし、間と両端を Spacer で埋めて、見た目の隙間
-        // （端・ホーム・ロゴ・記録・端）がすべて同じになるようにする
+        // （端・ホーム・対話・記録・端）がすべて同じになるようにする
         HStack(spacing: 0) {
             Spacer()
             TabBarButton(
@@ -150,13 +150,11 @@ struct CustomTabBar: View {
             )
             Spacer()
             TabBarButton(
-                // Cycleロゴ（大樹アイコン）をそのまま表示。中央タブとして大きめに
-                icon: "CycleIcon",
-                selectedIcon: "CycleIcon",
-                label: "コーチ",
+                // 中央も左右と同じ形（アイコン＋文字）にそろえる
+                icon: "bubble.left.and.bubble.right",
+                selectedIcon: "bubble.left.and.bubble.right.fill",
+                label: "対話",
                 identifier: "tab_Coach",
-                isAssetIcon: true,
-                isProminent: true,
                 isSelected: selectedTab == 1,
                 namespace: indicatorNamespace,
                 action: { select(1) }

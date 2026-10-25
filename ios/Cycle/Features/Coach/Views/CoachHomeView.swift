@@ -40,8 +40,8 @@ struct CoachHomeView: View {
             }
             .padding(.horizontal, DesignSystem.Spacing.xl)
             .padding(.top, DesignSystem.Spacing.sm)
-            // タブバー中央の大樹ロゴ（上に飛び出している）に隠れないよう下を空ける
-            .padding(.bottom, 88)
+            // タブバーに隠れないよう下を空ける
+            .padding(.bottom, DesignSystem.Spacing.xxl)
         }
         .background(DesignSystem.Colors.backgroundGradient)
         .navigationBarHidden(true)
