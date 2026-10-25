@@ -41,17 +41,12 @@ struct WeeklyTreeView: View {
 
     // MARK: - 地面
 
+    /// 地面は薄い影だけ（草は葉と見分けにくいので描かない）
     private func drawGround(in context: inout GraphicsContext) {
         context.fill(
             Path(ellipseIn: CGRect(x: 14, y: 91, width: 72, height: 8)),
             with: .color(DesignSystem.Colors.leafLight.opacity(0.30))
         )
-        var grass = Path()
-        for (x, lean) in [(26.0, -2.0), (31, -1), (36, -2), (64, 2), (69, 1), (74, 2)] {
-            grass.move(to: CGPoint(x: x, y: 95))
-            grass.addQuadCurve(to: CGPoint(x: x + lean, y: 89), control: CGPoint(x: x + lean * 0.3, y: 92))
-        }
-        context.stroke(grass, with: .color(DesignSystem.Colors.leafLight), style: StrokeStyle(lineWidth: 1, lineCap: .round))
     }
 
     // MARK: - 幹と枝
