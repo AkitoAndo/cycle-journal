@@ -4,6 +4,7 @@
 //
 //  対話の終わりに出す「まとめ」画面（U-03 対話→一歩 / C-10 まとめ画面）。
 //  本人の言葉で「今回の気づき」と「次の一歩」を残し、一歩は「今日の一歩に追加」でタスクになる。
+//  週のふりかえり（U-03）のときは「今週の一文」「来週の一歩」になり、一歩は来週の初日のタスクになる。
 //  どちらも空のまま「終える」でもよい（立ち止まる選択）。評価や達成の演出はしない。
 //
 
@@ -28,17 +29,31 @@ struct SessionClosingView: View {
         nextStep.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    private var isWeekly: Bool { coachStore.isCurrentSessionWeeklyReview }
+
+    /// 週のふりかえりの一歩は来週の初日（ふりかえり日の翌日）に置く
+    private var stepDate: Date {
+        guard isWeekly, let start = coachStore.currentSession?.weeklyReviewWeekStart else { return Date() }
+        return WeeklyReviewWeek(containing: start).nextWeekStart()
+    }
+
+    private var stepDateText: String {
+        stepDate.formatted(.dateTime.month().day().weekday(.abbreviated).locale(Locale(identifier: "ja_JP")))
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
-                    Text("ここまで話したことを、ひとことで残しておこう。\n書かなくても大丈夫。")
+                    Text(isWeekly
+                         ? "今週をひとことで残しておこう。\n来週の始まりに、もう一度目にします。書かなくても大丈夫。"
+                         : "ここまで話したことを、ひとことで残しておこう。\n書かなくても大丈夫。")
                         .font(.body)
                         .foregroundStyle(DesignSystem.Colors.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
 
                     field(
-                        title: "今回の気づき",
+                        title: isWeekly ? "今週の一文" : "今回の気づき",
                         placeholder: "例: 急がなくても、ちゃんと進んでいた",
                         text: $insight,
                         field: .insight
@@ -46,8 +61,8 @@ struct SessionClosingView: View {
 
                     VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
                         field(
-                            title: "次の一歩",
-                            placeholder: "例: 明日の朝、5分だけ書く",
+                            title: isWeekly ? "来週の一歩" : "次の一歩",
+                            placeholder: isWeekly ? "例: 月曜の朝、5分だけ書く" : "例: 明日の朝、5分だけ書く",
                             text: $nextStep,
                             field: .nextStep
                         )
@@ -57,7 +72,7 @@ struct SessionClosingView: View {
 
                         if !trimmedStep.isEmpty {
                             Toggle(isOn: $addAsStep) {
-                                Label("今日の一歩に追加", systemImage: "leaf")
+                                Label(isWeekly ? "来週の一歩に追加（\(stepDateText)）" : "今日の一歩に追加", systemImage: "leaf")
                                     .font(.body)
                                     .foregroundStyle(DesignSystem.Colors.textPrimary)
                             }
@@ -96,7 +111,7 @@ struct SessionClosingView: View {
                 .background(DesignSystem.Colors.background)
                 .accessibilityIdentifier("closing_finish_button")
             }
-            .navigationTitle("対話を終える")
+            .navigationTitle(isWeekly ? "ふりかえりを終える" : "対話を終える")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -112,7 +127,8 @@ struct SessionClosingView: View {
     private static let onAccent = Color(red: 0.99, green: 0.97, blue: 0.93)
 
     private var finishTitle: String {
-        !trimmedStep.isEmpty && addAsStep ? "一歩を追加して終える" : "対話を終える"
+        if !trimmedStep.isEmpty && addAsStep { return "一歩を追加して終える" }
+        return isWeekly ? "ふりかえりを終える" : "対話を終える"
     }
 
     private func field(title: String, placeholder: String, text: Binding<String>, field: Field) -> some View {
@@ -141,9 +157,11 @@ struct SessionClosingView: View {
             return
         }
         let sessionId = session.id
+        // 対話を閉じると currentSession が消えるので、一歩の日付は先に決めておく
+        let date = stepDate
         coachStore.endCurrentSession(insight: insight, nextStep: nextStep)
         if !trimmedStep.isEmpty, addAsStep,
-           let taskId = taskViewModel.addStep(from: sessionId, title: trimmedStep) {
+           let taskId = taskViewModel.addStep(from: sessionId, title: trimmedStep, on: date) {
             coachStore.markNextStepAdded(sessionId: sessionId, taskId: taskId)
         }
         onFinish()

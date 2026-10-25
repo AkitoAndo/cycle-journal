@@ -54,6 +54,11 @@ struct WeeklyReviewWeekTests {
         #expect(calendar.isDate(week.reviewDay, inSameDayAs: date(10, 24)))
     }
 
+    @Test func nextWeekStartIsTheDayAfterReviewDay() {
+        let week = WeeklyReviewWeek(containing: date(10, 23), calendar: calendar)
+        #expect(calendar.isDate(week.nextWeekStart(calendar: calendar), inSameDayAs: date(10, 26)))
+    }
+
     @Test func materialIsNilWhenNothingSelected() {
         let week = WeeklyReviewWeek(containing: date(10, 23), calendar: calendar)
         #expect(week.material(journals: [], completedTasks: []) == nil)

@@ -26,6 +26,11 @@ struct WeeklyReviewWeek: Equatable {
         start = calendar.date(byAdding: .day, value: -6, to: reviewDay) ?? day
     }
 
+    /// 来週の初日（ふりかえり日の翌日、0時）。「来週の一歩」はこの日のタスクになる
+    func nextWeekStart(calendar: Calendar = .current) -> Date {
+        calendar.date(byAdding: .day, value: 1, to: reviewDay) ?? reviewDay
+    }
+
     /// 週の7日間（初日から順）
     func days(calendar: Calendar = .current) -> [Date] {
         (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: start) }

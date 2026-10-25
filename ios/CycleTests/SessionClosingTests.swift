@@ -69,6 +69,38 @@ struct SessionClosingTests {
         #expect(vm.tasks.count == before)
     }
 
+    @Test func weeklyReviewSessionIsFoundByItsWeek() {
+        let store = CoachStore()
+        var session = store.startNewSession()
+        session.weeklyReviewWeekStart = WeeklyReviewWeek(containing: Date()).start
+        store.updateSession(session)
+        store.currentSession = session
+        store.addUserMessage("今週は静かだった")
+        #expect(store.isCurrentSessionWeeklyReview)
+
+        store.endCurrentSession(insight: "急がなくても進んでいた", nextStep: "月曜に5分書く")
+
+        let thisWeek = WeeklyReviewWeek(containing: Date())
+        let found = store.weeklyReview(for: thisWeek)
+        #expect(found?.id == session.id)
+        #expect(found?.insight == "急がなくても進んでいた")
+        #expect(found?.nextStep == "月曜に5分書く")
+
+        let lastWeekDay = Calendar.current.date(byAdding: .day, value: -7, to: Date())!
+        #expect(store.weeklyReview(for: WeeklyReviewWeek(containing: lastWeekDay)) == nil)
+    }
+
+    @Test func weeklyReviewWithoutSentenceOrStepIsNotCounted() {
+        let store = CoachStore()
+        var session = store.startNewSession()
+        session.weeklyReviewWeekStart = WeeklyReviewWeek(containing: Date()).start
+        store.updateSession(session)
+        store.currentSession = session
+        store.addUserMessage("話した")
+        store.endCurrentSession(insight: "", nextStep: "")
+        #expect(store.weeklyReview(for: WeeklyReviewWeek(containing: Date())) == nil)
+    }
+
     @Test func hasUserMessagesDistinguishesOpenedOnlySessions() {
         var session = CoachSession()
         #expect(session.hasUserMessages == false)

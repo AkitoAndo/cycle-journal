@@ -20,7 +20,12 @@ struct SessionRowView: View {
         SurfaceCard {
             HStack {
                 VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
-                    Text(session.summary ?? session.firstUserMessage ?? "会話")
+                    if session.isWeeklyReview {
+                        Label("週のふりかえり", systemImage: "leaf")
+                            .font(DesignSystem.Fonts.caption)
+                            .foregroundStyle(DesignSystem.Colors.leaf)
+                    }
+                    Text(session.insight ?? session.summary ?? session.firstUserMessage ?? "会話")
                         .font(DesignSystem.Fonts.body)
                         .foregroundStyle(DesignSystem.Colors.textPrimary)
                         .lineLimit(1)

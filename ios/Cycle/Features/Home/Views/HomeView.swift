@@ -74,6 +74,18 @@ struct HomeView: View {
         week.days().reduce(0) { $0 + recordCount(on: $1) }
     }
 
+    /// 今週のふりかえりで残した一文・一歩（まだなら nil）
+    private var thisWeekReview: CoachSession? {
+        coachStore.weeklyReview(for: week)
+    }
+
+    /// 先週のふりかえりで残した一文・一歩。今週のふりかえりを終えるまで、週の始まりに見せる
+    private var lastWeekReview: CoachSession? {
+        guard thisWeekReview == nil,
+              let lastWeekDay = calendar.date(byAdding: .day, value: -7, to: Date()) else { return nil }
+        return coachStore.weeklyReview(for: WeeklyReviewWeek(containing: lastWeekDay))
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -81,6 +93,10 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 28) {
                 header
                     .staggeredAppear(index: 0, group: "home")
+                if let review = lastWeekReview {
+                    lastWeekCard(review)
+                        .staggeredAppear(index: 1, group: "home")
+                }
                 promptCard
                     .staggeredAppear(index: 1, group: "home")
                 if !todayEvents.isEmpty {
@@ -187,6 +203,43 @@ struct HomeView: View {
         }
         .accessibilityLabel("メニュー")
         .accessibilityIdentifier("home_menu")
+    }
+
+    // MARK: - 先週の一文（週 → 次の週）
+
+    /// 先週のふりかえりで残した一文と一歩。静かなカードで、週の始まりにもう一度目にする
+    private func lastWeekCard(_ review: CoachSession) -> some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
+            Label("先週のふりかえりから", systemImage: "leaf")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(DesignSystem.Colors.leaf)
+            if let sentence = review.insight {
+                Text(sentence)
+                    .font(.body)
+                    .foregroundStyle(DesignSystem.Colors.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if let step = review.nextStep {
+                HStack(spacing: DesignSystem.Spacing.sm) {
+                    Text("今週の一歩")
+                        .font(.footnote)
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
+                    Text(step)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(DesignSystem.Colors.textPrimary)
+                        .lineLimit(2)
+                }
+            }
+        }
+        .padding(DesignSystem.Spacing.lg)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(DesignSystem.Colors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignSystem.Spacing.md, style: .continuous)
+                .stroke(DesignSystem.Colors.grey, lineWidth: 0.5)
+        )
+        .accessibilityIdentifier("home_last_week_card")
     }
 
     // MARK: - 今日の問いかけ
@@ -354,15 +407,32 @@ struct HomeView: View {
 
             HomeRowDivider(leadingInset: DesignSystem.Spacing.lg)
 
+            // ふりかえり済みなら「今週の一文」を出し、ふりかえりの行は「もう一度」にする
+            if let sentence = thisWeekReview?.insight {
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                    Text("今週の一文")
+                        .font(.footnote)
+                        .foregroundStyle(DesignSystem.Colors.textSecondary)
+                    Text(sentence)
+                        .font(.body)
+                        .foregroundStyle(DesignSystem.Colors.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .homeRow()
+                HomeRowDivider(leadingInset: DesignSystem.Spacing.lg)
+            }
+
             Button(action: { showingWeeklyReview = true }) {
                 HStack(spacing: DesignSystem.Spacing.md) {
-                    Text("1週間をふりかえる")
+                    Text(thisWeekReview == nil ? "1週間をふりかえる" : "もう一度ふりかえる")
                         .font(.body)
                         .foregroundStyle(DesignSystem.Colors.accent)
                     Spacer(minLength: 0)
-                    Text(isReviewDay ? "今日" : "日曜の夜")
-                        .font(.subheadline)
-                        .foregroundStyle(isReviewDay ? DesignSystem.Colors.accent : DesignSystem.Colors.textSecondary)
+                    if thisWeekReview == nil {
+                        Text(isReviewDay ? "今日" : "日曜の夜")
+                            .font(.subheadline)
+                            .foregroundStyle(isReviewDay ? DesignSystem.Colors.accent : DesignSystem.Colors.textSecondary)
+                    }
                     HomeChevron()
                 }
                 .homeRow()

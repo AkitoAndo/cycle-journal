@@ -335,8 +335,18 @@ class CoachStore: ObservableObject {
 
     /// 現在のセッションが週のふりかえりか
     var isCurrentSessionWeeklyReview: Bool {
-        guard let id = currentSession?.id else { return false }
-        return id == weeklyReviewSessionId
+        currentSession?.isWeeklyReview == true
+    }
+
+    /// その週のふりかえりで残した一文・一歩（最新のもの）。まだなければ nil
+    func weeklyReview(for week: WeeklyReviewWeek, calendar: Calendar = .current) -> CoachSession? {
+        sessions
+            .filter { session in
+                guard let start = session.weeklyReviewWeekStart else { return false }
+                return calendar.isDate(start, inSameDayAs: week.start)
+                    && (session.insight != nil || session.nextStep != nil)
+            }
+            .max { $0.updatedAt < $1.updatedAt }
     }
 
     /// 最初のメッセージを送ってセッションを開始する（context はコーチに渡す日記などの材料）
@@ -352,7 +362,11 @@ class CoachStore: ObservableObject {
         error = nil
         lastAPIError = nil
 
-        let session = startNewSession(withContext: context)
+        var session = startNewSession(withContext: context)
+        if isWeeklyReview {
+            session.weeklyReviewWeekStart = WeeklyReviewWeek(containing: Date()).start
+            updateSession(session)
+        }
         currentSession = session
         weeklyReviewSessionId = isWeeklyReview ? session.id : nil
 

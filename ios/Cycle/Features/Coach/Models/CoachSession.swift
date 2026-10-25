@@ -21,6 +21,9 @@ struct CoachSession: Identifiable, Codable {
     var nextStep: String?
     /// 「次の一歩」を「タスクに追加」したときのタスク ID（二重に追加しないため）
     var nextStepTaskId: UUID?
+    /// 週のふりかえりとして始めた対話なら、その週の初日（0時）。
+    /// このとき insight は「今週の一文」、nextStep は「来週の一歩」の意味になる
+    var weeklyReviewWeekStart: Date?
 
     init(
         id: UUID = UUID(),
@@ -33,7 +36,8 @@ struct CoachSession: Identifiable, Codable {
         isActive: Bool = true,
         insight: String? = nil,
         nextStep: String? = nil,
-        nextStepTaskId: UUID? = nil
+        nextStepTaskId: UUID? = nil,
+        weeklyReviewWeekStart: Date? = nil
     ) {
         self.id = id
         self.serverId = serverId
@@ -46,7 +50,11 @@ struct CoachSession: Identifiable, Codable {
         self.insight = insight
         self.nextStep = nextStep
         self.nextStepTaskId = nextStepTaskId
+        self.weeklyReviewWeekStart = weeklyReviewWeekStart
     }
+
+    /// 週のふりかえりの対話か
+    var isWeeklyReview: Bool { weeklyReviewWeekStart != nil }
 
     /// 対話で本人が話したか（開いただけのセッションと区別する）
     var hasUserMessages: Bool {
