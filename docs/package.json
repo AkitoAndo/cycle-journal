@@ -3,9 +3,15 @@
   "scripts": {
     "docs:dev": "vitepress dev",
     "docs:build": "vitepress build",
-    "docs:preview": "vitepress preview"
+    "docs:preview": "vitepress preview",
+    "lint:text": "textlint \"../marketing/**/*.md\"",
+    "lint:text:external": "textlint",
+    "lint:text:file": "textlint",
+    "lint:text:fix": "textlint --fix \"../marketing/**/*.md\""
   },
   "devDependencies": {
+    "textlint": "^15.8.0",
+    "textlint-rule-preset-japanese": "^10.0.4",
     "vitepress": "^1.6.3"
   }
 }

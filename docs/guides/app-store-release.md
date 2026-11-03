@@ -65,6 +65,8 @@ xcodebuild archive \
 
 ## 5. スクリーンショット
 
+マーケティング画像のコピー、構図、生成・検証方針は [App Store スクリーンショット制作パイプライン](../product/app-store-screenshot-pipeline.md) を参照する。
+
 ```bash
 ./scripts/take-screenshots.sh
 ```

@@ -36,6 +36,7 @@ export default defineConfig({
           { text: 'Treowモデル', link: '/product/cycle-model' },
           { text: 'プロンプトカタログ', link: '/product/prompt-catalog' },
           { text: 'App Store説明文', link: '/product/store-description' },
+          { text: 'App Store画像制作', link: '/product/app-store-screenshot-pipeline' },
         ],
       },
       {
@@ -143,6 +144,7 @@ export default defineConfig({
               { text: 'S-01: 設定画面UI', link: '/backlog/settings/S-01-ui' },
               { text: 'S-02: 通知', link: '/backlog/settings/S-02-notifications' },
               { text: 'S-03: エクスポート', link: '/backlog/settings/S-03-export' },
+              { text: 'S-04: Face IDアプリロック', link: '/backlog/settings/S-04-app-lock' },
             ],
           },
           {

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="./screenshot.css" />
+    <title>Treow App Store Screenshot</title>
+  </head>
+  <body>
+    <main id="canvas" aria-label="Treow App Store screenshot">
+      <div class="color-field color-field--top"></div>
+      <div class="color-field color-field--bottom"></div>
+      <div class="growth-rings" aria-hidden="true"></div>
+
+      <header class="copy">
+        <h1 id="headline"></h1>
+      </header>
+
+      <section id="visual" class="visual">
+        <div id="primary-phone" class="phone phone--primary">
+          <div class="speaker"></div>
+          <div class="screen-main">
+            <img id="primary-image" alt="Treowのアプリ画面" />
+          </div>
+        </div>
+        <div id="secondary-phone" class="phone phone--secondary">
+          <div class="speaker"></div>
+          <div class="screen-main">
+            <img id="secondary-image" alt="Treowのアプリ画面" />
+          </div>
+        </div>
+        <div id="badges" class="badges"></div>
+      </section>
+    </main>
+    <script>
+      window.renderScreenshot = (screen, theme, urls) => {
+        const canvas = document.querySelector('#canvas');
+        canvas.className = `layout-${screen.layout}`;
+        for (const [name, value] of Object.entries(theme)) {
+          canvas.style.setProperty(`--${name}`, value);
+        }
+        canvas.style.setProperty('--accent', theme[screen.accent] || theme.sand);
+
+        document.querySelector('#headline').textContent = screen.headline;
+        document.querySelector('#primary-image').src = urls.primary;
+
+        const secondary = document.querySelector('#secondary-phone');
+        if (urls.secondary) {
+          document.querySelector('#secondary-image').src = urls.secondary;
+          secondary.hidden = false;
+        } else {
+          secondary.hidden = true;
+        }
+
+        const badges = document.querySelector('#badges');
+        badges.innerHTML = '';
+        for (const text of screen.badges || []) {
+          const badge = document.createElement('div');
+          badge.className = 'badge';
+          badge.textContent = text;
+          badges.appendChild(badge);
+        }
+      };
+    </script>
+  </body>
+</html>

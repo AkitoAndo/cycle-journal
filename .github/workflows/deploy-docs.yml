@@ -30,6 +30,10 @@ jobs:
         working-directory: docs
         run: npm ci
 
+      - name: Lint Japanese marketing copy
+        working-directory: docs
+        run: npm run lint:text
+
       - name: Build docs
         working-directory: docs
         run: npm run docs:build
