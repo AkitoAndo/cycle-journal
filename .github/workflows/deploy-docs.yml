@@ -1,8 +1,10 @@
 name: Deploy Docs to GitHub Pages
 
 on:
+  pull_request:
+    branches: [develop, main]
   push:
-    branches: [main]
+    branches: [develop, main]
   workflow_dispatch:
 
 permissions:
@@ -11,7 +13,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -33,12 +35,15 @@ jobs:
         run: npm run docs:build
 
       - uses: actions/configure-pages@v5
+        if: github.ref == 'refs/heads/main'
 
       - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main'
         with:
           path: docs/.vitepress/dist
 
   deploy:
+    if: github.ref == 'refs/heads/main'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
