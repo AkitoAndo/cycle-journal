@@ -1,6 +1,6 @@
 # 動作確認チェックリスト
 
-このチェックリストは、現在提出する **v1.0.10 無料MVP** を対象とする。サブスクリプション、無料トライアル、Paywall、Firebase Analytics / Crashlytics は現在のビルドでは有効化していないため、提出条件には含めない。
+このチェックリストは、現在提出する **v1.0.10 期間限定無料MVP** を対象とする。サブスクリプション、無料トライアル、Paywall、Firebase Analytics / Crashlytics は現在のビルドでは有効化していないため、提出条件には含めない。
 
 ## 1. iOS基本フロー
 
@@ -9,7 +9,7 @@
 - [ ] Appleでサインインできる
 - [ ] Googleでサインインできる
 - [ ] ホーム、ジャーナル、セッション、タスク、マイページの全タブを操作できる
-- [ ] マイページに「現在、すべての機能を無料で利用できます」と表示される
+- [ ] マイページに「通常は有料です。現在は期間限定で無料です。」と表示される
 - [ ] Paywallや購入ボタンが表示されない
 
 ## 2. データと同期
@@ -26,7 +26,7 @@
 
 - [ ] 通知許可はオンボーディングまたはリマインダー有効化時だけ要求される
 - [ ] 指定時刻の日次リマインダーがローカル通知として登録される
-- [ ] 無料MVPではAPNsデバイストークンをサーバーへ送信しない
+- [ ] 期間限定無料MVPではAPNsデバイストークンをサーバーへ送信しない
 
 ## 4. App Store提出物
 
@@ -34,13 +34,15 @@
 - [ ] Bundle ID、Team、署名がApp Store Connectのアプリレコードと一致する
 - [ ] `PrivacyInfo.xcprivacy` がアーカイブへ含まれる
 - [ ] Xcode OrganizerのPrivacy ReportとApp Store ConnectのApp Privacy回答が一致する
-- [ ] Google Sign-In SDKのPrivacy ManifestにあるName / Email / Phone / Coarse Location / User ID / Device ID / Other Usage Data / Other Data TypesをApp Privacy回答へ反映する
-- [ ] 説明文・利用規約・プライバシーポリシーが「無料MVP」と一致する
+- [ ] Google Sign-In SDKのPrivacy Manifestに記載されたデータ項目をApp Privacyへ反映する
+  - Name / Email / Phone / Coarse Location / User ID / Device ID
+  - Other Usage Data / Other Data Types
+- [ ] 説明文・利用規約・プライバシーポリシーが「通常は有料、現在は期間限定無料」の提供状態と一致する
 - [ ] サポートURL、プライバシーポリシーURL、問い合わせ先が有効
 - [ ] iPhone用と、iPad対応を維持する場合はiPad用スクリーンショットを登録する
 - [ ] 年齢区分、コンテンツ権利、広告識別子、暗号化輸出コンプライアンスへ回答する
 - [ ] TestFlightのRelease相当ビルドを実機でスモークテストする
-- [ ] Review NotesへAIコーチが医療行為ではないこと、課金がないこと、ログイン手順を記載する
+- [ ] Review NotesへAIコーチが医療行為ではないこと、現在は期間限定無料で課金がないこと、ログイン手順を記載する
 
 ## 5. リリース直後の監視
 
@@ -51,4 +53,11 @@
 
 ## 課金を再開する場合
 
-Paywallを再接続するリリースでは、`Configuration.storekit`、商品状態、Introductory Offer、購入・復元・解約・返金、App Store Server Notifications、APNs、料金表記、規約、App Privacyを別リリースとして再検証する。無料MVPの審査へ未使用の課金設定を混在させない。
+Paywallを再接続するリリースでは、次の項目を別リリースとして再検証する。
+
+- `Configuration.storekit`、商品状態、Introductory Offer
+- 購入、復元、解約、返金
+- App Store Server Notifications、APNs
+- 料金表記、規約、App Privacy
+
+期間限定無料MVPの審査へ未使用の課金設定を混在させない。
