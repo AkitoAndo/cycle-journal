@@ -21,6 +21,8 @@ struct TaskList: View {
     let onArchive: (TaskItem) -> Void
     let onSkip: (TaskItem) -> Void
 
+    @State private var expandedTaskID: TaskItem.ID?
+
     var body: some View {
         List {
             // 未完了タスクセクション
@@ -52,7 +54,9 @@ struct TaskList: View {
                     onDelete: { onDelete(task) },
                     onPreview: { onPreview(task) },
                     onArchive: nil,
-                    onSkip: { onSkip(task) }
+                    onSkip: { onSkip(task) },
+                    isExpanded: expandedTaskID == task.id,
+                    onToggleExpansion: { toggleExpansion(for: task) }
                 )
                 .deleteDisabled(true)
                 .moveDisabled(!isReorderMode)
@@ -77,10 +81,18 @@ struct TaskList: View {
                     onDelete: { onDelete(task) },
                     onPreview: { onPreview(task) },
                     onArchive: { onArchive(task) },
-                    onSkip: nil
+                    onSkip: nil,
+                    isExpanded: expandedTaskID == task.id,
+                    onToggleExpansion: { toggleExpansion(for: task) }
                 )
                 .padding(.top, index == 0 && !incompleteTasks.isEmpty ? DesignSystem.Spacing.sm : 0)
             }
+        }
+    }
+
+    private func toggleExpansion(for task: TaskItem) {
+        withAnimation(DesignSystem.Timing.easing) {
+            expandedTaskID = expandedTaskID == task.id ? nil : task.id
         }
     }
 }

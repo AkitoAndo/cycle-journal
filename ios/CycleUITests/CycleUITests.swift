@@ -22,8 +22,12 @@ final class CycleUITests: XCTestCase {
     private func takeScreenshot(_ name: String) {
         Thread.sleep(forTimeInterval: 0.5)
         let screenshot = app.windows.firstMatch.screenshot()
+        let requestedPrefix = ProcessInfo.processInfo.environment["TREOW_SCREENSHOT_PREFIX"] ?? ""
+        let inferredPrefix = app.windows.firstMatch.frame.width >= 768 ? "ipad-" : ""
+        let prefix = requestedPrefix.isEmpty ? inferredPrefix : requestedPrefix
+        let fileName = "\(prefix)\(name)"
         let attachment = XCTAttachment(screenshot: screenshot)
-        attachment.name = name
+        attachment.name = fileName
         attachment.lifetime = .keepAlways
         add(attachment)
 
@@ -35,7 +39,7 @@ final class CycleUITests: XCTestCase {
         try? FileManager.default.createDirectory(
             at: screenshotsDir, withIntermediateDirectories: true
         )
-        let fileURL = screenshotsDir.appendingPathComponent("\(name).png")
+        let fileURL = screenshotsDir.appendingPathComponent("\(fileName).png")
         try? screenshot.pngRepresentation.write(to: fileURL)
     }
 
@@ -74,11 +78,47 @@ final class CycleUITests: XCTestCase {
     }
 
     @MainActor
+    func testScreenshots_Journal_02b_NewEntryFilled() {
+        tapTab("Journal")
+        waitAndTap(app.buttons["journal_fab_plus"])
+
+        let editor = app.textViews.firstMatch
+        XCTAssertTrue(editor.waitForExistence(timeout: 3))
+        editor.tap()
+        editor.typeText("今日は会議の前に深呼吸できた。少し落ち着いて話せた。")
+
+        XCTAssertTrue(app.buttons["保存"].isEnabled)
+        takeScreenshot("journal-new-filled")
+    }
+
+    @MainActor
     func testScreenshots_Journal_03_Search() {
         tapTab("Journal")
         openJournalMenu()
         waitAndTap(app.buttons["検索"])
         takeScreenshot("journal-search")
+    }
+
+    @MainActor
+    func testScreenshots_Journal_03b_SearchFilled() {
+        tapTab("Journal")
+        openJournalMenu()
+        waitAndTap(app.buttons["検索"])
+
+        let searchField = app.textFields["ワードで検索"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 3))
+        searchField.tap()
+        searchField.typeText("ランニング")
+
+        let result = app.staticTexts[
+            "朝ランニングをした。空気が澄んでいて気持ちよかった。"
+        ]
+        XCTAssertTrue(result.waitForExistence(timeout: 3))
+
+        if app.keyboards.buttons["return"].exists {
+            app.keyboards.buttons["return"].tap()
+        }
+        takeScreenshot("journal-search-filled")
     }
 
     @MainActor
@@ -138,6 +178,22 @@ final class CycleUITests: XCTestCase {
         takeScreenshot("journal-quote-list")
 
         quotedText.swipeLeft()
+        let secondQuoteButton = app.buttons["引用"]
+        XCTAssertTrue(secondQuoteButton.waitForExistence(timeout: 3))
+        secondQuoteButton.tap()
+
+        XCTAssertTrue(app.navigationBars["引用して書く"].waitForExistence(timeout: 3))
+        let secondEditor = app.textViews.firstMatch
+        XCTAssertTrue(secondEditor.waitForExistence(timeout: 3))
+        secondEditor.tap()
+        secondEditor.typeText("続けてみたら、会議でも落ち着いて話せた。")
+        app.buttons["保存"].tap()
+
+        let latestText = app.staticTexts[
+            "続けてみたら、会議でも落ち着いて話せた。"
+        ]
+        XCTAssertTrue(latestText.waitForExistence(timeout: 3))
+        latestText.swipeLeft()
         let historyButton = app.buttons["引用を確認"]
         XCTAssertTrue(historyButton.waitForExistence(timeout: 3))
         historyButton.tap()
@@ -189,6 +245,32 @@ final class CycleUITests: XCTestCase {
     }
 
     @MainActor
+    func testScreenshots_Tasks_06_ReflectionStory() {
+        tapTab("Tasks")
+        let storyTask = app.staticTexts["会議前に伝えたいことを3行で書く"]
+        XCTAssertTrue(storyTask.waitForExistence(timeout: 3))
+        takeScreenshot("task-story-list")
+
+        let expandButton = app.buttons[
+            "task_expand_00000000-0000-0000-0000-000000000301"
+        ]
+        XCTAssertTrue(expandButton.waitForExistence(timeout: 3))
+
+        // Liquid Glass can report the card-sized hit frame for the nested button.
+        // Use the title row's vertical position and tap the visible trailing chevron.
+        let window = app.windows.firstMatch
+        window.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0))
+            .withOffset(CGVector(dx: window.frame.width - 48, dy: storyTask.frame.midY))
+            .tap()
+        XCTAssertTrue(
+            app.otherElements[
+                "task_details_00000000-0000-0000-0000-000000000301"
+            ].waitForExistence(timeout: 3)
+        )
+        takeScreenshot("task-story-expanded")
+    }
+
+    @MainActor
     func testScreenshots_Tasks_UnfinishedArchiveFlow() {
         let taskID = "00000000-0000-0000-0000-000000000302"
         let taskTitle = "週報を10分で振り返る"
@@ -230,10 +312,8 @@ final class CycleUITests: XCTestCase {
         resumeButton.tap()
 
         waitAndTap(app.buttons["閉じる"])
-        for _ in 0..<4 where !app.staticTexts[taskTitle].exists {
-            app.swipeUp()
-        }
         XCTAssertTrue(app.staticTexts[taskTitle].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["task_completion_\(taskID)"].exists)
         takeScreenshot("task-unfinished-resumed")
     }
 
@@ -271,6 +351,16 @@ final class CycleUITests: XCTestCase {
             .firstMatch
             .waitForExistence(timeout: 5)
         takeScreenshot("coach-chat")
+    }
+
+    // MARK: - Home Screenshots
+
+    @MainActor
+    func testScreenshots_Home_01_Overview() {
+        tapTab("Home")
+        XCTAssertTrue(app.staticTexts["朝の散歩"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["チームミーティング"].exists)
+        takeScreenshot("home-overview")
     }
 
     // MARK: - Settings Screenshots

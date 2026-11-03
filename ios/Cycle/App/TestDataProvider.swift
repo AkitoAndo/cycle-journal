@@ -24,6 +24,7 @@ enum TestDataProvider {
             clearAllData()
             insertJournalEntries()
             insertTasks()
+            insertHomeActivity()
             return
         }
 
@@ -74,6 +75,7 @@ enum TestDataProvider {
         UserDefaults.standard.removeObject(
             forKey: UserDataScope.scopedDefaultsKey("MeditationLogs")
         )
+        JSONFileStore.save([ScheduleEvent](), to: "schedules.json")
     }
 
     // MARK: - Journal
@@ -124,21 +126,28 @@ enum TestDataProvider {
     // MARK: - Tasks
 
     private static func insertTasks() {
+        var reflectionTask = TaskItem(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000301")!,
+            title: "会議前に伝えたいことを3行で書く",
+            description: "明日のチームミーティング"
+        )
+        reflectionTask.intent = "考えを落ち着いて伝えるため"
+        reflectionTask.achievementVision = "要点を短く、自分の言葉で話せる"
+        reflectionTask.notes = "結論から書く"
+        reflectionTask.fact = "要点を先に話すと、落ち着いて伝えられた"
+        reflectionTask.insight = "3行の準備があるだけで、不安が小さくなった"
+        reflectionTask.nextAction = "次回も前日に3行メモを作る"
+
         var tasks: [TaskItem] = [
-            TaskItem(title: "朝の瞑想を10分する", description: "マインドフルネス瞑想を試す", intent: "心を落ち着ける習慣をつけたい"),
+            reflectionTask,
+            TaskItem(title: "朝の瞑想を10分する", description: "一日の始まりに呼吸を整える"),
             TaskItem(
                 id: UUID(uuidString: "00000000-0000-0000-0000-000000000302")!,
                 title: "週報を10分で振り返る",
                 description: "今週の気づきをひとつ残す"
             ),
-            TaskItem(title: "読書30分", description: "嫌われる勇気の続きを読む"),
-            TaskItem(title: "ジムに行く", description: "上半身トレーニング"),
-            TaskItem(title: "部屋の掃除", description: "リビングと寝室"),
-            TaskItem(title: "APIドキュメント更新", description: "OpenAPI specを最新にする"),
-            TaskItem(title: "母に電話する", description: "週末の予定確認"),
-            TaskItem(title: "レシピ調べる", description: "今週の作り置き用"),
-            TaskItem(title: "歯医者の予約", description: "定期検診"),
-            TaskItem(title: "プレゼン資料作成", description: "来週の社内共有用"),
+            TaskItem(title: "母に電話する", description: "週末の予定を聞く"),
+            TaskItem(title: "本を10ページ読む", description: "眠る前の静かな時間に"),
         ]
 
         for i in tasks.indices {
@@ -160,5 +169,68 @@ enum TestDataProvider {
         }
 
         JSONFileStore.save(tasks, to: "tasks.json")
+    }
+
+    // MARK: - Home
+
+    private static func insertHomeActivity() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+
+        let sessionDate = today.addingTimeInterval(17 * 3600 + 30 * 60)
+        let session = CoachSession(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000401")!,
+            messages: [
+                CoachMessage(
+                    role: .user,
+                    content: "会議で伝えたいことを、うまく整理できるか不安。",
+                    createdAt: sessionDate
+                ),
+                CoachMessage(
+                    role: .coach,
+                    content: "いちばん伝えたいことを、一文にするとしたら？",
+                    createdAt: sessionDate.addingTimeInterval(60)
+                ),
+            ],
+            createdAt: sessionDate,
+            updatedAt: sessionDate.addingTimeInterval(60),
+            summary: "会議で伝えたいことを整理する",
+            emotionLabel: "少し不安",
+            isActive: false
+        )
+        if let data = try? JSONEncoder().encode([session]) {
+            UserDefaults.standard.set(
+                data,
+                forKey: UserDataScope.scopedDefaultsKey("CoachSessions")
+            )
+        }
+
+        let meditation = MeditationLog(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000402")!,
+            date: today.addingTimeInterval(7 * 3600),
+            duration: 60
+        )
+        if let data = try? JSONEncoder().encode([meditation]) {
+            UserDefaults.standard.set(
+                data,
+                forKey: UserDataScope.scopedDefaultsKey("MeditationLogs")
+            )
+        }
+
+        let schedules = [
+            ScheduleEvent(
+                id: UUID(uuidString: "00000000-0000-0000-0000-000000000403")!,
+                title: "朝の散歩",
+                startDate: today.addingTimeInterval(7 * 3600 + 30 * 60),
+                endDate: today.addingTimeInterval(8 * 3600)
+            ),
+            ScheduleEvent(
+                id: UUID(uuidString: "00000000-0000-0000-0000-000000000404")!,
+                title: "チームミーティング",
+                startDate: today.addingTimeInterval(10 * 3600),
+                endDate: today.addingTimeInterval(10 * 3600 + 30 * 60)
+            ),
+        ]
+        JSONFileStore.save(schedules, to: "schedules.json")
     }
 }
