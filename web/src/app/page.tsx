@@ -325,6 +325,9 @@ function SignInView({ onAuth }: { onAuth: (tokens: AuthTokens) => void }) {
           <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">
             日々の気持ちや出来事を記録し、AIコーチとの対話で自分のペースを整えます。
           </p>
+          <p className="mt-4 rounded-xl bg-primary/10 px-3 py-2.5 text-[13px] font-medium leading-relaxed text-primary">
+            通常は有料のサービスですが、現在は期間限定ですべての機能を無料で利用できます。
+          </p>
 
           <div className="mt-6">
             <div className="flex items-center gap-2 text-[13px] font-semibold text-muted-foreground">
@@ -1819,9 +1822,9 @@ function SettingsView({
           <Separator />
           <SettingsRow
             icon={<WalletCards size={18} />}
-            title="ベーシックプラン"
-            description="現在の機能を無料で利用できます。"
-            trailing={<Badge variant="success">Free</Badge>}
+            title="Treow Premium"
+            description="通常は有料です。現在は期間限定で無料です。"
+            trailing={<Badge variant="success">期間限定無料</Badge>}
           />
           <Separator />
           <SettingsRow

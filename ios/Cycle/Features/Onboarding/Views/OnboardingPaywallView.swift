@@ -21,7 +21,7 @@ struct OnboardingPaywallView: View {
                     .font(DesignSystem.Fonts.sectionTitle)
                     .foregroundStyle(DesignSystem.Colors.textPrimary)
 
-                Text("MVP期間中は無料で利用できます")
+                Text("通常は有料のサービスですが、現在は期間限定ですべての機能を無料で利用できます。")
                     .font(DesignSystem.Fonts.body)
                     .foregroundStyle(DesignSystem.Colors.textSecondary)
                     .multilineTextAlignment(.center)

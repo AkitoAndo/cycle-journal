@@ -1,6 +1,6 @@
 # App Store リリース手順
 
-現在の対象は **Treow v1.0.11 無料MVP**。App Store Connectのアプリレコードを正とし、Bundle ID、バージョン、ビルド番号、料金表記を提出直前に照合する。
+現在の対象は **Treow v1.0.11 期間限定無料MVP**。App Store Connectのアプリレコードを正とし、Bundle ID、バージョン、ビルド番号、料金表記を提出直前に照合する。
 
 ## 1. 提出前のコード確認
 
@@ -58,9 +58,10 @@ xcodebuild archive \
 - アプリ名、サブタイトル、キーワード、説明文: `docs/product/store-description.md`
 - プライバシーポリシー: https://akitoando.github.io/cycle-journal/legal/PRIVACY_POLICY.html
 - 利用規約: https://akitoando.github.io/cycle-journal/legal/TERMS_OF_SERVICE.html
-- 料金: 無料。Paywall、サブスクリプション、無料トライアルの記載は入れない
+- App Store上のダウンロード価格: 無料
+- 紹介文: 通常は有料のサービスであり、現在は期間限定無料であることを明記する。Paywall、サブスクリプション、無料トライアルの記載は入れない
 - App Privacy: Privacy Manifestおよび実際の通信内容と一致させる
-- Review Notes: Apple / Googleサインイン手順、AIコーチは医療・診断・治療目的ではないこと、課金がないことを明記する
+- Review Notes: Apple / Googleサインイン手順、AIコーチは医療・診断・治療目的ではないこと、現在は期間限定無料で課金がないことを明記する
 
 ## 5. スクリーンショット
 
@@ -75,7 +76,7 @@ App Store Connectが要求する最新のiPhoneサイズを登録する。Cycle�
 - [ ] 処理済みビルドをv1.0.11へ選択
 - [ ] 輸出コンプライアンス、コンテンツ権利、年齢区分へ回答
 - [ ] サポートURL・Privacy URLが公開状態で開く
-- [ ] 全スクリーンショットと説明文が現在のUI・無料提供と一致する
+- [ ] 全スクリーンショットと説明文が現在のUI・期間限定無料の提供状態と一致する
 - [ ] TestFlightでRelease相当ビルドのスモークテストが完了
 - [ ] **Add for Review** 前に差分を再確認
 - [ ] **Submit for Review** は外部公開操作として実行直前に最終確認する
