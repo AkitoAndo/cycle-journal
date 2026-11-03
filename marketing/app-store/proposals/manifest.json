@@ -1,0 +1,140 @@
+{
+  "locale": "ja-JP",
+  "canvas": {
+    "width": 1290,
+    "height": 2796
+  },
+  "board": {
+    "width": 2400,
+    "height": 1800
+  },
+  "theme": {
+    "ink": "#392D24",
+    "muted": "#74685F",
+    "paper": "#FFFDF8",
+    "cream": "#FAF1DE",
+    "sand": "#E7D3B1",
+    "brown": "#8C7359",
+    "brownDark": "#594738",
+    "frame": "#6B5443",
+    "sage": "#B0BEA9"
+  },
+  "plans": [
+    {
+      "id": "A-current",
+      "label": "A｜現在案",
+      "note": "静かなブランド感を優先した、現在の構成です。",
+      "style": "current",
+      "screens": [
+        {
+          "id": "journal-to-action",
+          "headline": "日記が、\n次の一歩になる。",
+          "layout": "journal",
+          "primaryImage": "docs/public/screenshots/journal-list.png",
+          "accent": "sand"
+        },
+        {
+          "id": "questioning-coach",
+          "headline": "答えではなく、\n問いを返す。",
+          "layout": "focus",
+          "primaryImage": "docs/public/screenshots/coach-chat.png",
+          "accent": "sage"
+        },
+        {
+          "id": "insight-to-task",
+          "headline": "小さな行動へ、\nつなげていく。",
+          "layout": "cards",
+          "primaryImage": "docs/public/screenshots/task-story-expanded.png",
+          "accent": "cream"
+        }
+      ]
+    },
+    {
+      "id": "B-story",
+      "label": "B｜体験ストーリー",
+      "note": "書く、深める、動く。3枚でTreowの体験を順番に伝えます。",
+      "style": "story",
+      "screens": [
+        {
+          "id": "write-and-see",
+          "headline": "書くと、気持ちが\n見えてくる。",
+          "layout": "journal",
+          "primaryImage": "docs/public/screenshots/journal-list.png",
+          "accent": "sand"
+        },
+        {
+          "id": "questions-deepen",
+          "headline": "問いが、考えを\n深めてくれる。",
+          "layout": "focus",
+          "primaryImage": "docs/public/screenshots/coach-chat.png",
+          "accent": "sand"
+        },
+        {
+          "id": "insight-to-next-action",
+          "headline": "気づきを、\n次の行動へ。",
+          "layout": "cards",
+          "primaryImage": "docs/public/screenshots/task-story-expanded.png",
+          "accent": "sand"
+        }
+      ]
+    },
+    {
+      "id": "C-direct",
+      "label": "C｜機能直球",
+      "note": "サムネイルでも、日記・AIコーチ・タスクの機能をすぐに理解できます。",
+      "style": "direct",
+      "screens": [
+        {
+          "id": "quick-journal",
+          "headline": "日記を、\nすばやく記録。",
+          "layout": "journal",
+          "primaryImage": "docs/public/screenshots/journal-list.png",
+          "accent": "sand"
+        },
+        {
+          "id": "organize-with-ai",
+          "headline": "AIコーチと、\n考えを整理。",
+          "layout": "focus",
+          "primaryImage": "docs/public/screenshots/coach-chat.png",
+          "accent": "sage"
+        },
+        {
+          "id": "create-task-from-insight",
+          "headline": "気づきから、\nタスクを作成。",
+          "layout": "cards",
+          "primaryImage": "docs/public/screenshots/task-story-expanded.png",
+          "accent": "cream"
+        }
+      ]
+    },
+    {
+      "id": "D-trust-future",
+      "label": "D｜安心・プライバシー",
+      "note": "Face ID実装後の将来案です。現在は構図確認用で、公開には使用しません。",
+      "style": "trust",
+      "screens": [
+        {
+          "id": "protect-with-face-id",
+          "headline": "Face IDで、\n日記を守る。",
+          "layout": "journal",
+          "primaryImage": "docs/public/screenshots/journal-list.png",
+          "accent": "cream"
+        },
+        {
+          "id": "reflect-in-confidence",
+          "headline": "安心して、気持ちを\n深める。",
+          "layout": "focus",
+          "primaryImage": "docs/public/screenshots/coach-chat.png",
+          "accent": "cream"
+        },
+        {
+          "id": "private-insight-to-action",
+          "headline": "自分だけの気づきを、\n行動へ。",
+          "layout": "cards",
+          "primaryImage": "docs/public/screenshots/task-story-expanded.png",
+          "accent": "cream"
+        }
+      ]
+    }
+  ]
+}

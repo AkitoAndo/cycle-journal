@@ -220,12 +220,26 @@ final class TaskViewModel: ObservableObject {
     /// タスクを復元
     func restoreTask(_ task: TaskItem) {
         guard let index = findTaskIndex(task) else { return }
+        let previousTasks = tasks
+        let previousServerID = tasks[index].serverId
         tasks[index].deletedAt = nil
-        // 削除要求が完了済み・実行中のどちらでも安全に再作成できるよう、
-        // 決定的なclient_task_idを使ったupsertへ切り替える。
+        // 旧サーバーIDの削除を維持し、その後に同じローカルIDで再作成する。
         tasks[index].serverId = nil
-        persist()
-        enqueueUpsert(for: tasks[index].id)
+        guard persist() else {
+            tasks = previousTasks
+            reportPersistenceError()
+            return
+        }
+        guard TaskSyncMutationStore.enqueueRecreate(
+            localTaskID: tasks[index].id,
+            previousServerID: previousServerID
+        ) else {
+            tasks = previousTasks
+            _ = TaskStore.saveAll(previousTasks)
+            reportPersistenceError()
+            return
+        }
+        scheduleMutationFlush()
     }
 
     /// タスクを完全に削除（物理削除）

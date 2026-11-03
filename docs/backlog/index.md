@@ -69,6 +69,7 @@
 | S-01 | [設定画面（UI骨格）](./settings/S-01-ui) | :white_check_mark: Done | - |
 | S-02 | [通知設定（リマインダー）](./settings/S-02-notifications) | :memo: Refinement | P2 |
 | S-03 | [データエクスポート](./settings/S-03-export) | :memo: Refinement | P3 |
+| S-04 | [Face ID / Touch IDによるアプリロック](./settings/S-04-app-lock) | :memo: Planned | P2 |
 
 ## Backend Infrastructure
 

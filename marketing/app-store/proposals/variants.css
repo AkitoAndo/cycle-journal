@@ -1,0 +1,86 @@
+/* Proposal B: one warm visual thread follows writing → reflection → action. */
+.proposal-story .color-field--top {
+  top: -610px;
+  width: 1450px;
+  height: 1260px;
+  background: var(--sand);
+  transform: none;
+}
+
+.proposal-story.proposal-step-1 .color-field--top {
+  right: -760px;
+}
+
+.proposal-story.proposal-step-2 .color-field--top {
+  right: -80px;
+}
+
+.proposal-story.proposal-step-3 .color-field--top {
+  right: 590px;
+}
+
+.proposal-story .color-field--bottom {
+  background: color-mix(in srgb, var(--sage) 46%, white);
+}
+
+.proposal-story .growth-rings {
+  top: 248px;
+  right: 88px;
+  opacity: 0.42;
+}
+
+.proposal-story.proposal-step-2 .growth-rings {
+  right: 500px;
+}
+
+.proposal-story.proposal-step-3 .growth-rings {
+  right: 890px;
+}
+
+/* Proposal C: a simple color header prioritizes immediate feature recognition. */
+.proposal-direct .color-field--top {
+  top: 0;
+  right: auto;
+  left: 0;
+  width: 100%;
+  height: 560px;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--accent) 78%, white);
+  transform: none;
+}
+
+.proposal-direct .color-field--bottom,
+.proposal-direct .growth-rings {
+  display: none;
+}
+
+.proposal-direct .copy {
+  top: 274px;
+}
+
+/* Proposal D: a quiet, centered composition reserved for the future lock feature. */
+.proposal-trust .color-field--top {
+  top: -535px;
+  right: -185px;
+  width: 1660px;
+  height: 1120px;
+  border: 3px solid rgb(107 84 67 / 9%);
+  background: color-mix(in srgb, var(--cream) 82%, white);
+  transform: none;
+}
+
+.proposal-trust .color-field--bottom,
+.proposal-trust .growth-rings {
+  display: none;
+}
+
+.proposal-trust .copy {
+  top: 318px;
+  left: 90px;
+  width: 1110px;
+  text-align: center;
+}
+
+.proposal-trust h1 {
+  margin: 0 auto;
+}

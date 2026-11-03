@@ -1,0 +1,234 @@
+:root {
+  color-scheme: light;
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #fff;
+}
+
+#canvas {
+  --ink: #392d24;
+  --muted: #74685f;
+  --paper: #fffdf8;
+  --cream: #faf1de;
+  --sand: #e7d3b1;
+  --brown: #8c7359;
+  --brownDark: #594738;
+  --frame: #6b5443;
+  --sage: #afc1a6;
+  --accent: var(--sand);
+  position: relative;
+  isolation: isolate;
+  width: 1290px;
+  height: 2796px;
+  overflow: hidden;
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.color-field {
+  position: absolute;
+  z-index: -3;
+  pointer-events: none;
+}
+
+.color-field--top {
+  top: -560px;
+  right: -410px;
+  width: 1320px;
+  height: 1280px;
+  border-radius: 50%;
+  background: var(--accent);
+  transform: rotate(-9deg);
+}
+
+.color-field--bottom {
+  bottom: -530px;
+  left: -360px;
+  width: 1160px;
+  height: 990px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 60%, white);
+  opacity: 0.72;
+}
+
+.growth-rings {
+  position: absolute;
+  z-index: -2;
+  top: 210px;
+  right: 112px;
+  width: 290px;
+  height: 290px;
+  border: 3px solid color-mix(in srgb, var(--brownDark) 22%, transparent);
+  border-radius: 50%;
+  opacity: 0.62;
+}
+
+.growth-rings::before,
+.growth-rings::after {
+  position: absolute;
+  content: "";
+  border: 3px solid color-mix(in srgb, var(--brownDark) 18%, transparent);
+  border-radius: 50%;
+}
+
+.growth-rings::before {
+  inset: 37px;
+}
+
+.growth-rings::after {
+  inset: 77px;
+}
+
+.copy {
+  position: absolute;
+  z-index: 5;
+  top: 330px;
+  left: 94px;
+  width: 1095px;
+}
+
+h1 {
+  max-width: 1040px;
+  margin: 0;
+  white-space: pre-line;
+  font-size: 92px;
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+}
+
+.visual {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+}
+
+.phone {
+  position: absolute;
+  overflow: hidden;
+  top: 600px;
+  left: 142px;
+  width: 1006px;
+  height: 2166px;
+  border: 9px solid var(--frame);
+  border-radius: 70px;
+  background: var(--paper);
+  box-shadow:
+    0 54px 90px rgb(89 71 56 / 23%),
+    0 10px 30px rgb(89 71 56 / 16%);
+}
+
+.screen-main {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.screen-main img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: auto;
+}
+
+.speaker {
+  position: absolute;
+  z-index: 2;
+  top: 21px;
+  left: 50%;
+  width: 174px;
+  height: 48px;
+  border-radius: 999px;
+  background: var(--brownDark);
+  transform: translateX(-50%);
+}
+
+.badges {
+  position: absolute;
+  z-index: 4;
+}
+
+.badge {
+  display: flex;
+  align-items: center;
+  gap: 17px;
+  width: max-content;
+  margin: 18px 0;
+  padding: 24px 34px;
+  border: 2px solid rgb(89 71 56 / 9%);
+  border-radius: 999px;
+  color: var(--brownDark);
+  background: rgb(255 253 248 / 94%);
+  box-shadow: 0 21px 48px rgb(89 71 56 / 18%);
+  font-size: 31px;
+  font-weight: 760;
+}
+
+.badge::before {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--brown);
+  content: "";
+}
+
+/* The 78%-wide device already enlarges the journal by 1.4x from the old layout. */
+.layout-journal .phone--primary .screen-main img {
+  left: 0;
+  width: 100%;
+}
+
+.layout-journal .phone--secondary,
+.layout-journal .badges {
+  display: none;
+}
+
+/* One oversized screen keeps the conversation legible at store-card size. */
+.layout-focus .color-field--top {
+  top: -490px;
+  right: -270px;
+  background: var(--accent);
+}
+
+.layout-focus .phone--secondary {
+  display: none;
+}
+
+.layout-focus .badges {
+  top: 1330px;
+  left: 70px;
+}
+
+.layout-focus .badge:nth-child(2) {
+  margin-left: 805px;
+  margin-top: 720px;
+}
+
+/* A task screen with floating reflection cards shows the before/after loop. */
+.layout-cards .color-field--top {
+  right: -120px;
+  width: 1040px;
+  background: var(--cream);
+  border: 2px solid rgb(89 71 56 / 5%);
+}
+
+.layout-cards .phone--secondary {
+  display: none;
+}
+
+
+.layout-cards .badges {
+  display: none;
+}

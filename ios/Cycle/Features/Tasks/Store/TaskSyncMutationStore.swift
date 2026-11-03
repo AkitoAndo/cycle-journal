@@ -55,13 +55,31 @@ enum TaskSyncMutationStore {
         )
     }
 
+    /// 削除済みか不明な旧サーバータスクを消してから、同じローカルIDで再作成する。
+    @discardableResult
+    static func enqueueRecreate(localTaskID: UUID, previousServerID: String?) -> Bool {
+        save(
+            applyingRecreate(
+                to: loadAll(),
+                localTaskID: localTaskID,
+                previousServerID: previousServerID
+            )
+        )
+    }
+
     static func applyingUpsert(
         to existing: [TaskSyncMutation],
         localTaskID: UUID
     ) -> [TaskSyncMutation] {
-        var mutations = existing
-        mutations.removeAll { $0.localTaskID == localTaskID }
-        mutations.append(.init(localTaskID: localTaskID, kind: .upsert))
+        // 復元時に必要な旧サーバーIDの削除は、後続の編集でも維持する。
+        var mutations = existing.filter {
+            $0.localTaskID != localTaskID || $0.kind == .delete
+        }
+        let lastDelete = mutations
+            .filter { $0.localTaskID == localTaskID && $0.kind == .delete }
+            .map(\.createdAt).max()
+        let createdAt = max(Date(), lastDelete?.addingTimeInterval(0.001) ?? .distantPast)
+        mutations.append(.init(localTaskID: localTaskID, kind: .upsert, createdAt: createdAt))
         return mutations
     }
 
@@ -70,14 +88,32 @@ enum TaskSyncMutationStore {
         localTaskID: UUID,
         serverID: String?
     ) -> [TaskSyncMutation] {
-        var mutations = existing
-        mutations.removeAll { $0.localTaskID == localTaskID }
-        if let serverID {
+        var mutations = existing.filter {
+            $0.localTaskID != localTaskID || $0.kind == .delete
+        }
+        if let serverID, !mutations.contains(where: {
+            $0.localTaskID == localTaskID && $0.kind == .delete && $0.serverID == serverID
+        }) {
             mutations.append(
                 .init(localTaskID: localTaskID, kind: .delete, serverID: serverID)
             )
         }
         return mutations
+    }
+
+    static func applyingRecreate(
+        to existing: [TaskSyncMutation],
+        localTaskID: UUID,
+        previousServerID: String?
+    ) -> [TaskSyncMutation] {
+        applyingUpsert(
+            to: applyingDelete(
+                to: existing,
+                localTaskID: localTaskID,
+                serverID: previousServerID
+            ),
+            localTaskID: localTaskID
+        )
     }
 
     static func remove(id: UUID) {
@@ -102,7 +138,8 @@ enum TaskSyncMutationStore {
         })
     }
 
-    private static func save(_ mutations: [TaskSyncMutation]) {
+    @discardableResult
+    private static func save(_ mutations: [TaskSyncMutation]) -> Bool {
         JSONFileStore.save(mutations.sorted { $0.createdAt < $1.createdAt }, to: file)
     }
 }

@@ -6,9 +6,21 @@
   "description": "Web automation for App Store Connect / Firebase / GA4 etc.",
   "scripts": {
     "asc:login": "tsx src/asc/login.ts",
+    "asc:upload-screenshots": "tsx src/asc/api-upload-app-store-screenshots.ts",
+    "asc:update-whats-new": "tsx src/asc/api-update-whats-new.ts",
+    "asc:clear-screenshots": "tsx src/asc/api-clear-app-store-screenshots.ts",
+    "asc:update-review-details": "tsx src/asc/api-update-review-details.ts",
+    "asc:attach-build": "tsx src/asc/api-attach-build.ts",
+    "asc:submit-app-version-review": "tsx src/asc/api-submit-app-version-review.ts",
     "asc:set-intro-offer": "tsx src/asc/iap-set-intro-offer.ts",
     "asc:remove-from-sale": "tsx src/asc/iap-remove-from-sale.ts",
-    "asc:status": "tsx src/asc/status.ts"
+    "asc:status": "tsx src/asc/status.ts",
+    "marketing:render": "node src/marketing/render-app-store-screenshots.mjs",
+    "marketing:verify": "node src/marketing/verify-app-store-screenshots.mjs",
+    "marketing:render:ipad": "node src/marketing/render-app-store-ipad-screenshots.mjs",
+    "marketing:verify:ipad": "node src/marketing/verify-app-store-ipad-screenshots.mjs",
+    "marketing:proposals": "node src/marketing/render-app-store-proposals.mjs",
+    "marketing:proposals:verify": "node src/marketing/verify-app-store-proposals.mjs"
   },
   "dependencies": {
     "@playwright/test": "^1.49.0",

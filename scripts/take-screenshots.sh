@@ -41,6 +41,7 @@ xcodebuild test \
     -only-testing:CycleUITests/CycleUITests/testScreenshots_Tasks_03_Reorder \
     -only-testing:CycleUITests/CycleUITests/testScreenshots_Tasks_04_Archive \
     -only-testing:CycleUITests/CycleUITests/testScreenshots_Tasks_05_Trash \
+    -only-testing:CycleUITests/CycleUITests/testScreenshots_Tasks_06_ReflectionStory \
     -only-testing:CycleUITests/CycleUITests/testScreenshots_Coach_01_Home \
     -only-testing:CycleUITests/CycleUITests/testScreenshots_Coach_02_Chat \
     -only-testing:CycleUITests/CycleUITests/testScreenshots_Settings_01_Main \

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="./proposal-board.css" />
+    <title>Treow App Store Screenshot Proposal</title>
+  </head>
+  <body>
+    <main id="board">
+      <header>
+        <h1 id="label"></h1>
+        <p id="note"></p>
+      </header>
+      <section id="screens" aria-label="スクリーンショット3枚の比較"></section>
+    </main>
+    <script>
+      window.renderProposalBoard = (plan, imageUrls) => {
+        document.querySelector('#label').textContent = plan.label;
+        document.querySelector('#note').textContent = plan.note;
+
+        const screens = document.querySelector('#screens');
+        screens.innerHTML = '';
+        for (const [index, url] of imageUrls.entries()) {
+          const figure = document.createElement('figure');
+          const image = document.createElement('img');
+          image.src = url;
+          image.alt = `${plan.label} ${index + 1}枚目`;
+          figure.appendChild(image);
+          screens.appendChild(figure);
+        }
+      };
+    </script>
+  </body>
+</html>

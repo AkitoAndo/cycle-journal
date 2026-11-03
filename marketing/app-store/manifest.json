@@ -1,0 +1,69 @@
+{
+  "locale": "ja-JP",
+  "canvas": {
+    "width": 1290,
+    "height": 2796
+  },
+  "theme": {
+    "ink": "#392D24",
+    "muted": "#74685F",
+    "paper": "#FFFDF8",
+    "cream": "#FAF1DE",
+    "sand": "#E7D3B1",
+    "brown": "#8C7359",
+    "brownDark": "#594738",
+    "frame": "#6B5443",
+    "sage": "#B0BEA9"
+  },
+  "screens": [
+    {
+      "id": "journal-to-action",
+      "headline": "日記が、\n次の一歩になる。",
+      "layout": "journal",
+      "primaryImage": "docs/public/screenshots/journal-list.png",
+      "accent": "sand"
+    },
+    {
+      "id": "questioning-coach",
+      "headline": "答えではなく、\n問いを返す。",
+      "layout": "focus",
+      "primaryImage": "docs/public/screenshots/coach-chat.png",
+      "accent": "sage"
+    },
+    {
+      "id": "insight-to-task",
+      "headline": "小さな行動へ、\nつなげていく。",
+      "layout": "cards",
+      "primaryImage": "docs/public/screenshots/task-story-expanded.png",
+      "accent": "cream"
+    },
+    {
+      "id": "easy-journaling",
+      "headline": "ひとことから、\n気軽に書ける。",
+      "layout": "focus",
+      "primaryImage": "docs/public/screenshots/journal-new-filled.png",
+      "accent": "sand"
+    },
+    {
+      "id": "find-your-words",
+      "headline": "必要な言葉に、\nすぐ戻れる。",
+      "layout": "journal",
+      "primaryImage": "docs/public/screenshots/journal-search-filled.png",
+      "accent": "sage"
+    },
+    {
+      "id": "dialogue-with-past",
+      "headline": "過去の自分と、\n対話する。",
+      "layout": "focus",
+      "primaryImage": "docs/public/screenshots/journal-quote-history.png",
+      "accent": "cream"
+    },
+    {
+      "id": "daily-reflection",
+      "headline": "一日の記録を、\nまとめて振り返る。",
+      "layout": "journal",
+      "primaryImage": "docs/public/screenshots/home-overview.png",
+      "accent": "sand"
+    }
+  ]
+}
